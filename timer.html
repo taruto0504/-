@@ -63,6 +63,16 @@
   </div>
 
   <div class="card">
+    <h2>メモを記録(テキスト・音声入力)</h2>
+    <div class="note-row">
+      <input type="text" id="note-input" placeholder="例: 家族到着、瞳孔散大 など" autocomplete="off">
+      <button class="mic-btn" id="btn-mic" type="button" aria-label="音声入力">🎤</button>
+    </div>
+    <button class="btn-primary" id="btn-add-note" type="button">＋ 記録に追加</button>
+    <div class="voice-hint" id="voice-hint">🎤をタップすると音声入力を開始します。話した内容は自動で記録に追加されます。</div>
+  </div>
+
+  <div class="card">
     <h2>記録ログ</h2>
     <div class="log-list" id="log-list">
       <div class="empty-log">まだ記録がありません</div>

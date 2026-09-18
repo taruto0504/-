@@ -17,8 +17,10 @@
   const dripResult = document.getElementById("drip-result");
   const dripResultMain = document.getElementById("drip-result-main");
   const dripResultSub = document.getElementById("drip-result-sub");
+  const dripSoundBtn = document.getElementById("drip-sound-btn");
 
   document.getElementById("drip-calc-btn").addEventListener("click", () => {
+    stopDripSound();
     const volume = parseFloat(document.getElementById("drip-volume").value);
     const hours = parseFloat(document.getElementById("drip-hours").value) || 0;
     const minutes = parseFloat(document.getElementById("drip-minutes").value) || 0;
@@ -31,6 +33,7 @@
       dripResult.classList.add("warning");
       dripResultMain.textContent = "入力エラー";
       dripResultSub.textContent = "指示総量と投与時間(0より大きい値)を入力してください。";
+      dripSoundBtn.style.display = "none";
       return;
     }
 
@@ -44,7 +47,69 @@
     dripResultSub.innerHTML =
       "10秒あたり: 約 " + formatNum(dropsPer10Sec) + " 滴<br>" +
       "流量換算: 約 " + formatNum(mlPerHour) + " mL/時";
+
+    dripSoundBtn.style.display = "flex";
+    dripSoundBtn.dataset.dropsPerMin = String(dropsPerMin);
   });
+
+  // --- 滴下ペースのビープ音 ---
+  let audioCtx = null;
+  let beepSchedulerId = null;
+  let nextBeepTime = 0;
+  let beepIntervalSec = 0;
+
+  function playBeep(time) {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.35, time + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.09);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(time);
+    osc.stop(time + 0.1);
+  }
+
+  function beepScheduler() {
+    while (nextBeepTime < audioCtx.currentTime + 0.1) {
+      playBeep(nextBeepTime);
+      nextBeepTime += beepIntervalSec;
+    }
+  }
+
+  function startDripSound(dropsPerMin) {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    beepIntervalSec = 60 / dropsPerMin;
+    nextBeepTime = audioCtx.currentTime + 0.1;
+    beepSchedulerId = setInterval(beepScheduler, 25);
+    dripSoundBtn.classList.add("is-playing");
+    dripSoundBtn.textContent = "⏹ 音を止める";
+  }
+
+  function stopDripSound() {
+    if (beepSchedulerId) {
+      clearInterval(beepSchedulerId);
+      beepSchedulerId = null;
+    }
+    dripSoundBtn.classList.remove("is-playing");
+    dripSoundBtn.textContent = "🔊 この速さの音を鳴らす";
+  }
+
+  dripSoundBtn.addEventListener("click", () => {
+    if (beepSchedulerId) {
+      stopDripSound();
+    } else {
+      const dropsPerMin = parseFloat(dripSoundBtn.dataset.dropsPerMin);
+      if (dropsPerMin > 0) startDripSound(dropsPerMin);
+    }
+  });
+
+  window.addEventListener("pagehide", stopDripSound);
+  tabBtns.forEach((btn) => btn.addEventListener("click", stopDripSound));
 
   // --- 酸素ボンベ残量計算 ---
   const o2TypeRadios = document.querySelectorAll('input[name="o2-type"]');

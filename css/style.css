@@ -29,6 +29,7 @@ body {
   color: var(--color-text);
   -webkit-tap-highlight-color: transparent;
   padding-bottom: 24px;
+  overflow-x: hidden;
 }
 
 header.app-header {
@@ -365,6 +366,107 @@ button {
   line-height: 1.5;
 }
 
+/* Sound toggle (drip pacing beep) */
+.sound-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-primary);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.sound-btn.is-playing {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* Note input row (text + voice) */
+.note-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.note-row input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.mic-btn {
+  flex-shrink: 0;
+  width: 46px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 18px;
+}
+
+.mic-btn.is-listening {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+  animation: mic-pulse 1s infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.voice-hint {
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+  margin-top: 6px;
+}
+
+/* General timer / stopwatch */
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.preset-btn {
+  padding: 10px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.preset-btn:active {
+  background: var(--color-accent);
+}
+
+.timer-display.is-finished .time {
+  color: var(--color-danger);
+}
+
+.lap-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.lap-item .lap-index {
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
 /* Timer screen */
 .timer-display {
   text-align: center;
@@ -401,15 +503,21 @@ button {
   color: #fff;
 }
 
-#btn-start-pause {
+#btn-start-pause,
+#countdown-start-pause,
+#stopwatch-start-pause {
   background: var(--color-success);
 }
 
-#btn-start-pause.is-running {
+#btn-start-pause.is-running,
+#countdown-start-pause.is-running,
+#stopwatch-start-pause.is-running {
   background: var(--color-warning);
 }
 
-#btn-reset {
+#btn-reset,
+#countdown-reset,
+#stopwatch-reset {
   background: #7a8794;
 }
 
@@ -484,25 +592,40 @@ button {
 .log-list {
   margin-top: 4px;
   border-top: 1px solid var(--color-border);
+  max-height: 46vh;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .log-item {
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 4px;
   padding: 10px 2px;
   border-bottom: 1px solid var(--color-border);
   font-size: 13.5px;
+  min-width: 0;
 }
 
 .log-item .log-label {
   font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  line-height: 1.5;
+}
+
+.log-item .log-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .log-item .log-time {
   color: var(--color-text-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+  font-size: 12.5px;
 }
 
 .log-item .log-del {
@@ -511,6 +634,7 @@ button {
   border: none;
   font-size: 16px;
   padding: 0 4px;
+  flex-shrink: 0;
 }
 
 .empty-log {

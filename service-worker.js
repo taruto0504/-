@@ -1,13 +1,15 @@
-const CACHE_NAME = "medical-support-tool-v1";
+const CACHE_NAME = "medical-support-tool-v2";
 const ASSETS = [
   "index.html",
   "drip-oxygen.html",
   "timer.html",
+  "general-timer.html",
   "calculator.html",
   "manifest.json",
   "css/style.css",
   "js/drip-oxygen.js",
   "js/timer.js",
+  "js/general-timer.js",
   "js/calculator.js",
   "icons/icon.svg",
   "icons/icon-192.png",

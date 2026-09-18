@@ -15,6 +15,10 @@
     logList: document.getElementById("log-list"),
     copyBtn: document.getElementById("btn-copy-log"),
     clearBtn: document.getElementById("btn-clear-log"),
+    noteInput: document.getElementById("note-input"),
+    addNoteBtn: document.getElementById("btn-add-note"),
+    micBtn: document.getElementById("btn-mic"),
+    voiceHint: document.getElementById("voice-hint"),
   };
 
   let state = loadState();
@@ -170,10 +174,11 @@
       .map(
         (ev, i) => `
       <div class="log-item">
-        <span><span class="log-label">${ev.emoji} ${escapeHtml(ev.label)}</span></span>
-        <span class="log-time">${formatElapsed(ev.elapsedMs)} / ${formatClock(ev.time)}
+        <div class="log-label">${ev.emoji} ${escapeHtml(ev.label)}</div>
+        <div class="log-meta">
+          <span class="log-time">経過 ${formatElapsed(ev.elapsedMs)} / ${formatClock(ev.time)}</span>
           <button class="log-del" data-index="${i}" aria-label="削除">✕</button>
-        </span>
+        </div>
       </div>`
       )
       .join("");
@@ -244,6 +249,107 @@
     saveState();
     renderLog();
   });
+
+  // --- テキストメモ ---
+  function addNoteFromInput() {
+    const text = els.noteInput.value.trim();
+    if (!text) return;
+    logEvent(text, "📝");
+    els.noteInput.value = "";
+  }
+
+  els.addNoteBtn.addEventListener("click", addNoteFromInput);
+  els.noteInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addNoteFromInput();
+    }
+  });
+
+  // --- 音声入力 ---
+  const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const DEFAULT_VOICE_HINT = "🎤をタップすると音声入力を開始します。話した内容は自動で記録に追加されます。";
+  let recognition = null;
+  let isListening = false;
+  let stoppingIntentionally = false;
+
+  if (SpeechRecognitionImpl) {
+    recognition = new SpeechRecognitionImpl();
+    recognition.lang = "ja-JP";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.addEventListener("result", (event) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          const text = result[0].transcript.trim();
+          if (text) logEvent(text, "🎤");
+        } else {
+          interim += result[0].transcript;
+        }
+      }
+      els.noteInput.value = interim;
+    });
+
+    recognition.addEventListener("end", () => {
+      if (isListening && !stoppingIntentionally) {
+        try {
+          recognition.start();
+        } catch (e) {
+          /* ignore */
+        }
+      } else {
+        isListening = false;
+        els.micBtn.classList.remove("is-listening");
+        els.voiceHint.textContent = DEFAULT_VOICE_HINT;
+      }
+    });
+
+    recognition.addEventListener("error", (event) => {
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        els.voiceHint.textContent = "⚠ マイクの使用が許可されていません。ブラウザの設定を確認してください。";
+        stoppingIntentionally = true;
+        isListening = false;
+        els.micBtn.classList.remove("is-listening");
+      }
+    });
+
+    els.micBtn.addEventListener("click", () => {
+      if (isListening) {
+        stoppingIntentionally = true;
+        isListening = false;
+        recognition.stop();
+        els.micBtn.classList.remove("is-listening");
+        els.voiceHint.textContent = DEFAULT_VOICE_HINT;
+      } else {
+        stoppingIntentionally = false;
+        isListening = true;
+        try {
+          recognition.start();
+          els.micBtn.classList.add("is-listening");
+          els.voiceHint.textContent = "🔴 音声入力中... もう一度タップで停止します。";
+        } catch (e) {
+          isListening = false;
+        }
+      }
+    });
+
+    window.addEventListener("pagehide", () => {
+      stoppingIntentionally = true;
+      isListening = false;
+      try {
+        recognition.stop();
+      } catch (e) {
+        /* ignore */
+      }
+    });
+  } else {
+    els.micBtn.disabled = true;
+    els.micBtn.style.opacity = "0.4";
+    els.voiceHint.textContent = "この端末・ブラウザは音声入力に対応していません。テキスト入力をご利用ください。";
+  }
 
   render();
   setInterval(render, 1000);
