@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e99">
+<title>医療サポートツール</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main>
+  <div class="home-hero">
+    <h1>医療サポートツール</h1>
+    <p>現場で使う計算・記録を、ひとつのアプリに</p>
+  </div>
+
+  <nav class="menu-list">
+    <a class="menu-card" href="drip-oxygen.html">
+      <div class="icon">💧</div>
+      <div class="label">
+        <span class="title">点滴・酸素ボンベ計算</span>
+        <span class="desc">滴下数計算 / ボンベ残量・使用可能時間</span>
+      </div>
+      <div class="chevron">›</div>
+    </a>
+
+    <a class="menu-card" href="timer.html">
+      <div class="icon">⏱️</div>
+      <div class="label">
+        <span class="title">専用タイマー(CPA記録機能付き)</span>
+        <span class="desc">経過時間 / アドレナリン・除細動・リズムチェック記録</span>
+      </div>
+      <div class="chevron">›</div>
+    </a>
+
+    <a class="menu-card" href="calculator.html">
+      <div class="icon">🧮</div>
+      <div class="label">
+        <span class="title">電卓</span>
+        <span class="desc">四則演算の簡易計算機</span>
+      </div>
+      <div class="chevron">›</div>
+    </a>
+  </nav>
+
+  <div class="disclaimer">
+    ⚠️ 本アプリの計算結果・記録は参考情報です。実際の投与・処置の判断は、必ず院内基準や医師の指示、添付文書等に基づいて行ってください。
+  </div>
+</main>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>

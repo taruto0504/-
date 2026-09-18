@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e99">
+<title>点滴・酸素ボンベ計算 | 医療サポートツール</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header class="app-header">
+  <a class="back-btn" href="index.html" aria-label="戻る">‹</a>
+  <h1>点滴・酸素ボンベ計算</h1>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="drip">点滴滴下数</button>
+    <button class="tab-btn" data-tab="oxygen">酸素ボンベ残量</button>
+  </div>
+
+  <!-- 点滴滴下数計算 -->
+  <section id="tab-drip" class="tab-panel active">
+    <div class="card">
+      <h2>点滴 滴下数計算</h2>
+
+      <label for="drip-volume">指示総量 (mL)</label>
+      <input type="number" id="drip-volume" inputmode="decimal" placeholder="例: 500" min="0">
+
+      <label>投与時間</label>
+      <div class="field-row">
+        <div>
+          <input type="number" id="drip-hours" inputmode="numeric" placeholder="時間" min="0">
+        </div>
+        <div>
+          <input type="number" id="drip-minutes" inputmode="numeric" placeholder="分" min="0" max="59">
+        </div>
+      </div>
+
+      <label>輸液セットの種類</label>
+      <div class="radio-group">
+        <label><input type="radio" name="drip-factor" value="20" checked><span>成人用 (20滴/mL)</span></label>
+        <label><input type="radio" name="drip-factor" value="60"><span>小児用 (60滴/mL)</span></label>
+      </div>
+
+      <button class="btn-primary" id="drip-calc-btn">計算する</button>
+
+      <div class="result-box" id="drip-result" style="display:none;">
+        <div class="result-main"><span id="drip-result-main">-</span><span class="unit">滴/分</span></div>
+        <div class="result-sub" id="drip-result-sub"></div>
+      </div>
+      <div class="hint">計算式: 滴下数(滴/分) = 指示総量(mL) × 滴下係数(滴/mL) ÷ 投与時間(分)</div>
+    </div>
+  </section>
+
+  <!-- 酸素ボンベ残量計算 -->
+  <section id="tab-oxygen" class="tab-panel">
+    <div class="card">
+      <h2>酸素ボンベ 残量・使用可能時間</h2>
+
+      <label>ボンベの種類</label>
+      <div class="radio-group">
+        <label><input type="radio" name="o2-type" value="3.4" checked><span>500L用<br>(内容積 3.4L)</span></label>
+        <label><input type="radio" name="o2-type" value="7.5"><span>1500L用<br>(内容積 7.5L)</span></label>
+        <label><input type="radio" name="o2-type" value="custom"><span>その他<br>(内容積を入力)</span></label>
+      </div>
+
+      <div id="o2-custom-volume-wrap" style="display:none;">
+        <label for="o2-custom-volume">内容積 (L)</label>
+        <input type="number" id="o2-custom-volume" inputmode="decimal" placeholder="例: 10" min="0">
+      </div>
+
+      <label for="o2-pressure">圧力計の指示値 (MPa)</label>
+      <input type="number" id="o2-pressure" inputmode="decimal" placeholder="例: 9.5" min="0" step="0.1">
+
+      <label for="o2-flow">酸素流量 (L/分)</label>
+      <input type="number" id="o2-flow" inputmode="decimal" placeholder="例: 5" min="0" step="0.5">
+
+      <button class="btn-primary" id="o2-calc-btn">計算する</button>
+
+      <div class="result-box" id="o2-result" style="display:none;">
+        <div class="result-main"><span id="o2-result-main">-</span><span class="unit">分</span></div>
+        <div class="result-sub" id="o2-result-sub"></div>
+      </div>
+      <div class="hint">計算式: ボンベ残量(L) = 内容積(L) × 圧力計指示値(MPa) × 9.8 ／ 使用可能時間(分) = 残量(L) ÷ 酸素流量(L/分)<br>※実際の残量は温度や誤差により変動します。安全のため早めのボンベ交換を心がけてください。</div>
+    </div>
+  </section>
+</main>
+
+<script src="js/drip-oxygen.js"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
