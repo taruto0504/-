@@ -88,31 +88,27 @@
   </section>
 
   <!-- CPA記録タイマー -->
-  <section id="tab-cpa" class="tab-panel">
-    <div class="card">
-      <h2>🔴 リズムチェック(2分ごと)</h2>
-      <div class="timer-display">
-        <div class="time cpa-cycle-time" id="rhythm-cycle-time">02:00</div>
+  <section id="tab-cpa" class="tab-panel cpa-compact">
+    <div class="card cpa-cycles-card">
+      <div class="cpa-cycle">
+        <h2>🔴 リズムチェック<span class="cpa-cycle-period">2分</span></h2>
+        <div class="time cpa-cycle-time-sm" id="rhythm-cycle-time">02:00</div>
+        <div class="cycle-controls">
+          <button class="cycle-start-pause" id="rhythm-start-pause">開始</button>
+          <button class="cycle-reset" id="rhythm-reset">リセット</button>
+        </div>
       </div>
-      <div class="cycle-controls">
-        <button class="cycle-start-pause" id="rhythm-start-pause">開始</button>
-        <button class="cycle-reset" id="rhythm-reset">リセット</button>
+      <div class="cpa-cycle">
+        <h2>🟠 薬剤投与<span class="cpa-cycle-period">4分</span></h2>
+        <div class="time cpa-cycle-time-sm" id="med-cycle-time">04:00</div>
+        <div class="cycle-controls">
+          <button class="cycle-start-pause" id="med-start-pause">開始</button>
+          <button class="cycle-reset" id="med-reset">リセット</button>
+        </div>
       </div>
-      <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です</div>
-      <div class="hint">「開始」を押すと、胸骨圧迫のテンポ(110/分)を刻む音も一緒に鳴ります。「一時停止」で止まります。</div>
     </div>
-
-    <div class="card">
-      <h2>🟠 薬剤投与(4分ごと)</h2>
-      <div class="timer-display">
-        <div class="time cpa-cycle-time" id="med-cycle-time">04:00</div>
-      </div>
-      <div class="cycle-controls">
-        <button class="cycle-start-pause" id="med-start-pause">開始</button>
-        <button class="cycle-reset" id="med-reset">リセット</button>
-      </div>
-      <div class="alert-banner epi" id="alert-epi">🟠 薬剤投与の時間です</div>
-    </div>
+    <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です(開始で圧迫音も再生)</div>
+    <div class="alert-banner epi" id="alert-epi">🟠 薬剤投与の時間です</div>
 
     <div class="card">
       <h2>イベント記録</h2>
@@ -163,23 +159,19 @@
     </div>
 
     <div class="card">
-      <h2>メモを記録(テキスト・音声入力)</h2>
       <div class="note-row">
-        <input type="text" id="note-input" placeholder="例: 家族到着、瞳孔散大 など" autocomplete="off">
+        <input type="text" id="note-input" placeholder="メモ入力 例: 家族到着 など" autocomplete="off">
         <button class="mic-btn" id="btn-mic" type="button" aria-label="音声入力">🎤</button>
+        <button class="btn-primary cpa-note-add" id="btn-add-note" type="button">追加</button>
       </div>
-      <button class="btn-primary" id="btn-add-note" type="button">＋ 記録に追加</button>
-      <div class="voice-hint" id="voice-hint">🎤をタップすると音声入力を開始します。話した内容は自動で記録に追加されます。</div>
-    </div>
+      <div class="voice-hint" id="voice-hint">🎤で音声入力(話すと自動追加)</div>
 
-    <div class="card">
-      <h2>記録ログ</h2>
       <div class="log-list" id="log-list">
         <div class="empty-log">まだ記録がありません</div>
       </div>
       <div class="log-actions">
-        <button class="btn-secondary" id="btn-copy-log">📋 ログをコピー</button>
-        <button class="btn-secondary" id="btn-clear-log">🗑 全て削除</button>
+        <button class="btn-secondary" id="btn-copy-log">📋 コピー</button>
+        <button class="btn-secondary" id="btn-clear-log">🗑 削除</button>
       </div>
     </div>
   </section>

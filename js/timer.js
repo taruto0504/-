@@ -377,7 +377,7 @@
     } catch (e) {
       window.prompt("以下のテキストをコピーしてください:", text);
     }
-    setTimeout(() => (els.copyBtn.textContent = "📋 ログをコピー"), 1800);
+    setTimeout(() => (els.copyBtn.textContent = "📋 コピー"), 1800);
   });
 
   els.clearBtn.addEventListener("click", () => {
