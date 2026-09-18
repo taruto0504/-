@@ -90,19 +90,13 @@
   <!-- CPA記録タイマー -->
   <section id="tab-cpa" class="tab-panel">
     <div class="card">
-      <div class="timer-display">
-        <div class="started-at" id="cpa-started-at">未開始</div>
-      </div>
-      <div class="timer-controls">
-        <button id="btn-start-pause">開始</button>
-        <button id="btn-reset">リセット</button>
-      </div>
-    </div>
-
-    <div class="card">
       <h2>🔴 リズムチェック(2分ごと)</h2>
       <div class="timer-display">
         <div class="time cpa-cycle-time" id="rhythm-cycle-time">02:00</div>
+      </div>
+      <div class="cycle-controls">
+        <button class="cycle-start-pause" id="rhythm-start-pause">開始</button>
+        <button class="cycle-reset" id="rhythm-reset">リセット</button>
       </div>
       <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です</div>
       <button class="sound-btn" id="compression-sound-btn" type="button">🎵 胸骨圧迫のリズム音(110/分)</button>
@@ -114,7 +108,11 @@
       <div class="timer-display">
         <div class="time cpa-cycle-time" id="med-cycle-time">04:00</div>
       </div>
-      <div class="alert-banner epi" id="alert-epi">🟠 薬剤投与(アドレナリン)の時間です</div>
+      <div class="cycle-controls">
+        <button class="cycle-start-pause" id="med-start-pause">開始</button>
+        <button class="cycle-reset" id="med-reset">リセット</button>
+      </div>
+      <div class="alert-banner epi" id="alert-epi">🟠 薬剤投与の時間です</div>
     </div>
 
     <div class="card">
@@ -126,9 +124,6 @@
         <button class="event-btn" data-label="気道確保" data-emoji="🌬️">
           <span class="emoji">🌬️</span>気道確保
         </button>
-        <button class="event-btn" data-label="アドレナリン投与" data-emoji="💉" id="btn-epi">
-          <span class="emoji">💉</span>アドレナリン投与
-        </button>
         <button class="event-btn" data-label="除細動(電気ショック)" data-emoji="⚡" id="btn-shock">
           <span class="emoji">⚡</span>除細動(ショック)
         </button>
@@ -138,6 +133,14 @@
         <button class="event-btn" data-label="静脈路確保" data-emoji="🩸">
           <span class="emoji">🩸</span>静脈路確保
         </button>
+        <div class="med-select-row">
+          <select id="med-drug-select" aria-label="薬剤を選択">
+            <option value="アドレナリン">アドレナリン</option>
+            <option value="アミオダロン">アミオダロン</option>
+            <option value="リドカイン">リドカイン</option>
+          </select>
+          <button type="button" id="btn-med-log">💉 薬剤投与を記録</button>
+        </div>
         <button class="event-btn rosc" data-label="ROSC(自己心拍再開)" data-emoji="✅">
           <span class="emoji">✅</span>ROSC(自己心拍再開)
         </button>

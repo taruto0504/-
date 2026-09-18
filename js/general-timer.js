@@ -3,6 +3,22 @@
 
   const STORAGE_KEY = "generalTimerState_v1";
 
+  // iOS などの消音(サイレント)スイッチが有効でもWeb Audioの音が鳴るよう、
+  // 最初のタップ操作で無音の音声を一度再生して「音声セッション」を有効化する。
+  const SILENT_WAV =
+    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+  function primeAudioSession() {
+    try {
+      const el = new Audio(SILENT_WAV);
+      el.volume = 0.01;
+      el.play().catch(() => {});
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  document.addEventListener("touchstart", primeAudioSession, { once: true, passive: true });
+  document.addEventListener("click", primeAudioSession, { once: true });
+
   // Tabs
   const tabBtns = document.querySelectorAll(".tab-btn");
   const tabPanels = document.querySelectorAll(".tab-panel");
@@ -41,22 +57,33 @@
   let audioCtx = null;
   function ensureAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
     return audioCtx;
   }
-  function beepOnce(freq, duration) {
+  // Unlock/resume the AudioContext from within a real user gesture (button press),
+  // so later programmatic beeps (e.g. an alarm firing from setInterval) can still play.
+  function primeAudioCtx() {
     const ctx = ensureAudioCtx();
+    if (ctx.state === "suspended") ctx.resume();
+  }
+  function playTone(ctx, freq, time, duration) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = "sine";
     osc.frequency.value = freq;
-    const t = ctx.currentTime;
-    gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.exponentialRampToValueAtTime(0.4, t + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.4, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
     osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + duration + 0.02);
+    osc.start(time);
+    osc.stop(time + duration + 0.02);
+  }
+  function beepOnce(freq, duration) {
+    const ctx = ensureAudioCtx();
+    if (ctx.state === "suspended") {
+      ctx.resume().then(() => playTone(ctx, freq, ctx.currentTime, duration));
+    } else {
+      playTone(ctx, freq, ctx.currentTime, duration);
+    }
   }
 
   let alarmIntervalId = null;
@@ -209,6 +236,7 @@
   });
 
   els.startPause.addEventListener("click", () => {
+    primeAudioCtx();
     if (cd.finished) {
       cd.finished = false;
       cd.accumulatedMs = 0;

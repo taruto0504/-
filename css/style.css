@@ -613,6 +613,75 @@ button {
   border-color: var(--color-danger);
 }
 
+.med-select-row {
+  grid-column: span 2;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: #fff;
+}
+
+.med-select-row select {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.med-select-row button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: none;
+  background: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.med-select-row button:active {
+  background: var(--color-primary-dark);
+}
+
+/* Per-cycle CPA timer controls (smaller than the main timer-controls) */
+.cycle-controls {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.cycle-controls button {
+  flex: 1;
+  padding: 12px 6px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.cycle-controls .cycle-start-pause {
+  background: var(--color-success);
+}
+
+.cycle-controls .cycle-start-pause.is-running {
+  background: var(--color-warning);
+}
+
+.cycle-controls .cycle-reset {
+  background: #7a8794;
+}
+
 .log-list {
   margin-top: 4px;
   border-top: 1px solid var(--color-border);

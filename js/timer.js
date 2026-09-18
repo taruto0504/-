@@ -1,21 +1,40 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "cpaTimerState_v2";
+  const STORAGE_KEY = "cpaTimerState_v3";
   const RHYTHM_PERIOD_MS = 2 * 60 * 1000;
   const MED_PERIOD_MS = 4 * 60 * 1000;
   const COMPRESSION_BPM = 110;
   const COMPRESSION_BEAT_SEC = 60 / COMPRESSION_BPM;
 
+  // iOS などの消音(サイレント)スイッチが有効でもWeb Audioの音が鳴るよう、
+  // 最初のタップ操作で無音の音声を一度再生して「音声セッション」を有効化する。
+  const SILENT_WAV =
+    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+  function primeAudioSession() {
+    try {
+      const el = new Audio(SILENT_WAV);
+      el.volume = 0.01;
+      el.play().catch(() => {});
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  document.addEventListener("touchstart", primeAudioSession, { once: true, passive: true });
+  document.addEventListener("click", primeAudioSession, { once: true });
+
   const els = {
-    startedAt: document.getElementById("cpa-started-at"),
-    startPause: document.getElementById("btn-start-pause"),
-    reset: document.getElementById("btn-reset"),
     rhythmTime: document.getElementById("rhythm-cycle-time"),
+    rhythmStartPause: document.getElementById("rhythm-start-pause"),
+    rhythmReset: document.getElementById("rhythm-reset"),
     medTime: document.getElementById("med-cycle-time"),
+    medStartPause: document.getElementById("med-start-pause"),
+    medReset: document.getElementById("med-reset"),
     alertRhythm: document.getElementById("alert-rhythm"),
     alertEpi: document.getElementById("alert-epi"),
     compressionSoundBtn: document.getElementById("compression-sound-btn"),
+    medDrugSelect: document.getElementById("med-drug-select"),
+    medLogBtn: document.getElementById("btn-med-log"),
     logList: document.getElementById("log-list"),
     copyBtn: document.getElementById("btn-copy-log"),
     clearBtn: document.getElementById("btn-clear-log"),
@@ -27,14 +46,15 @@
 
   let state = loadState();
 
+  function defaultCycle() {
+    return { running: false, startTimestamp: null, accumulatedMs: 0, cycleIndex: 0 };
+  }
+
   function defaultState() {
     return {
-      running: false,
-      startTimestamp: null, // ms epoch, when the current running segment began
-      accumulatedMs: 0, // elapsed ms from completed segments
-      firstStartedAt: null, // ms epoch, when the CPA cycle was first started
-      lastRhythmCycleIndex: 0,
-      lastMedCycleIndex: 0,
+      sessionFirstTimestamp: null, // reference point for the log's "経過" time
+      rhythm: defaultCycle(),
+      med: defaultCycle(),
       events: [], // { label, emoji, time, elapsedMs }
     };
   }
@@ -44,7 +64,13 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return defaultState();
       const parsed = JSON.parse(raw);
-      return Object.assign(defaultState(), parsed);
+      const def = defaultState();
+      return {
+        sessionFirstTimestamp: parsed.sessionFirstTimestamp || null,
+        rhythm: Object.assign(def.rhythm, parsed.rhythm),
+        med: Object.assign(def.med, parsed.med),
+        events: parsed.events || [],
+      };
     } catch (e) {
       return defaultState();
     }
@@ -58,11 +84,19 @@
     }
   }
 
-  function getElapsedMs() {
-    if (state.running && state.startTimestamp) {
-      return state.accumulatedMs + (Date.now() - state.startTimestamp);
+  function ensureSessionStart() {
+    if (!state.sessionFirstTimestamp) state.sessionFirstTimestamp = Date.now();
+  }
+
+  function cycleElapsedMs(cycle) {
+    if (cycle.running && cycle.startTimestamp) {
+      return cycle.accumulatedMs + (Date.now() - cycle.startTimestamp);
     }
-    return state.accumulatedMs;
+    return cycle.accumulatedMs;
+  }
+
+  function sessionElapsedMs() {
+    return state.sessionFirstTimestamp ? Date.now() - state.sessionFirstTimestamp : 0;
   }
 
   function formatMMSS(ms) {
@@ -98,7 +132,7 @@
     }
   }
 
-  // --- Web Audio helpers (resume before scheduling to avoid silent first beep) ---
+  // --- Web Audio helpers (resume before scheduling to avoid a silent first beep) ---
   let audioCtx = null;
   function ensureAudioCtx() {
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -144,12 +178,13 @@
   }
 
   function startCompressionSound() {
+    els.compressionSoundBtn.classList.add("is-playing");
+    els.compressionSoundBtn.textContent = "⏹ 胸骨圧迫音を止める";
     withRunningAudioCtx(() => {
+      if (!els.compressionSoundBtn.classList.contains("is-playing")) return;
       const ctx = ensureAudioCtx();
       nextCompressionBeatTime = ctx.currentTime + 0.05;
       compressionIntervalId = setInterval(compressionScheduler, 25);
-      els.compressionSoundBtn.classList.add("is-playing");
-      els.compressionSoundBtn.textContent = "⏹ 胸骨圧迫音を止める";
     });
   }
 
@@ -189,51 +224,55 @@
     beepOnce(700, 0.3);
   }
 
-  function toggleStartPause() {
-    if (!state.running) {
-      state.running = true;
-      state.startTimestamp = Date.now();
-      if (!state.firstStartedAt) {
-        state.firstStartedAt = state.startTimestamp;
-        state.lastRhythmCycleIndex = 0;
-        state.lastMedCycleIndex = 0;
-      }
+  // --- サイクル(リズムチェック/薬剤投与)の開始・一時停止・リセット ---
+  function toggleCycle(cycle) {
+    if (!cycle.running) {
+      // 開始ボタン(ユーザー操作)のタイミングでAudioContextを起こしておく。
+      // こうしないと、数分後にタイマーだけで自動発火するアラーム音がブロックされる。
+      const ctx = ensureAudioCtx();
+      if (ctx.state === "suspended") ctx.resume();
+      cycle.running = true;
+      cycle.startTimestamp = Date.now();
+      ensureSessionStart();
     } else {
-      state.accumulatedMs = getElapsedMs();
-      state.running = false;
-      state.startTimestamp = null;
-      stopCompressionSound();
+      cycle.accumulatedMs = cycleElapsedMs(cycle);
+      cycle.running = false;
+      cycle.startTimestamp = null;
     }
     saveState();
     render();
   }
 
-  function resetTimer() {
-    if (!confirm("タイマーと全ての記録をリセットします。よろしいですか?")) return;
+  els.rhythmStartPause.addEventListener("click", () => toggleCycle(state.rhythm));
+  els.medStartPause.addEventListener("click", () => toggleCycle(state.med));
+
+  els.rhythmReset.addEventListener("click", () => {
+    state.rhythm = defaultCycle();
     stopCompressionSound();
-    state = defaultState();
     saveState();
     render();
-  }
+  });
+
+  els.medReset.addEventListener("click", () => {
+    state.med = defaultCycle();
+    saveState();
+    render();
+  });
 
   function logEvent(label, emoji) {
+    ensureSessionStart();
     const now = Date.now();
-    if (!state.firstStartedAt) {
-      state.running = true;
-      state.startTimestamp = now;
-      state.firstStartedAt = now;
-      state.lastRhythmCycleIndex = 0;
-      state.lastMedCycleIndex = 0;
-    }
-    const elapsedMs = getElapsedMs();
+    const elapsedMs = sessionElapsedMs();
     state.events.unshift({ label, emoji, time: now, elapsedMs });
 
     if (label === "CPA対応終了" || label === "ROSC(自己心拍再開)") {
-      state.running = false;
-      if (state.startTimestamp) {
-        state.accumulatedMs = getElapsedMs();
-      }
-      state.startTimestamp = null;
+      [state.rhythm, state.med].forEach((cycle) => {
+        if (cycle.running) {
+          cycle.accumulatedMs = cycleElapsedMs(cycle);
+          cycle.running = false;
+          cycle.startTimestamp = null;
+        }
+      });
       stopCompressionSound();
     }
 
@@ -242,27 +281,23 @@
     render();
   }
 
+  els.medLogBtn.addEventListener("click", () => {
+    logEvent("薬剤投与: " + els.medDrugSelect.value, "💉");
+  });
+
   function deleteEvent(index) {
     state.events.splice(index, 1);
     saveState();
     renderLog();
   }
 
-  function checkCycles() {
-    if (!state.running) return;
-    const elapsed = getElapsedMs();
-
-    const rhythmCycleIndex = Math.floor(elapsed / RHYTHM_PERIOD_MS);
-    if (rhythmCycleIndex > state.lastRhythmCycleIndex) {
-      state.lastRhythmCycleIndex = rhythmCycleIndex;
-      triggerRhythmAlert();
-      saveState();
-    }
-
-    const medCycleIndex = Math.floor(elapsed / MED_PERIOD_MS);
-    if (medCycleIndex > state.lastMedCycleIndex) {
-      state.lastMedCycleIndex = medCycleIndex;
-      triggerMedAlert();
+  function checkCycle(cycle, periodMs, onDue) {
+    if (!cycle.running) return;
+    const elapsed = cycleElapsedMs(cycle);
+    const idx = Math.floor(elapsed / periodMs);
+    if (idx > cycle.cycleIndex) {
+      cycle.cycleIndex = idx;
+      onDue();
       saveState();
     }
   }
@@ -297,17 +332,27 @@
   }
 
   function render() {
-    const elapsed = getElapsedMs();
-    const rhythmRemaining = RHYTHM_PERIOD_MS - (elapsed % RHYTHM_PERIOD_MS);
-    const medRemaining = MED_PERIOD_MS - (elapsed % MED_PERIOD_MS);
-    els.rhythmTime.textContent = formatMMSS(state.firstStartedAt ? rhythmRemaining : RHYTHM_PERIOD_MS);
-    els.medTime.textContent = formatMMSS(state.firstStartedAt ? medRemaining : MED_PERIOD_MS);
-    els.startedAt.textContent = state.firstStartedAt
-      ? "開始時刻: " + formatClock(state.firstStartedAt)
-      : "未開始";
-    els.startPause.textContent = state.running ? "一時停止" : state.firstStartedAt ? "再開" : "開始";
-    els.startPause.classList.toggle("is-running", state.running);
-    checkCycles();
+    const rhythmRemaining = RHYTHM_PERIOD_MS - (cycleElapsedMs(state.rhythm) % RHYTHM_PERIOD_MS);
+    const medRemaining = MED_PERIOD_MS - (cycleElapsedMs(state.med) % MED_PERIOD_MS);
+    els.rhythmTime.textContent = formatMMSS(rhythmRemaining);
+    els.medTime.textContent = formatMMSS(medRemaining);
+
+    els.rhythmStartPause.textContent = state.rhythm.running
+      ? "一時停止"
+      : state.rhythm.accumulatedMs > 0
+      ? "再開"
+      : "開始";
+    els.rhythmStartPause.classList.toggle("is-running", state.rhythm.running);
+
+    els.medStartPause.textContent = state.med.running
+      ? "一時停止"
+      : state.med.accumulatedMs > 0
+      ? "再開"
+      : "開始";
+    els.medStartPause.classList.toggle("is-running", state.med.running);
+
+    checkCycle(state.rhythm, RHYTHM_PERIOD_MS, triggerRhythmAlert);
+    checkCycle(state.med, MED_PERIOD_MS, triggerMedAlert);
     renderLog();
   }
 
@@ -315,7 +360,8 @@
     const lines = [];
     lines.push("CPA記録ログ");
     lines.push(
-      "開始時刻: " + (state.firstStartedAt ? new Date(state.firstStartedAt).toLocaleString("ja-JP") : "-")
+      "開始時刻: " +
+        (state.sessionFirstTimestamp ? new Date(state.sessionFirstTimestamp).toLocaleString("ja-JP") : "-")
     );
     lines.push("");
     const chronological = [...state.events].reverse();
@@ -324,9 +370,6 @@
     });
     return lines.join("\n");
   }
-
-  els.startPause.addEventListener("click", toggleStartPause);
-  els.reset.addEventListener("click", resetTimer);
 
   document.querySelectorAll(".event-btn").forEach((btn) => {
     btn.addEventListener("click", () => {

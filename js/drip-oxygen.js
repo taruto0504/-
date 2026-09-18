@@ -1,6 +1,22 @@
 (function () {
   "use strict";
 
+  // iOS などの消音(サイレント)スイッチが有効でもWeb Audioの音が鳴るよう、
+  // 最初のタップ操作で無音の音声を一度再生して「音声セッション」を有効化する。
+  const SILENT_WAV =
+    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
+  function primeAudioSession() {
+    try {
+      const el = new Audio(SILENT_WAV);
+      el.volume = 0.01;
+      el.play().catch(() => {});
+    } catch (e) {
+      /* ignore */
+    }
+  }
+  document.addEventListener("touchstart", primeAudioSession, { once: true, passive: true });
+  document.addEventListener("click", primeAudioSession, { once: true });
+
   // Tabs
   const tabBtns = document.querySelectorAll(".tab-btn");
   const tabPanels = document.querySelectorAll(".tab-panel");
@@ -18,39 +34,76 @@
   const dripResultMain = document.getElementById("drip-result-main");
   const dripResultSub = document.getElementById("drip-result-sub");
   const dripSoundBtn = document.getElementById("drip-sound-btn");
+  const dripModeTimeWrap = document.getElementById("drip-mode-time");
+  const dripModeRateWrap = document.getElementById("drip-mode-rate");
+
+  document.querySelectorAll('input[name="drip-mode"]').forEach((r) => {
+    r.addEventListener("change", () => {
+      const isRate = r.value === "rate" && r.checked;
+      dripModeTimeWrap.style.display = isRate ? "none" : "block";
+      dripModeRateWrap.style.display = isRate ? "block" : "none";
+    });
+  });
 
   document.getElementById("drip-calc-btn").addEventListener("click", () => {
     stopDripSound();
+    const mode = document.querySelector('input[name="drip-mode"]:checked').value;
     const volume = parseFloat(document.getElementById("drip-volume").value);
-    const hours = parseFloat(document.getElementById("drip-hours").value) || 0;
-    const minutes = parseFloat(document.getElementById("drip-minutes").value) || 0;
     const factor = parseFloat(document.querySelector('input[name="drip-factor"]:checked').value);
 
-    const totalMinutes = hours * 60 + minutes;
+    let dropsPerMin, mlPerHour, totalMinutes;
 
-    if (!volume || volume <= 0 || totalMinutes <= 0) {
-      dripResult.style.display = "block";
-      dripResult.classList.add("warning");
-      dripResultMain.textContent = "入力エラー";
-      dripResultSub.textContent = "指示総量と投与時間(0より大きい値)を入力してください。";
-      dripSoundBtn.style.display = "none";
-      return;
+    if (mode === "time") {
+      const hours = parseFloat(document.getElementById("drip-hours").value) || 0;
+      const minutes = parseFloat(document.getElementById("drip-minutes").value) || 0;
+      totalMinutes = hours * 60 + minutes;
+
+      if (!volume || volume <= 0 || totalMinutes <= 0) {
+        showDripError("指示総量と投与時間(0より大きい値)を入力してください。");
+        return;
+      }
+      dropsPerMin = (volume * factor) / totalMinutes;
+      mlPerHour = (volume / totalMinutes) * 60;
+    } else {
+      const rate = parseFloat(document.getElementById("drip-rate").value);
+      if (!rate || rate <= 0) {
+        showDripError("投与速度(mL/h、0より大きい値)を入力してください。");
+        return;
+      }
+      mlPerHour = rate;
+      dropsPerMin = (rate * factor) / 60;
+      totalMinutes = volume > 0 ? (volume / rate) * 60 : null;
     }
 
     dripResult.classList.remove("warning");
-    const dropsPerMin = (volume * factor) / totalMinutes;
     const dropsPer10Sec = dropsPerMin / 6;
-    const mlPerHour = (volume / totalMinutes) * 60;
 
     dripResult.style.display = "block";
     dripResultMain.textContent = formatNum(dropsPerMin);
     dripResultSub.innerHTML =
       "10秒あたり: 約 " + formatNum(dropsPer10Sec) + " 滴<br>" +
-      "流量換算: 約 " + formatNum(mlPerHour) + " mL/時";
+      "流量換算: 約 " + formatNum(mlPerHour) + " mL/時" +
+      (totalMinutes
+        ? "<br>投与時間の目安: 約 " + formatDuration(totalMinutes)
+        : "");
 
     dripSoundBtn.style.display = "flex";
     dripSoundBtn.dataset.dropsPerMin = String(dropsPerMin);
   });
+
+  function showDripError(message) {
+    dripResult.style.display = "block";
+    dripResult.classList.add("warning");
+    dripResultMain.textContent = "入力エラー";
+    dripResultSub.textContent = message;
+    dripSoundBtn.style.display = "none";
+  }
+
+  function formatDuration(totalMinutes) {
+    const h = Math.floor(totalMinutes / 60);
+    const m = Math.round(totalMinutes % 60);
+    return h > 0 ? `${h}時間${m}分` : `${m}分`;
+  }
 
   // --- 滴下ペースのビープ音 ---
   let audioCtx = null;

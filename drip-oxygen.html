@@ -30,14 +30,27 @@
       <label for="drip-volume">指示総量 (mL)</label>
       <input type="number" id="drip-volume" inputmode="decimal" placeholder="例: 500" min="0">
 
-      <label>投与時間</label>
-      <div class="field-row">
-        <div>
-          <input type="number" id="drip-hours" inputmode="numeric" placeholder="時間" min="0">
+      <label>計算方法</label>
+      <div class="radio-group">
+        <label><input type="radio" name="drip-mode" value="time" checked><span>投与時間で指定</span></label>
+        <label><input type="radio" name="drip-mode" value="rate"><span>速度(mL/h)で指定</span></label>
+      </div>
+
+      <div id="drip-mode-time">
+        <label>投与時間</label>
+        <div class="field-row">
+          <div>
+            <input type="number" id="drip-hours" inputmode="numeric" placeholder="時間" min="0">
+          </div>
+          <div>
+            <input type="number" id="drip-minutes" inputmode="numeric" placeholder="分" min="0" max="59">
+          </div>
         </div>
-        <div>
-          <input type="number" id="drip-minutes" inputmode="numeric" placeholder="分" min="0" max="59">
-        </div>
+      </div>
+
+      <div id="drip-mode-rate" style="display:none;">
+        <label for="drip-rate">投与速度 (mL/h)</label>
+        <input type="number" id="drip-rate" inputmode="decimal" placeholder="例: 100" min="0">
       </div>
 
       <label>輸液セットの種類</label>
@@ -53,7 +66,7 @@
         <div class="result-sub" id="drip-result-sub"></div>
         <button class="sound-btn" id="drip-sound-btn" type="button">🔊 この速さの音を鳴らす</button>
       </div>
-      <div class="hint">計算式: 滴下数(滴/分) = 指示総量(mL) × 滴下係数(滴/mL) ÷ 投与時間(分)<br>「この速さの音を鳴らす」で、計算した滴下数と同じペースでビープ音を鳴らせます。実際の滴下を目で見ながら音に合わせて調整してください。</div>
+      <div class="hint">投与時間で指定: 滴下数(滴/分) = 指示総量(mL) × 滴下係数(滴/mL) ÷ 投与時間(分)<br>速度(mL/h)で指定: 滴下数(滴/分) = 投与速度(mL/h) × 滴下係数(滴/mL) ÷ 60<br>「この速さの音を鳴らす」で、計算した滴下数と同じペースでビープ音を鳴らせます。実際の滴下を目で見ながら音に合わせて調整してください。</div>
     </div>
   </section>
 
