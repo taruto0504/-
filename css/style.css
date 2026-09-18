@@ -193,9 +193,9 @@ main {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 10px 6px;
+  padding: 10px 4px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--color-text-muted);
 }
@@ -465,6 +465,14 @@ button {
 .lap-item .lap-index {
   color: var(--color-text-muted);
   font-weight: 600;
+}
+
+#saved-preset-list .log-item {
+  cursor: pointer;
+}
+
+#saved-preset-list .log-item:active {
+  background: var(--color-accent);
 }
 
 /* Timer screen */

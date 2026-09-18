@@ -136,7 +136,15 @@
     swReset: document.getElementById("stopwatch-reset"),
     lapBtn: document.getElementById("stopwatch-lap"),
     lapList: document.getElementById("lap-list"),
+    savePresetBtn: document.getElementById("save-preset-btn"),
+    savedPresetList: document.getElementById("saved-preset-list"),
   };
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
 
   function cdElapsedMs() {
     if (cd.running && cd.startTimestamp) {
@@ -243,6 +251,92 @@
 
   if (cd.durationMs > 0) writeInputsFromDuration(cd.durationMs);
   if (cd.finished) startAlarm();
+
+  // ===================== 名前付き保存タイマー =====================
+  const PRESET_KEY = "savedTimerPresets_v1";
+
+  function loadPresets() {
+    try {
+      const raw = localStorage.getItem(PRESET_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function savePresetsToStorage(list) {
+    try {
+      localStorage.setItem(PRESET_KEY, JSON.stringify(list));
+    } catch (e) {
+      /* ignore */
+    }
+  }
+
+  let presets = loadPresets();
+
+  function loadPresetIntoTimer(preset) {
+    cd.durationMs = preset.durationMs;
+    cd.accumulatedMs = 0;
+    cd.running = false;
+    cd.startTimestamp = null;
+    cd.finished = false;
+    stopAlarm();
+    writeInputsFromDuration(cd.durationMs);
+    saveState();
+    renderCountdown();
+  }
+
+  function renderPresets() {
+    if (presets.length === 0) {
+      els.savedPresetList.innerHTML = '<div class="empty-log">保存したタイマーはありません</div>';
+      return;
+    }
+    els.savedPresetList.innerHTML = presets
+      .map(
+        (p, i) => `
+      <div class="log-item" data-index="${i}">
+        <div class="log-label">⭐ ${escapeHtml(p.name)}</div>
+        <div class="log-meta">
+          <span class="log-time">${formatMs(p.durationMs)}</span>
+          <button class="log-del" data-index="${i}" aria-label="削除">✕</button>
+        </div>
+      </div>`
+      )
+      .join("");
+
+    els.savedPresetList.querySelectorAll(".log-item").forEach((item) => {
+      item.addEventListener("click", (e) => {
+        if (e.target.closest(".log-del")) return;
+        const i = parseInt(item.dataset.index, 10);
+        loadPresetIntoTimer(presets[i]);
+      });
+    });
+    els.savedPresetList.querySelectorAll(".log-del").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const i = parseInt(btn.dataset.index, 10);
+        if (!confirm(`「${presets[i].name}」を削除しますか?`)) return;
+        presets.splice(i, 1);
+        savePresetsToStorage(presets);
+        renderPresets();
+      });
+    });
+  }
+
+  els.savePresetBtn.addEventListener("click", () => {
+    const ms = readDurationFromInputs();
+    if (ms <= 0) {
+      alert("時間を入力してから保存してください。");
+      return;
+    }
+    const name = window.prompt("この時間の名前を入力してください(例: ネブライザー吸入)");
+    if (!name || !name.trim()) return;
+    presets.push({ name: name.trim(), durationMs: ms });
+    savePresetsToStorage(presets);
+    renderPresets();
+  });
+
+  renderPresets();
 
   // ===================== ストップウォッチ =====================
   const sw = state.stopwatch;

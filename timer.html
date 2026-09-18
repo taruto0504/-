@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b6e99">
-<title>専用タイマー(CPA記録) | 医療サポートツール</title>
+<title>タイマー | 医療サポートツール</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -13,78 +13,149 @@
 <body>
 <header class="app-header">
   <a class="back-btn" href="index.html" aria-label="戻る">‹</a>
-  <h1>専用タイマー(CPA記録)</h1>
+  <h1>タイマー</h1>
 </header>
 
 <main>
-  <div class="card">
-    <div class="timer-display">
-      <div class="time" id="timer-time">00:00</div>
-      <div class="started-at" id="timer-started-at">未開始</div>
-    </div>
-
-    <div class="timer-controls">
-      <button id="btn-start-pause">開始</button>
-      <button id="btn-reset">リセット</button>
-    </div>
-
-    <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です(2分経過)</div>
-    <div class="alert-banner epi" id="alert-epi">🟠 アドレナリン投与を検討してください</div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="cpa">CPA記録</button>
+    <button class="tab-btn" data-tab="countdown">タイマー</button>
+    <button class="tab-btn" data-tab="stopwatch">ストップウォッチ</button>
   </div>
 
-  <div class="card">
-    <h2>イベント記録</h2>
-    <div class="event-grid">
-      <button class="event-btn" data-label="CPR開始" data-emoji="🫀">
-        <span class="emoji">🫀</span>CPR開始
-      </button>
-      <button class="event-btn" data-label="気道確保" data-emoji="🌬️">
-        <span class="emoji">🌬️</span>気道確保
-      </button>
-      <button class="event-btn" data-label="アドレナリン投与" data-emoji="💉" id="btn-epi">
-        <span class="emoji">💉</span>アドレナリン投与
-      </button>
-      <button class="event-btn" data-label="除細動(電気ショック)" data-emoji="⚡" id="btn-shock">
-        <span class="emoji">⚡</span>除細動(ショック)
-      </button>
-      <button class="event-btn" data-label="リズムチェック" data-emoji="📈" id="btn-rhythm">
-        <span class="emoji">📈</span>リズムチェック
-      </button>
-      <button class="event-btn" data-label="静脈路確保" data-emoji="🩸">
-        <span class="emoji">🩸</span>静脈路確保
-      </button>
-      <button class="event-btn rosc" data-label="ROSC(自己心拍再開)" data-emoji="✅">
-        <span class="emoji">✅</span>ROSC(自己心拍再開)
-      </button>
-      <button class="event-btn end" data-label="CPA対応終了" data-emoji="🏁">
-        <span class="emoji">🏁</span>CPA対応終了
-      </button>
-    </div>
-  </div>
+  <!-- CPA記録タイマー -->
+  <section id="tab-cpa" class="tab-panel active">
+    <div class="card">
+      <div class="timer-display">
+        <div class="time" id="timer-time">00:00</div>
+        <div class="started-at" id="timer-started-at">未開始</div>
+      </div>
 
-  <div class="card">
-    <h2>メモを記録(テキスト・音声入力)</h2>
-    <div class="note-row">
-      <input type="text" id="note-input" placeholder="例: 家族到着、瞳孔散大 など" autocomplete="off">
-      <button class="mic-btn" id="btn-mic" type="button" aria-label="音声入力">🎤</button>
-    </div>
-    <button class="btn-primary" id="btn-add-note" type="button">＋ 記録に追加</button>
-    <div class="voice-hint" id="voice-hint">🎤をタップすると音声入力を開始します。話した内容は自動で記録に追加されます。</div>
-  </div>
+      <div class="timer-controls">
+        <button id="btn-start-pause">開始</button>
+        <button id="btn-reset">リセット</button>
+      </div>
 
-  <div class="card">
-    <h2>記録ログ</h2>
-    <div class="log-list" id="log-list">
-      <div class="empty-log">まだ記録がありません</div>
+      <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です(2分経過)</div>
+      <div class="alert-banner epi" id="alert-epi">🟠 アドレナリン投与を検討してください</div>
     </div>
-    <div class="log-actions">
-      <button class="btn-secondary" id="btn-copy-log">📋 ログをコピー</button>
-      <button class="btn-secondary" id="btn-clear-log">🗑 全て削除</button>
+
+    <div class="card">
+      <h2>イベント記録</h2>
+      <div class="event-grid">
+        <button class="event-btn" data-label="CPR開始" data-emoji="🫀">
+          <span class="emoji">🫀</span>CPR開始
+        </button>
+        <button class="event-btn" data-label="気道確保" data-emoji="🌬️">
+          <span class="emoji">🌬️</span>気道確保
+        </button>
+        <button class="event-btn" data-label="アドレナリン投与" data-emoji="💉" id="btn-epi">
+          <span class="emoji">💉</span>アドレナリン投与
+        </button>
+        <button class="event-btn" data-label="除細動(電気ショック)" data-emoji="⚡" id="btn-shock">
+          <span class="emoji">⚡</span>除細動(ショック)
+        </button>
+        <button class="event-btn" data-label="リズムチェック" data-emoji="📈" id="btn-rhythm">
+          <span class="emoji">📈</span>リズムチェック
+        </button>
+        <button class="event-btn" data-label="静脈路確保" data-emoji="🩸">
+          <span class="emoji">🩸</span>静脈路確保
+        </button>
+        <button class="event-btn rosc" data-label="ROSC(自己心拍再開)" data-emoji="✅">
+          <span class="emoji">✅</span>ROSC(自己心拍再開)
+        </button>
+        <button class="event-btn end" data-label="CPA対応終了" data-emoji="🏁">
+          <span class="emoji">🏁</span>CPA対応終了
+        </button>
+      </div>
     </div>
-  </div>
+
+    <div class="card">
+      <h2>メモを記録(テキスト・音声入力)</h2>
+      <div class="note-row">
+        <input type="text" id="note-input" placeholder="例: 家族到着、瞳孔散大 など" autocomplete="off">
+        <button class="mic-btn" id="btn-mic" type="button" aria-label="音声入力">🎤</button>
+      </div>
+      <button class="btn-primary" id="btn-add-note" type="button">＋ 記録に追加</button>
+      <div class="voice-hint" id="voice-hint">🎤をタップすると音声入力を開始します。話した内容は自動で記録に追加されます。</div>
+    </div>
+
+    <div class="card">
+      <h2>記録ログ</h2>
+      <div class="log-list" id="log-list">
+        <div class="empty-log">まだ記録がありません</div>
+      </div>
+      <div class="log-actions">
+        <button class="btn-secondary" id="btn-copy-log">📋 ログをコピー</button>
+        <button class="btn-secondary" id="btn-clear-log">🗑 全て削除</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- カウントダウンタイマー -->
+  <section id="tab-countdown" class="tab-panel">
+    <div class="card">
+      <div class="timer-display" id="countdown-display">
+        <div class="time" id="countdown-time">00:00</div>
+      </div>
+
+      <div class="alert-banner rhythm" id="countdown-finished-banner">⏰ 設定時間になりました</div>
+
+      <label>時間を設定</label>
+      <div class="field-row">
+        <div><input type="number" id="countdown-h" inputmode="numeric" placeholder="時" min="0"></div>
+        <div><input type="number" id="countdown-m" inputmode="numeric" placeholder="分" min="0" max="59"></div>
+        <div><input type="number" id="countdown-s" inputmode="numeric" placeholder="秒" min="0" max="59"></div>
+      </div>
+
+      <label>クイック選択</label>
+      <div class="preset-grid">
+        <button class="preset-btn" data-sec="60" type="button">1分</button>
+        <button class="preset-btn" data-sec="180" type="button">3分</button>
+        <button class="preset-btn" data-sec="300" type="button">5分</button>
+        <button class="preset-btn" data-sec="600" type="button">10分</button>
+      </div>
+
+      <div class="timer-controls">
+        <button id="countdown-start-pause">開始</button>
+        <button id="countdown-reset">リセット</button>
+      </div>
+
+      <button class="btn-secondary" id="save-preset-btn" type="button" style="width:100%; margin-top:10px;">💾 名前を付けて保存</button>
+    </div>
+
+    <div class="card">
+      <h2>保存したタイマー</h2>
+      <div class="log-list" id="saved-preset-list">
+        <div class="empty-log">保存したタイマーはありません</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ストップウォッチ -->
+  <section id="tab-stopwatch" class="tab-panel">
+    <div class="card">
+      <div class="timer-display">
+        <div class="time" id="stopwatch-time">00:00</div>
+      </div>
+      <div class="timer-controls">
+        <button id="stopwatch-start-pause">開始</button>
+        <button id="stopwatch-reset">リセット</button>
+      </div>
+      <button class="btn-secondary" id="stopwatch-lap" type="button" style="width:100%; margin-top:10px;">🏁 ラップを記録</button>
+    </div>
+
+    <div class="card">
+      <h2>ラップ記録</h2>
+      <div class="log-list" id="lap-list">
+        <div class="empty-log">まだラップがありません</div>
+      </div>
+    </div>
+  </section>
 </main>
 
 <script src="js/timer.js"></script>
+<script src="js/general-timer.js"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
