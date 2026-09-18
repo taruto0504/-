@@ -7,22 +7,6 @@
   const COMPRESSION_BPM = 110;
   const COMPRESSION_BEAT_SEC = 60 / COMPRESSION_BPM;
 
-  // iOS などの消音(サイレント)スイッチが有効でもWeb Audioの音が鳴るよう、
-  // 最初のタップ操作で無音の音声を一度再生して「音声セッション」を有効化する。
-  const SILENT_WAV =
-    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
-  function primeAudioSession() {
-    try {
-      const el = new Audio(SILENT_WAV);
-      el.volume = 0.01;
-      el.play().catch(() => {});
-    } catch (e) {
-      /* ignore */
-    }
-  }
-  document.addEventListener("touchstart", primeAudioSession, { once: true, passive: true });
-  document.addEventListener("click", primeAudioSession, { once: true });
-
   const els = {
     rhythmTime: document.getElementById("rhythm-cycle-time"),
     rhythmStartPause: document.getElementById("rhythm-start-pause"),
@@ -32,9 +16,7 @@
     medReset: document.getElementById("med-reset"),
     alertRhythm: document.getElementById("alert-rhythm"),
     alertEpi: document.getElementById("alert-epi"),
-    compressionSoundBtn: document.getElementById("compression-sound-btn"),
     medDrugSelect: document.getElementById("med-drug-select"),
-    medLogBtn: document.getElementById("btn-med-log"),
     logList: document.getElementById("log-list"),
     copyBtn: document.getElementById("btn-copy-log"),
     clearBtn: document.getElementById("btn-clear-log"),
@@ -178,10 +160,9 @@
   }
 
   function startCompressionSound() {
-    els.compressionSoundBtn.classList.add("is-playing");
-    els.compressionSoundBtn.textContent = "⏹ 胸骨圧迫音を止める";
+    if (compressionIntervalId) return;
     withRunningAudioCtx(() => {
-      if (!els.compressionSoundBtn.classList.contains("is-playing")) return;
+      if (!state.rhythm.running) return;
       const ctx = ensureAudioCtx();
       nextCompressionBeatTime = ctx.currentTime + 0.05;
       compressionIntervalId = setInterval(compressionScheduler, 25);
@@ -193,17 +174,7 @@
       clearInterval(compressionIntervalId);
       compressionIntervalId = null;
     }
-    els.compressionSoundBtn.classList.remove("is-playing");
-    els.compressionSoundBtn.textContent = "🎵 胸骨圧迫のリズム音(110/分)";
   }
-
-  els.compressionSoundBtn.addEventListener("click", () => {
-    if (compressionIntervalId) {
-      stopCompressionSound();
-    } else {
-      startCompressionSound();
-    }
-  });
 
   function flashBanner(el) {
     el.classList.add("show");
@@ -215,7 +186,6 @@
     flashBanner(els.alertRhythm);
     vibrate([200, 100, 200, 100, 200]);
     beepOnce(1000, 0.3);
-    stopCompressionSound();
   }
 
   function triggerMedAlert() {
@@ -243,7 +213,14 @@
     render();
   }
 
-  els.rhythmStartPause.addEventListener("click", () => toggleCycle(state.rhythm));
+  els.rhythmStartPause.addEventListener("click", () => {
+    toggleCycle(state.rhythm);
+    if (state.rhythm.running) {
+      startCompressionSound();
+    } else {
+      stopCompressionSound();
+    }
+  });
   els.medStartPause.addEventListener("click", () => toggleCycle(state.med));
 
   els.rhythmReset.addEventListener("click", () => {
@@ -281,8 +258,11 @@
     render();
   }
 
-  els.medLogBtn.addEventListener("click", () => {
-    logEvent("薬剤投与: " + els.medDrugSelect.value, "💉");
+  els.medDrugSelect.addEventListener("change", () => {
+    const drug = els.medDrugSelect.value;
+    if (!drug) return;
+    logEvent("薬剤投与: " + drug, "💉");
+    els.medDrugSelect.value = "";
   });
 
   function deleteEvent(index) {
@@ -372,6 +352,7 @@
   }
 
   document.querySelectorAll(".event-btn").forEach((btn) => {
+    if (!btn.dataset.label) return; // skip compound controls like the drug-select button
     btn.addEventListener("click", () => {
       if (btn.dataset.label === "CPA対応終了") {
         if (!confirm("CPA対応を終了として記録します。よろしいですか?")) return;

@@ -1,22 +1,6 @@
 (function () {
   "use strict";
 
-  // iOS などの消音(サイレント)スイッチが有効でもWeb Audioの音が鳴るよう、
-  // 最初のタップ操作で無音の音声を一度再生して「音声セッション」を有効化する。
-  const SILENT_WAV =
-    "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
-  function primeAudioSession() {
-    try {
-      const el = new Audio(SILENT_WAV);
-      el.volume = 0.01;
-      el.play().catch(() => {});
-    } catch (e) {
-      /* ignore */
-    }
-  }
-  document.addEventListener("touchstart", primeAudioSession, { once: true, passive: true });
-  document.addEventListener("click", primeAudioSession, { once: true });
-
   // Tabs
   const tabBtns = document.querySelectorAll(".tab-btn");
   const tabPanels = document.querySelectorAll(".tab-panel");

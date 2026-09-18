@@ -99,8 +99,7 @@
         <button class="cycle-reset" id="rhythm-reset">リセット</button>
       </div>
       <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です</div>
-      <button class="sound-btn" id="compression-sound-btn" type="button">🎵 胸骨圧迫のリズム音(110/分)</button>
-      <div class="hint">CPRの合間、この音に合わせて胸骨圧迫のテンポを保てます。リズムチェックの時間になると自動で止まります。</div>
+      <div class="hint">「開始」を押すと、胸骨圧迫のテンポ(110/分)を刻む音も一緒に鳴ります。「一時停止」で止まります。</div>
     </div>
 
     <div class="card">
@@ -133,13 +132,14 @@
         <button class="event-btn" data-label="静脈路確保" data-emoji="🩸">
           <span class="emoji">🩸</span>静脈路確保
         </button>
-        <div class="med-select-row">
-          <select id="med-drug-select" aria-label="薬剤を選択">
+        <div class="event-btn med-btn-wrap">
+          <span class="emoji">💉</span>薬剤投与
+          <select id="med-drug-select" class="med-select-overlay" aria-label="薬剤を選択">
+            <option value="" disabled selected hidden>薬剤を選択</option>
             <option value="アドレナリン">アドレナリン</option>
             <option value="アミオダロン">アミオダロン</option>
             <option value="リドカイン">リドカイン</option>
           </select>
-          <button type="button" id="btn-med-log">💉 薬剤投与を記録</button>
         </div>
         <button class="event-btn rosc" data-label="ROSC(自己心拍再開)" data-emoji="✅">
           <span class="emoji">✅</span>ROSC(自己心拍再開)
@@ -173,6 +173,7 @@
   </section>
 </main>
 
+<script src="js/audio-unlock.js"></script>
 <script src="js/timer.js"></script>
 <script src="js/general-timer.js"></script>
 <script>
