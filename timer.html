@@ -117,17 +117,32 @@
     <div class="card">
       <h2>イベント記録</h2>
       <div class="event-grid">
-        <button class="event-btn" data-label="CPR開始" data-emoji="🫀">
-          <span class="emoji">🫀</span>CPR開始
-        </button>
-        <button class="event-btn" data-label="気道確保" data-emoji="🌬️">
-          <span class="emoji">🌬️</span>気道確保
-        </button>
+        <div class="event-btn med-btn-wrap">
+          <span class="emoji">〰️</span>波形
+          <select id="rhythm-wave-select" class="med-select-overlay" aria-label="波形を選択">
+            <option value="" disabled selected hidden>波形を選択</option>
+            <option value="VF">VF(心室細動)</option>
+            <option value="VT">VT(心室頻拍)</option>
+            <option value="PEA">PEA(無脈性電気活動)</option>
+            <option value="心静止">心静止</option>
+          </select>
+        </div>
+        <div class="event-btn med-btn-wrap">
+          <span class="emoji">🌬️</span>気管挿管
+          <select id="ett-size-select" class="med-select-overlay" aria-label="チューブサイズを選択">
+            <option value="" disabled selected hidden>サイズを選択</option>
+            <option value="6.0mm">6.0mm</option>
+            <option value="6.5mm">6.5mm</option>
+            <option value="7.0mm">7.0mm</option>
+            <option value="7.5mm">7.5mm</option>
+            <option value="8.0mm">8.0mm</option>
+          </select>
+        </div>
         <button class="event-btn" data-label="除細動(電気ショック)" data-emoji="⚡" id="btn-shock">
           <span class="emoji">⚡</span>除細動(ショック)
         </button>
-        <button class="event-btn" data-label="リズムチェック" data-emoji="📈" id="btn-rhythm">
-          <span class="emoji">📈</span>リズムチェック
+        <button class="event-btn" data-label="ROSC(自己心拍再開)" data-emoji="✅" id="btn-rosc">
+          <span class="emoji">✅</span>ROSC
         </button>
         <button class="event-btn" data-label="静脈路確保" data-emoji="🩸">
           <span class="emoji">🩸</span>静脈路確保
@@ -141,9 +156,6 @@
             <option value="リドカイン">リドカイン</option>
           </select>
         </div>
-        <button class="event-btn rosc" data-label="ROSC(自己心拍再開)" data-emoji="✅">
-          <span class="emoji">✅</span>ROSC(自己心拍再開)
-        </button>
         <button class="event-btn end" data-label="CPA対応終了" data-emoji="🏁">
           <span class="emoji">🏁</span>CPA対応終了
         </button>

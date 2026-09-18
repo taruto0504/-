@@ -17,6 +17,8 @@
     alertRhythm: document.getElementById("alert-rhythm"),
     alertEpi: document.getElementById("alert-epi"),
     medDrugSelect: document.getElementById("med-drug-select"),
+    rhythmWaveSelect: document.getElementById("rhythm-wave-select"),
+    ettSizeSelect: document.getElementById("ett-size-select"),
     logList: document.getElementById("log-list"),
     copyBtn: document.getElementById("btn-copy-log"),
     clearBtn: document.getElementById("btn-clear-log"),
@@ -258,12 +260,18 @@
     render();
   }
 
-  els.medDrugSelect.addEventListener("change", () => {
-    const drug = els.medDrugSelect.value;
-    if (!drug) return;
-    logEvent("薬剤投与: " + drug, "💉");
-    els.medDrugSelect.value = "";
-  });
+  function bindSelectLog(selectEl, labelPrefix, emoji) {
+    selectEl.addEventListener("change", () => {
+      const value = selectEl.value;
+      if (!value) return;
+      logEvent(labelPrefix + value, emoji);
+      selectEl.value = "";
+    });
+  }
+
+  bindSelectLog(els.medDrugSelect, "薬剤投与: ", "💉");
+  bindSelectLog(els.rhythmWaveSelect, "波形: ", "〰️");
+  bindSelectLog(els.ettSizeSelect, "気管挿管: ", "🌬️");
 
   function deleteEvent(index) {
     state.events.splice(index, 1);
