@@ -82,12 +82,22 @@
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     }
-    if (audioCtx.state === "suspended") audioCtx.resume();
     beepIntervalSec = 60 / dropsPerMin;
-    nextBeepTime = audioCtx.currentTime + 0.1;
-    beepSchedulerId = setInterval(beepScheduler, 25);
     dripSoundBtn.classList.add("is-playing");
     dripSoundBtn.textContent = "⏹ 音を止める";
+
+    const beginScheduling = () => {
+      // Guard against the button having been toggled off again before resume() resolved.
+      if (!dripSoundBtn.classList.contains("is-playing")) return;
+      nextBeepTime = audioCtx.currentTime + 0.1;
+      beepSchedulerId = setInterval(beepScheduler, 25);
+    };
+
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume().then(beginScheduling);
+    } else {
+      beginScheduling();
+    }
   }
 
   function stopDripSound() {

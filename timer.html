@@ -18,26 +18,103 @@
 
 <main>
   <div class="tabs">
-    <button class="tab-btn active" data-tab="cpa">CPA記録</button>
-    <button class="tab-btn" data-tab="countdown">タイマー</button>
+    <button class="tab-btn active" data-tab="countdown">タイマー</button>
     <button class="tab-btn" data-tab="stopwatch">ストップウォッチ</button>
+    <button class="tab-btn" data-tab="cpa">CPA記録</button>
   </div>
 
-  <!-- CPA記録タイマー -->
-  <section id="tab-cpa" class="tab-panel active">
+  <!-- カウントダウンタイマー -->
+  <section id="tab-countdown" class="tab-panel active">
     <div class="card">
-      <div class="timer-display">
-        <div class="time" id="timer-time">00:00</div>
-        <div class="started-at" id="timer-started-at">未開始</div>
+      <div class="timer-display" id="countdown-display">
+        <div class="time" id="countdown-time">00:00</div>
       </div>
 
+      <div class="alert-banner rhythm" id="countdown-finished-banner">⏰ 設定時間になりました</div>
+
+      <label>時間を設定</label>
+      <div class="field-row">
+        <div><input type="number" id="countdown-h" inputmode="numeric" placeholder="時" min="0"></div>
+        <div><input type="number" id="countdown-m" inputmode="numeric" placeholder="分" min="0" max="59"></div>
+        <div><input type="number" id="countdown-s" inputmode="numeric" placeholder="秒" min="0" max="59"></div>
+      </div>
+
+      <label>クイック選択</label>
+      <div class="preset-grid">
+        <button class="preset-btn" data-sec="60" type="button">1分</button>
+        <button class="preset-btn" data-sec="180" type="button">3分</button>
+        <button class="preset-btn" data-sec="300" type="button">5分</button>
+        <button class="preset-btn" data-sec="600" type="button">10分</button>
+      </div>
+
+      <div class="timer-controls">
+        <button id="countdown-start-pause">開始</button>
+        <button id="countdown-reset">リセット</button>
+      </div>
+
+      <label for="preset-name-input">名前を付けて保存</label>
+      <input type="text" id="preset-name-input" placeholder="例: ネブライザー吸入" autocomplete="off">
+      <button class="btn-secondary" id="save-preset-btn" type="button" style="width:100%; margin-top:10px;">💾 この時間を保存</button>
+      <div class="preset-msg" id="preset-msg"></div>
+    </div>
+
+    <div class="card">
+      <h2>保存したタイマー</h2>
+      <div class="log-list" id="saved-preset-list">
+        <div class="empty-log">保存したタイマーはありません</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ストップウォッチ -->
+  <section id="tab-stopwatch" class="tab-panel">
+    <div class="card">
+      <div class="timer-display">
+        <div class="time" id="stopwatch-time">00:00</div>
+      </div>
+      <div class="timer-controls">
+        <button id="stopwatch-start-pause">開始</button>
+        <button id="stopwatch-reset">リセット</button>
+      </div>
+      <button class="btn-secondary" id="stopwatch-lap" type="button" style="width:100%; margin-top:10px;">🏁 ラップを記録</button>
+    </div>
+
+    <div class="card">
+      <h2>ラップ記録</h2>
+      <div class="log-list" id="lap-list">
+        <div class="empty-log">まだラップがありません</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CPA記録タイマー -->
+  <section id="tab-cpa" class="tab-panel">
+    <div class="card">
+      <div class="timer-display">
+        <div class="started-at" id="cpa-started-at">未開始</div>
+      </div>
       <div class="timer-controls">
         <button id="btn-start-pause">開始</button>
         <button id="btn-reset">リセット</button>
       </div>
+    </div>
 
-      <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です(2分経過)</div>
-      <div class="alert-banner epi" id="alert-epi">🟠 アドレナリン投与を検討してください</div>
+    <div class="card">
+      <h2>🔴 リズムチェック(2分ごと)</h2>
+      <div class="timer-display">
+        <div class="time cpa-cycle-time" id="rhythm-cycle-time">02:00</div>
+      </div>
+      <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です</div>
+      <button class="sound-btn" id="compression-sound-btn" type="button">🎵 胸骨圧迫のリズム音(110/分)</button>
+      <div class="hint">CPRの合間、この音に合わせて胸骨圧迫のテンポを保てます。リズムチェックの時間になると自動で止まります。</div>
+    </div>
+
+    <div class="card">
+      <h2>🟠 薬剤投与(4分ごと)</h2>
+      <div class="timer-display">
+        <div class="time cpa-cycle-time" id="med-cycle-time">04:00</div>
+      </div>
+      <div class="alert-banner epi" id="alert-epi">🟠 薬剤投与(アドレナリン)の時間です</div>
     </div>
 
     <div class="card">
@@ -88,67 +165,6 @@
       <div class="log-actions">
         <button class="btn-secondary" id="btn-copy-log">📋 ログをコピー</button>
         <button class="btn-secondary" id="btn-clear-log">🗑 全て削除</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- カウントダウンタイマー -->
-  <section id="tab-countdown" class="tab-panel">
-    <div class="card">
-      <div class="timer-display" id="countdown-display">
-        <div class="time" id="countdown-time">00:00</div>
-      </div>
-
-      <div class="alert-banner rhythm" id="countdown-finished-banner">⏰ 設定時間になりました</div>
-
-      <label>時間を設定</label>
-      <div class="field-row">
-        <div><input type="number" id="countdown-h" inputmode="numeric" placeholder="時" min="0"></div>
-        <div><input type="number" id="countdown-m" inputmode="numeric" placeholder="分" min="0" max="59"></div>
-        <div><input type="number" id="countdown-s" inputmode="numeric" placeholder="秒" min="0" max="59"></div>
-      </div>
-
-      <label>クイック選択</label>
-      <div class="preset-grid">
-        <button class="preset-btn" data-sec="60" type="button">1分</button>
-        <button class="preset-btn" data-sec="180" type="button">3分</button>
-        <button class="preset-btn" data-sec="300" type="button">5分</button>
-        <button class="preset-btn" data-sec="600" type="button">10分</button>
-      </div>
-
-      <div class="timer-controls">
-        <button id="countdown-start-pause">開始</button>
-        <button id="countdown-reset">リセット</button>
-      </div>
-
-      <button class="btn-secondary" id="save-preset-btn" type="button" style="width:100%; margin-top:10px;">💾 名前を付けて保存</button>
-    </div>
-
-    <div class="card">
-      <h2>保存したタイマー</h2>
-      <div class="log-list" id="saved-preset-list">
-        <div class="empty-log">保存したタイマーはありません</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ストップウォッチ -->
-  <section id="tab-stopwatch" class="tab-panel">
-    <div class="card">
-      <div class="timer-display">
-        <div class="time" id="stopwatch-time">00:00</div>
-      </div>
-      <div class="timer-controls">
-        <button id="stopwatch-start-pause">開始</button>
-        <button id="stopwatch-reset">リセット</button>
-      </div>
-      <button class="btn-secondary" id="stopwatch-lap" type="button" style="width:100%; margin-top:10px;">🏁 ラップを記録</button>
-    </div>
-
-    <div class="card">
-      <h2>ラップ記録</h2>
-      <div class="log-list" id="lap-list">
-        <div class="empty-log">まだラップがありません</div>
       </div>
     </div>
   </section>

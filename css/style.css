@@ -427,6 +427,22 @@ button {
   margin-top: 6px;
 }
 
+.preset-msg {
+  font-size: 12.5px;
+  margin-top: 6px;
+  min-height: 16px;
+  color: var(--color-success);
+}
+
+.preset-msg.is-error {
+  color: var(--color-danger);
+}
+
+/* CPA cycle timers */
+.cpa-cycle-time {
+  font-size: 40px;
+}
+
 /* General timer / stopwatch */
 .preset-grid {
   display: grid;

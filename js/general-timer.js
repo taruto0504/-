@@ -138,7 +138,18 @@
     lapList: document.getElementById("lap-list"),
     savePresetBtn: document.getElementById("save-preset-btn"),
     savedPresetList: document.getElementById("saved-preset-list"),
+    presetNameInput: document.getElementById("preset-name-input"),
+    presetMsg: document.getElementById("preset-msg"),
   };
+
+  function showPresetMsg(text, isError) {
+    els.presetMsg.textContent = text;
+    els.presetMsg.classList.toggle("is-error", !!isError);
+    clearTimeout(els.presetMsg._hideTimer);
+    els.presetMsg._hideTimer = setTimeout(() => {
+      els.presetMsg.textContent = "";
+    }, 3500);
+  }
 
   function escapeHtml(str) {
     const div = document.createElement("div");
@@ -224,7 +235,11 @@
     cd.startTimestamp = null;
     cd.accumulatedMs = 0;
     cd.finished = false;
+    cd.durationMs = 0;
     stopAlarm();
+    els.hInput.value = "";
+    els.mInput.value = "";
+    els.sInput.value = "";
     saveState();
     renderCountdown();
   });
@@ -315,10 +330,10 @@
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const i = parseInt(btn.dataset.index, 10);
-        if (!confirm(`「${presets[i].name}」を削除しますか?`)) return;
-        presets.splice(i, 1);
+        const removed = presets.splice(i, 1)[0];
         savePresetsToStorage(presets);
         renderPresets();
+        if (removed) showPresetMsg(`「${removed.name}」を削除しました。`, false);
       });
     });
   }
@@ -326,13 +341,19 @@
   els.savePresetBtn.addEventListener("click", () => {
     const ms = readDurationFromInputs();
     if (ms <= 0) {
-      alert("時間を入力してから保存してください。");
+      showPresetMsg("時間を入力してから保存してください。", true);
       return;
     }
-    const name = window.prompt("この時間の名前を入力してください(例: ネブライザー吸入)");
-    if (!name || !name.trim()) return;
-    presets.push({ name: name.trim(), durationMs: ms });
+    const name = els.presetNameInput.value.trim();
+    if (!name) {
+      showPresetMsg("名前を入力してから保存してください。", true);
+      els.presetNameInput.focus();
+      return;
+    }
+    presets.push({ name, durationMs: ms });
     savePresetsToStorage(presets);
+    els.presetNameInput.value = "";
+    showPresetMsg(`「${name}」を保存しました。`, false);
     renderPresets();
   });
 

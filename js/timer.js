@@ -1,17 +1,21 @@
 (function () {
   "use strict";
 
-  const STORAGE_KEY = "cpaTimerState_v1";
-  const RHYTHM_INTERVAL_MS = 2 * 60 * 1000;
-  const EPI_INTERVAL_MS = 3 * 60 * 1000;
+  const STORAGE_KEY = "cpaTimerState_v2";
+  const RHYTHM_PERIOD_MS = 2 * 60 * 1000;
+  const MED_PERIOD_MS = 4 * 60 * 1000;
+  const COMPRESSION_BPM = 110;
+  const COMPRESSION_BEAT_SEC = 60 / COMPRESSION_BPM;
 
   const els = {
-    time: document.getElementById("timer-time"),
-    startedAt: document.getElementById("timer-started-at"),
+    startedAt: document.getElementById("cpa-started-at"),
     startPause: document.getElementById("btn-start-pause"),
     reset: document.getElementById("btn-reset"),
+    rhythmTime: document.getElementById("rhythm-cycle-time"),
+    medTime: document.getElementById("med-cycle-time"),
     alertRhythm: document.getElementById("alert-rhythm"),
     alertEpi: document.getElementById("alert-epi"),
+    compressionSoundBtn: document.getElementById("compression-sound-btn"),
     logList: document.getElementById("log-list"),
     copyBtn: document.getElementById("btn-copy-log"),
     clearBtn: document.getElementById("btn-clear-log"),
@@ -28,9 +32,9 @@
       running: false,
       startTimestamp: null, // ms epoch, when the current running segment began
       accumulatedMs: 0, // elapsed ms from completed segments
-      firstStartedAt: null, // ms epoch, when timer was first started (for display)
-      lastRhythmCheck: null, // ms epoch reference for rhythm reminder
-      lastEpi: null, // ms epoch reference for epi reminder
+      firstStartedAt: null, // ms epoch, when the CPA cycle was first started
+      lastRhythmCycleIndex: 0,
+      lastMedCycleIndex: 0,
       events: [], // { label, emoji, time, elapsedMs }
     };
   }
@@ -61,6 +65,14 @@
     return state.accumulatedMs;
   }
 
+  function formatMMSS(ms) {
+    const totalSec = Math.max(0, Math.ceil(ms / 1000));
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(m)}:${pad(s)}`;
+  }
+
   function formatElapsed(ms) {
     const totalSec = Math.max(0, Math.floor(ms / 1000));
     const h = Math.floor(totalSec / 3600);
@@ -78,8 +90,103 @@
 
   function vibrate(pattern) {
     if (navigator.vibrate) {
-      try { navigator.vibrate(pattern); } catch (e) { /* ignore */ }
+      try {
+        navigator.vibrate(pattern);
+      } catch (e) {
+        /* ignore */
+      }
     }
+  }
+
+  // --- Web Audio helpers (resume before scheduling to avoid silent first beep) ---
+  let audioCtx = null;
+  function ensureAudioCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  }
+  function withRunningAudioCtx(callback) {
+    const ctx = ensureAudioCtx();
+    if (ctx.state === "suspended") {
+      ctx.resume().then(callback);
+    } else {
+      callback();
+    }
+  }
+  function playTone(ctx, freq, time, duration, type) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(0.4, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(time);
+    osc.stop(time + duration + 0.02);
+  }
+  function beepOnce(freq, duration) {
+    withRunningAudioCtx(() => {
+      const ctx = ensureAudioCtx();
+      playTone(ctx, freq, ctx.currentTime, duration);
+    });
+  }
+
+  // --- 胸骨圧迫リズム音(110/分の連続メトロノーム) ---
+  let compressionIntervalId = null;
+  let nextCompressionBeatTime = 0;
+
+  function compressionScheduler() {
+    const ctx = ensureAudioCtx();
+    while (nextCompressionBeatTime < ctx.currentTime + 0.12) {
+      playTone(ctx, 500, nextCompressionBeatTime, 0.06, "square");
+      nextCompressionBeatTime += COMPRESSION_BEAT_SEC;
+    }
+  }
+
+  function startCompressionSound() {
+    withRunningAudioCtx(() => {
+      const ctx = ensureAudioCtx();
+      nextCompressionBeatTime = ctx.currentTime + 0.05;
+      compressionIntervalId = setInterval(compressionScheduler, 25);
+      els.compressionSoundBtn.classList.add("is-playing");
+      els.compressionSoundBtn.textContent = "⏹ 胸骨圧迫音を止める";
+    });
+  }
+
+  function stopCompressionSound() {
+    if (compressionIntervalId) {
+      clearInterval(compressionIntervalId);
+      compressionIntervalId = null;
+    }
+    els.compressionSoundBtn.classList.remove("is-playing");
+    els.compressionSoundBtn.textContent = "🎵 胸骨圧迫のリズム音(110/分)";
+  }
+
+  els.compressionSoundBtn.addEventListener("click", () => {
+    if (compressionIntervalId) {
+      stopCompressionSound();
+    } else {
+      startCompressionSound();
+    }
+  });
+
+  function flashBanner(el) {
+    el.classList.add("show");
+    clearTimeout(el._hideTimer);
+    el._hideTimer = setTimeout(() => el.classList.remove("show"), 6000);
+  }
+
+  function triggerRhythmAlert() {
+    flashBanner(els.alertRhythm);
+    vibrate([200, 100, 200, 100, 200]);
+    beepOnce(1000, 0.3);
+    stopCompressionSound();
+  }
+
+  function triggerMedAlert() {
+    flashBanner(els.alertEpi);
+    vibrate([200, 100, 200]);
+    beepOnce(700, 0.3);
   }
 
   function toggleStartPause() {
@@ -88,13 +195,14 @@
       state.startTimestamp = Date.now();
       if (!state.firstStartedAt) {
         state.firstStartedAt = state.startTimestamp;
-        state.lastRhythmCheck = state.startTimestamp;
-        state.lastEpi = state.startTimestamp;
+        state.lastRhythmCycleIndex = 0;
+        state.lastMedCycleIndex = 0;
       }
     } else {
       state.accumulatedMs = getElapsedMs();
       state.running = false;
       state.startTimestamp = null;
+      stopCompressionSound();
     }
     saveState();
     render();
@@ -102,6 +210,7 @@
 
   function resetTimer() {
     if (!confirm("タイマーと全ての記録をリセットします。よろしいですか?")) return;
+    stopCompressionSound();
     state = defaultState();
     saveState();
     render();
@@ -110,28 +219,22 @@
   function logEvent(label, emoji) {
     const now = Date.now();
     if (!state.firstStartedAt) {
-      // Auto-start timer on first event if not started yet
       state.running = true;
       state.startTimestamp = now;
       state.firstStartedAt = now;
-      state.lastRhythmCheck = now;
-      state.lastEpi = now;
+      state.lastRhythmCycleIndex = 0;
+      state.lastMedCycleIndex = 0;
     }
     const elapsedMs = getElapsedMs();
     state.events.unshift({ label, emoji, time: now, elapsedMs });
 
-    if (label === "リズムチェック") {
-      state.lastRhythmCheck = now;
-    }
-    if (label === "アドレナリン投与") {
-      state.lastEpi = now;
-    }
     if (label === "CPA対応終了" || label === "ROSC(自己心拍再開)") {
       state.running = false;
       if (state.startTimestamp) {
         state.accumulatedMs = getElapsedMs();
       }
       state.startTimestamp = null;
+      stopCompressionSound();
     }
 
     vibrate(30);
@@ -145,24 +248,23 @@
     renderLog();
   }
 
-  function checkAlerts() {
-    const now = Date.now();
-    if (!state.firstStartedAt) {
-      els.alertRhythm.classList.remove("show");
-      els.alertEpi.classList.remove("show");
-      return;
+  function checkCycles() {
+    if (!state.running) return;
+    const elapsed = getElapsedMs();
+
+    const rhythmCycleIndex = Math.floor(elapsed / RHYTHM_PERIOD_MS);
+    if (rhythmCycleIndex > state.lastRhythmCycleIndex) {
+      state.lastRhythmCycleIndex = rhythmCycleIndex;
+      triggerRhythmAlert();
+      saveState();
     }
-    const rhythmDue = now - (state.lastRhythmCheck || state.firstStartedAt) >= RHYTHM_INTERVAL_MS;
-    const epiDue = now - (state.lastEpi || state.firstStartedAt) >= EPI_INTERVAL_MS;
 
-    const wasRhythmShown = els.alertRhythm.classList.contains("show");
-    const wasEpiShown = els.alertEpi.classList.contains("show");
-
-    els.alertRhythm.classList.toggle("show", rhythmDue && state.running);
-    els.alertEpi.classList.toggle("show", epiDue && state.running);
-
-    if (rhythmDue && state.running && !wasRhythmShown) vibrate([80, 60, 80]);
-    if (epiDue && state.running && !wasEpiShown) vibrate([80, 60, 80]);
+    const medCycleIndex = Math.floor(elapsed / MED_PERIOD_MS);
+    if (medCycleIndex > state.lastMedCycleIndex) {
+      state.lastMedCycleIndex = medCycleIndex;
+      triggerMedAlert();
+      saveState();
+    }
   }
 
   function renderLog() {
@@ -195,14 +297,18 @@
   }
 
   function render() {
-    els.time.textContent = formatElapsed(getElapsedMs());
+    const elapsed = getElapsedMs();
+    const rhythmRemaining = RHYTHM_PERIOD_MS - (elapsed % RHYTHM_PERIOD_MS);
+    const medRemaining = MED_PERIOD_MS - (elapsed % MED_PERIOD_MS);
+    els.rhythmTime.textContent = formatMMSS(state.firstStartedAt ? rhythmRemaining : RHYTHM_PERIOD_MS);
+    els.medTime.textContent = formatMMSS(state.firstStartedAt ? medRemaining : MED_PERIOD_MS);
     els.startedAt.textContent = state.firstStartedAt
       ? "開始時刻: " + formatClock(state.firstStartedAt)
       : "未開始";
     els.startPause.textContent = state.running ? "一時停止" : state.firstStartedAt ? "再開" : "開始";
     els.startPause.classList.toggle("is-running", state.running);
+    checkCycles();
     renderLog();
-    checkAlerts();
   }
 
   function buildLogText() {
@@ -350,6 +456,8 @@
     els.micBtn.style.opacity = "0.4";
     els.voiceHint.textContent = "この端末・ブラウザは音声入力に対応していません。テキスト入力をご利用ください。";
   }
+
+  window.addEventListener("pagehide", stopCompressionSound);
 
   render();
   setInterval(render, 1000);
