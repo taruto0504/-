@@ -60,12 +60,12 @@
     }
 
     dripResult.classList.remove("warning");
-    const dropsPer10Sec = dropsPerMin / 6;
+    const dropsPer5Sec = dropsPerMin / 12;
 
     dripResult.style.display = "block";
     dripResultMain.textContent = formatNum(dropsPerMin);
     dripResultSub.innerHTML =
-      "10秒あたり: 約 " + formatNum(dropsPer10Sec) + " 滴<br>" +
+      "5秒あたり: 約 " + formatNum(dropsPer5Sec) + " 滴<br>" +
       "流量換算: 約 " + formatNum(mlPerHour) + " mL/時" +
       (totalMinutes
         ? "<br>投与時間の目安: 約 " + formatDuration(totalMinutes)

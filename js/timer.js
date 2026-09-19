@@ -20,6 +20,7 @@
     rhythmWaveSelect: document.getElementById("rhythm-wave-select"),
     ettSizeSelect: document.getElementById("ett-size-select"),
     logList: document.getElementById("log-list"),
+    toggleLogBtn: document.getElementById("btn-toggle-log"),
     copyBtn: document.getElementById("btn-copy-log"),
     clearBtn: document.getElementById("btn-clear-log"),
     noteInput: document.getElementById("note-input"),
@@ -367,6 +368,12 @@
       }
       logEvent(btn.dataset.label, btn.dataset.emoji);
     });
+  });
+
+  els.toggleLogBtn.addEventListener("click", () => {
+    const expanded = els.logList.classList.toggle("expanded");
+    els.toggleLogBtn.textContent = expanded ? "🔼 折りたたむ" : "🔍 全表示";
+    els.toggleLogBtn.classList.toggle("is-active", expanded);
   });
 
   els.copyBtn.addEventListener("click", async () => {
