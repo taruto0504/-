@@ -931,3 +931,24 @@ button {
   color: #fff;
   border-color: var(--color-primary);
 }
+
+/* Two-tap confirm pattern (used instead of window.confirm, which some
+   embedded viewers silently ignore) */
+.confirm-armed {
+  animation: confirm-pulse 0.6s ease-in-out infinite alternate;
+}
+
+@keyframes confirm-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.55;
+  }
+}
+
+.btn-secondary.confirm-armed {
+  background: var(--color-danger);
+  color: #fff;
+  border-color: var(--color-danger);
+}

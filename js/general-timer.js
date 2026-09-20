@@ -49,36 +49,48 @@
     const ctx = ensureAudioCtx();
     if (ctx.state === "suspended") ctx.resume();
   }
-  function playTone(ctx, freq, time, duration) {
+  function playTone(ctx, freq, time, duration, type, peakGain) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = "sine";
+    osc.type = type || "sine";
     osc.frequency.value = freq;
+    const peak = peakGain || 0.4;
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(0.4, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(peak, time + 0.008);
+    gain.gain.setValueAtTime(peak, time + Math.max(duration - 0.02, 0.008));
     gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
     osc.connect(gain).connect(ctx.destination);
     osc.start(time);
     osc.stop(time + duration + 0.02);
   }
-  function beepOnce(freq, duration) {
+
+  // 耳に残りやすい高低交互のサイレン風アラーム音(スクエア波・高音量)
+  const ALARM_NOTES = [1400, 1000, 1400, 1000];
+  function playAlarmBurst() {
     const ctx = ensureAudioCtx();
+    const play = () => {
+      let t = ctx.currentTime;
+      ALARM_NOTES.forEach((freq) => {
+        playTone(ctx, freq, t, 0.14, "square", 0.9);
+        t += 0.17;
+      });
+    };
     if (ctx.state === "suspended") {
-      ctx.resume().then(() => playTone(ctx, freq, ctx.currentTime, duration));
+      ctx.resume().then(play);
     } else {
-      playTone(ctx, freq, ctx.currentTime, duration);
+      play();
     }
   }
 
   let alarmIntervalId = null;
   function startAlarm() {
     stopAlarm();
-    beepOnce(1000, 0.25);
-    vibrate([200, 100, 200, 100, 200]);
+    playAlarmBurst();
+    vibrate([300, 120, 300, 120, 300, 120, 300]);
     alarmIntervalId = setInterval(() => {
-      beepOnce(1000, 0.25);
-      vibrate([200, 100, 200]);
-    }, 800);
+      playAlarmBurst();
+      vibrate([300, 120, 300, 120, 300]);
+    }, 950);
   }
   function stopAlarm() {
     if (alarmIntervalId) {

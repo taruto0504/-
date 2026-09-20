@@ -131,22 +131,30 @@
       callback();
     }
   }
-  function playTone(ctx, freq, time, duration, type) {
+  function playTone(ctx, freq, time, duration, type, peakGain) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type || "sine";
     osc.frequency.value = freq;
+    const peak = peakGain || 0.4;
     gain.gain.setValueAtTime(0.0001, time);
-    gain.gain.exponentialRampToValueAtTime(0.4, time + 0.01);
+    gain.gain.exponentialRampToValueAtTime(peak, time + 0.008);
+    gain.gain.setValueAtTime(peak, time + Math.max(duration - 0.02, 0.008));
     gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
     osc.connect(gain).connect(ctx.destination);
     osc.start(time);
     osc.stop(time + duration + 0.02);
   }
-  function beepOnce(freq, duration) {
+
+  // 耳に残りやすい高低交互のサイレン風アラーム音(スクエア波・高音量)
+  function playAlarmBurst(notes) {
     withRunningAudioCtx(() => {
       const ctx = ensureAudioCtx();
-      playTone(ctx, freq, ctx.currentTime, duration);
+      let t = ctx.currentTime;
+      notes.forEach((freq) => {
+        playTone(ctx, freq, t, 0.14, "square", 0.9);
+        t += 0.17;
+      });
     });
   }
 
@@ -187,14 +195,14 @@
 
   function triggerRhythmAlert() {
     flashBanner(els.alertRhythm);
-    vibrate([200, 100, 200, 100, 200]);
-    beepOnce(1000, 0.3);
+    vibrate([300, 120, 300, 120, 300]);
+    playAlarmBurst([1400, 1000, 1400, 1000]);
   }
 
   function triggerMedAlert() {
     flashBanner(els.alertEpi);
-    vibrate([200, 100, 200]);
-    beepOnce(700, 0.3);
+    vibrate([300, 150, 300]);
+    playAlarmBurst([900, 1300, 900]);
   }
 
   // --- サイクル(リズムチェック/薬剤投与)の開始・一時停止・リセット ---
@@ -345,6 +353,56 @@
     renderLog();
   }
 
+  // window.confirm()/prompt() are unreliable in some embedded/sandboxed
+  // viewers (they can silently no-op), so destructive actions use a
+  // "tap again to confirm" pattern instead of a native dialog.
+  function armTwoTapConfirm(btn, armedLabel, action, canAct) {
+    const originalLabel = btn.textContent;
+    let armed = false;
+    let timer = null;
+    btn.addEventListener("click", (e) => {
+      if (canAct && !canAct()) return;
+      if (!armed) {
+        e.preventDefault();
+        armed = true;
+        btn.textContent = armedLabel;
+        btn.classList.add("confirm-armed");
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          armed = false;
+          btn.textContent = originalLabel;
+          btn.classList.remove("confirm-armed");
+        }, 3000);
+      } else {
+        armed = false;
+        clearTimeout(timer);
+        btn.textContent = originalLabel;
+        btn.classList.remove("confirm-armed");
+        action();
+      }
+    });
+  }
+
+  function fallbackCopyToClipboard(text) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-1000px";
+      ta.style.left = "-1000px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function buildLogText() {
     const lines = [];
     lines.push("CPA記録ログ");
@@ -362,10 +420,11 @@
 
   document.querySelectorAll(".event-btn").forEach((btn) => {
     if (!btn.dataset.label) return; // skip compound controls like the drug-select button
+    if (btn.dataset.label === "CPA対応終了") {
+      armTwoTapConfirm(btn, "🏁 もう一度押すと終了", () => logEvent(btn.dataset.label, btn.dataset.emoji));
+      return;
+    }
     btn.addEventListener("click", () => {
-      if (btn.dataset.label === "CPA対応終了") {
-        if (!confirm("CPA対応を終了として記録します。よろしいですか?")) return;
-      }
       logEvent(btn.dataset.label, btn.dataset.emoji);
     });
   });
@@ -378,22 +437,27 @@
 
   els.copyBtn.addEventListener("click", async () => {
     const text = buildLogText();
+    let ok = false;
     try {
       await navigator.clipboard.writeText(text);
-      els.copyBtn.textContent = "✅ コピーしました";
+      ok = true;
     } catch (e) {
-      window.prompt("以下のテキストをコピーしてください:", text);
+      ok = fallbackCopyToClipboard(text);
     }
+    els.copyBtn.textContent = ok ? "✅ コピーしました" : "⚠ コピーできませんでした";
     setTimeout(() => (els.copyBtn.textContent = "📋 コピー"), 1800);
   });
 
-  els.clearBtn.addEventListener("click", () => {
-    if (state.events.length === 0) return;
-    if (!confirm("記録ログを全て削除します。よろしいですか?(タイマーは継続します)")) return;
-    state.events = [];
-    saveState();
-    renderLog();
-  });
+  armTwoTapConfirm(
+    els.clearBtn,
+    "🗑 もう一度押すと削除",
+    () => {
+      state.events = [];
+      saveState();
+      renderLog();
+    },
+    () => state.events.length > 0
+  );
 
   // --- テキストメモ ---
   function addNoteFromInput() {
