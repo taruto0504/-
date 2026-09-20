@@ -952,3 +952,89 @@ button {
   color: #fff;
   border-color: var(--color-danger);
 }
+
+/* Timer (countdown) tab: compact layout so the base screen fits without
+   scrolling; the saved-timer list still scrolls on its own once it grows. */
+.timer-compact .card {
+  padding: 9px 12px;
+  margin-bottom: 6px;
+}
+
+.timer-compact .card h2 {
+  font-size: 13px;
+  margin: 0 0 6px;
+}
+
+.timer-compact .timer-display {
+  padding: 6px 0 2px;
+}
+
+.timer-compact .timer-display .time {
+  font-size: 38px;
+}
+
+.timer-compact .alert-banner {
+  padding: 7px 8px;
+  margin: 6px 0;
+  font-size: 12px;
+}
+
+.timer-compact label {
+  font-size: 12px;
+  margin: 8px 0 4px;
+}
+
+.timer-compact input[type="number"],
+.timer-compact input[type="text"] {
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
+.timer-compact .field-row {
+  gap: 6px;
+}
+
+.timer-compact .preset-grid {
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.timer-compact .preset-btn {
+  padding: 8px 4px;
+  font-size: 12.5px;
+}
+
+.timer-compact .timer-controls {
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+
+.timer-compact .timer-controls button {
+  padding: 10px 6px;
+  font-size: 13.5px;
+}
+
+.timer-compact #save-preset-btn {
+  padding: 9px;
+  font-size: 13px;
+  margin-top: 8px !important;
+}
+
+.timer-compact .preset-msg {
+  font-size: 11.5px;
+  margin-top: 4px;
+}
+
+.timer-compact #saved-preset-list {
+  max-height: 26vh;
+}
+
+.timer-compact #saved-preset-list .log-item {
+  padding: 7px 2px;
+  font-size: 12.5px;
+}
+
+.timer-compact .empty-log {
+  padding: 10px 0;
+  font-size: 12px;
+}

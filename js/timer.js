@@ -80,25 +80,12 @@
     return cycle.accumulatedMs;
   }
 
-  function sessionElapsedMs() {
-    return state.sessionFirstTimestamp ? Date.now() - state.sessionFirstTimestamp : 0;
-  }
-
   function formatMMSS(ms) {
     const totalSec = Math.max(0, Math.ceil(ms / 1000));
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
     const pad = (n) => String(n).padStart(2, "0");
     return `${pad(m)}:${pad(s)}`;
-  }
-
-  function formatElapsed(ms) {
-    const totalSec = Math.max(0, Math.floor(ms / 1000));
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    const pad = (n) => String(n).padStart(2, "0");
-    return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   }
 
   function formatClock(ms) {
@@ -250,8 +237,7 @@
   function logEvent(label, emoji) {
     ensureSessionStart();
     const now = Date.now();
-    const elapsedMs = sessionElapsedMs();
-    state.events.unshift({ label, emoji, time: now, elapsedMs });
+    state.events.unshift({ label, emoji, time: now });
 
     if (label === "CPA対応終了" || label === "ROSC(自己心拍再開)") {
       [state.rhythm, state.med].forEach((cycle) => {
@@ -310,7 +296,7 @@
       <div class="log-item">
         <div class="log-label">${ev.emoji} ${escapeHtml(ev.label)}</div>
         <div class="log-meta">
-          <span class="log-time">経過 ${formatElapsed(ev.elapsedMs)} / ${formatClock(ev.time)}</span>
+          <span class="log-time">${formatClock(ev.time)}</span>
           <button class="log-del" data-index="${i}" aria-label="削除">✕</button>
         </div>
       </div>`
@@ -413,7 +399,7 @@
     lines.push("");
     const chronological = [...state.events].reverse();
     chronological.forEach((ev) => {
-      lines.push(`[経過 ${formatElapsed(ev.elapsedMs)} / ${formatClock(ev.time)}] ${ev.label}`);
+      lines.push(`[${formatClock(ev.time)}] ${ev.label}`);
     });
     return lines.join("\n");
   }
