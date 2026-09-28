@@ -338,7 +338,29 @@
 </style>
 </head>
 <body>
-<div id="app"></div>
+<div id="app">
+  <!-- JavaScriptが動かない環境(ファイルのプレビュー画面など)では、この案内がそのまま表示される。
+       JavaScriptが動けば、すぐにログイン画面へ置き換わる -->
+  <div id="boot-fallback" style="padding:48px 24px; text-align:center; line-height:1.8; color:#16232B;">
+    <div style="width:56px;height:56px;border-radius:16px;background:#2E6F6A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin:0 auto 18px;">医</div>
+    <div style="font-size:18px; font-weight:800; margin-bottom:10px;">医療教育アプリ</div>
+    <div style="font-size:14px; color:#4B5A58; text-align:left; max-width:360px; margin:0 auto; background:#fff; border:1px solid #DDE3DE; border-radius:12px; padding:16px;">
+      この画面が表示されている場合、アプリが起動できていません。<br><br>
+      <b>ファイルのプレビュー画面では動きません。</b>次のどちらかの方法で開いてください。<br>
+      ・パソコン:ファイルを <b>Chrome / Edge / Safari</b> にドラッグして開く<br>
+      ・スマホ:Webに公開したURL(https://〜)を <b>Safari / Chrome</b> で開く<br><br>
+      <span style="font-size:12.5px;">※ブラウザの設定でJavaScriptがオフになっている場合も、この画面になります。</span>
+    </div>
+    <div id="boot-error" style="display:none; margin:16px auto 0; max-width:360px; text-align:left; font-size:12.5px; color:#B14A3E; background:#FBEAE7; border-radius:10px; padding:12px; word-break:break-all;"></div>
+  </div>
+</div>
+<script>
+  // 起動時にエラーが起きた場合は、真っ白にせず内容を画面に表示する(原因を調べやすくするため)
+  window.addEventListener('error', function(e){
+    var box = document.getElementById('boot-error');
+    if(box){ box.style.display='block'; box.textContent = '起動エラー: ' + (e.message || e) + (e.lineno ? ' (行 ' + e.lineno + ')' : ''); }
+  });
+</script>
 
 <script type="module">
   // ==== Firebase 初期化(認証 + データベース) ====
@@ -1232,7 +1254,7 @@ async function goToSend(){
   await loadDirectory();
   await loadFavorites();
   // prefill original recipients when this is a re-edit
-  S.sendSelected = d.originalId ? (findReport(d.originalId)?.recipients||[]).map(r=>r.id) : (d.recipients||[]).map(r=>r.id);
+  S.sendSelected = d.originalId ? ((findReport(d.originalId)||{}).recipients||[]).map(r=>r.id) : (d.recipients||[]).map(r=>r.id);
   S.sendQuery='';
   S.screen='send';
   render();
