@@ -1,4 +1,4 @@
-const CACHE_NAME = "medical-support-tool-v6";
+const CACHE_NAME = "medical-support-tool-v7";
 const ASSETS = [
   "index.html",
   "drip-oxygen.html",
@@ -33,6 +33,10 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  // 外部(Firebaseなど)への通信と、オンライン前提の医療教育アプリ(education/)はキャッシュしない
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.includes("/education/")) return;
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const fetchPromise = fetch(event.request)

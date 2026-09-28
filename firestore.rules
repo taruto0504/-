@@ -1,0 +1,143 @@
+rules_version = '2';
+
+// 医療教育アプリ(education/index.html)用の Firestore セキュリティルール
+// デプロイ: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function userDoc(uid) { return get(/databases/$(database)/documents/users/$(uid)); }
+    function me() { return userDoc(request.auth.uid).data; }
+    function myPid() { return me().personalId; }
+
+    function pad4(n) {
+      return n < 10 ? '000' + string(n)
+           : n < 100 ? '00' + string(n)
+           : n < 1000 ? '0' + string(n)
+           : string(n);
+    }
+
+    // ---- 個人IDの採番カウンター ----
+    // +1 ずつしか進められない(0に戻して重複IDを作る、といったことを防ぐ)
+    match /counters/{prefix} {
+      allow read: if signedIn() && prefix in ['DR', 'NR', 'EMT', 'ID'];
+      allow create: if signedIn() && prefix in ['DR', 'NR', 'EMT', 'ID']
+        && request.resource.data.keys().hasOnly(['value'])
+        && request.resource.data.value == 1;
+      allow update: if signedIn()
+        && request.resource.data.keys().hasOnly(['value'])
+        && request.resource.data.value == resource.data.value + 1;
+      allow delete: if false;
+    }
+
+    // ---- 個人ID → uid の対応表 ----
+    // 同じトランザクションで進めたカウンターの値と一致するIDしか作れない。
+    // そのため、既存ユーザーのIDや未発行のIDを先取りして名乗ることはできない。
+    match /personalIds/{pid} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['uid'])
+        && request.resource.data.uid == request.auth.uid
+        && !exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && pid.split('-').size() == 2
+        && pid.split('-')[0] in ['DR', 'NR', 'EMT', 'ID']
+        && pid == pid.split('-')[0] + '-' + pad4(getAfter(/databases/$(database)/documents/counters/$(pid.split('-')[0])).data.value);
+      allow update, delete: if false;
+    }
+
+    // ---- 公開プロフィール(検索・送信先の候補に使う) ----
+    // メールアドレスなどの非公開情報は置かない
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'occupation', 'personalId', 'createdAt', 'agreedTermsAt', 'favoriteIds'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 50
+        && request.resource.data.occupation in ['医師', '看護師', '救急救命士', 'その他']
+        && request.resource.data.personalId is string
+        && get(/databases/$(database)/documents/personalIds/$(request.resource.data.personalId)).data.uid == uid;
+      // 変更できるのは「よく送る相手」だけ(個人IDや氏名の書き換えによるなりすましを防ぐ)
+      allow update: if signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favoriteIds'])
+        && request.resource.data.favoriteIds is list
+        && request.resource.data.favoriteIds.size() <= 200;
+      allow delete: if signedIn() && request.auth.uid == uid;
+    }
+
+    // ---- レポート ----
+    match /reports/{rid} {
+      function isAuthor(d) { return d.authorUid == request.auth.uid; }
+      function isRecipient(d) { return myPid() in d.recipientIdList; }
+
+      // 作成者本人が書き込む内容のチェック(作成者名・個人IDのなりすまし防止、サイズ上限)
+      function validReport(d) {
+        return d.keys().hasOnly([
+            'title', 'body', 'question', 'fields', 'attachments', 'status', 'originalId',
+            'authorUid', 'authorId', 'authorName', 'recipients', 'recipientIdList', 'createdAt',
+            'lastCommentAt', 'lastCommentByUid', 'commentReads'])
+          && d.authorUid == request.auth.uid
+          && d.authorId == myPid()
+          && d.authorName == me().name
+          && d.title is string && d.title.size() <= 200
+          && d.body is string && d.body.size() <= 20000
+          && d.question is string && d.question.size() <= 5000
+          && d.fields is list && d.fields.size() <= 30
+          && d.attachments is list && d.attachments.size() <= 6
+          && d.status in ['draft', 'saved', 'sent']
+          && d.recipientIdList is list && d.recipientIdList.size() <= 50
+          && d.recipients is map
+          && d.recipients.keys().hasOnly(d.recipientIdList)
+          && d.recipients.size() == d.recipientIdList.size();
+      }
+
+      // 受信者は「自分の既読フラグ」と「コメントの既読・最終コメント情報」しか変更できない
+      function recipientUpdateOk() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        let pid = myPid();
+        let before = resource.data.recipients;
+        let after = request.resource.data.recipients;
+        return changed.hasOnly(['recipients', 'lastCommentAt', 'lastCommentByUid', 'commentReads'])
+          && (!changed.hasAny(['recipients'])
+              || (after.diff(before).affectedKeys().hasOnly([pid])
+                  && after[pid].diff(before[pid]).affectedKeys().hasOnly(['read'])
+                  && after[pid].read == true))
+          && (!changed.hasAny(['lastCommentAt']) || request.resource.data.lastCommentAt == request.time)
+          && (!changed.hasAny(['lastCommentByUid']) || request.resource.data.lastCommentByUid == request.auth.uid)
+          && (!changed.hasAny(['commentReads'])
+              || request.resource.data.commentReads.diff(resource.data.get('commentReads', {})).affectedKeys().hasOnly([request.auth.uid]));
+      }
+
+      allow read: if signedIn() && (isAuthor(resource.data) || isRecipient(resource.data));
+      allow create: if signedIn()
+        && validReport(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update: if signedIn() && (
+        (isAuthor(resource.data)
+          && validReport(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt)
+        || (!isAuthor(resource.data) && isRecipient(resource.data) && recipientUpdateOk())
+      );
+      allow delete: if signedIn() && isAuthor(resource.data);
+
+      // ---- コメント(作成者と受信者だけが読み書きできる) ----
+      match /comments/{cid} {
+        function parentReport() { return get(/databases/$(database)/documents/reports/$(rid)).data; }
+        function participant() {
+          let p = parentReport();
+          return p.authorUid == request.auth.uid || myPid() in p.recipientIdList;
+        }
+        allow read: if signedIn() && participant();
+        allow create: if signedIn() && participant()
+          && request.resource.data.keys().hasOnly(['senderUid', 'senderName', 'text', 'createdAt'])
+          && request.resource.data.senderUid == request.auth.uid
+          && request.resource.data.senderName == me().name
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 2000
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

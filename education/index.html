@@ -409,7 +409,9 @@ function mergeAndRenderReports(){
   const map = Object.assign({}, authoredMap, receivedMap);
   reports = Object.values(map).sort((a,b)=> (b._ts||0) - (a._ts||0));
   // ホーム・保存済み一覧・詳細画面を見ているときだけ再描画(他画面での入力を邪魔しないため)
-  if(['home','saved','detail'].includes(S.screen)) render();
+  // 検索欄に入力中なら一覧部分だけを差し替えて、フォーカスとIME変換を保つ
+  if(S.screen==='saved' && document.activeElement && document.activeElement.id==='saved-search') renderSavedList();
+  else if(['home','saved','detail'].includes(S.screen)) render();
 }
 
 function fromFirestoreReport(id, data){
@@ -456,7 +458,15 @@ function render(){
   else if(S.screen==='contacts') html = wrap(screenContacts(), 'home');
   else if(S.screen==='terms') html = screenLegal('terms');
   else if(S.screen==='privacy') html = screenLegal('privacy');
+  // 相手のコメント受信などで再描画されても、入力途中のコメントが消えないようにする
+  const chat = document.getElementById('chatInput');
+  const chatState = chat ? { value:chat.value, focused: document.activeElement===chat } : null;
   app.innerHTML = html;
+  const chatAfter = document.getElementById('chatInput');
+  if(chatState && chatAfter){
+    chatAfter.value = chatState.value;
+    if(chatState.focused) chatAfter.focus();
+  }
   // 画面そのものが切り替わったときだけ一番上に戻す(同じ画面内の再描画では今のスクロール位置を保つ)
   if(_lastRenderedScreen !== S.screen){
     window.scrollTo(0,0);
@@ -608,16 +618,19 @@ function makePersonalId(occupation, uid){
 }
 
 // 新規登録時に使う、衝突しない個人IDの発行(Firestoreのカウンターをトランザクションでアトミックに+1する)
-async function makeUniquePersonalId(occupation){
+// 同じトランザクションで personalIds/{ID} に「このIDは自分のもの」という記録を作る。
+// セキュリティルールはこの記録を使って、他人の個人IDを名乗れないようにしている。
+async function makeUniquePersonalId(occupation, uid){
   const prefix = {'医師':'DR','看護師':'NR','救急救命士':'EMT'}[occupation] || 'ID';
   const counterRef = window.fb.doc(window.fb.db, 'counters', prefix);
-  const next = await window.fb.runTransaction(window.fb.db, async (tx)=>{
+  return await window.fb.runTransaction(window.fb.db, async (tx)=>{
     const snap = await tx.get(counterRef);
     const value = (snap.exists() ? snap.data().value : 0) + 1;
+    const personalId = prefix + '-' + String(value).padStart(4,'0'); // 例: DR-0001, DR-0002...
     tx.set(counterRef, { value });
-    return value;
+    tx.set(window.fb.doc(window.fb.db, 'personalIds', personalId), { uid });
+    return personalId;
   });
-  return prefix + '-' + String(next).padStart(4,'0'); // 例: DR-0001, DR-0002...
 }
 
 function authErrorMessage(e){
@@ -673,38 +686,55 @@ async function doLogin(){
     const agreed = document.getElementById('rg-agree') && document.getElementById('rg-agree').checked;
     if(!name || !email || !password){ toast('氏名・メールアドレス・パスワードを入力してください'); return; }
     if(!agreed){ toast('利用規約とプライバシーポリシーへの同意が必要です'); return; }
+    if(name.length > 50){ toast('氏名は50文字以内で入力してください'); return; }
     btn.textContent = '登録中…';
+    btn.disabled = true;
+    authInProgress = true; // 登録が終わるまで onAuthStateChanged 側の処理を止める(プロフィール未作成のまま進まないように)
+    let cred = null;
     try{
-      const cred = await window.fb.createUserWithEmailAndPassword(window.fb.auth, email, password);
-      const personalId = await makeUniquePersonalId(S.occSel);
+      cred = await window.fb.createUserWithEmailAndPassword(window.fb.auth, email, password);
+      const personalId = await makeUniquePersonalId(S.occSel, cred.user.uid);
       await window.fb.updateProfile(cred.user, { displayName: `${name}|${S.occSel}|${personalId}` });
       // Firestoreにプロフィールを保存(他の人から検索・送信できるようにするため)
+      // メールアドレスは全ユーザーから読める users には保存しない(Firebase Authenticationが保持している)
       await window.fb.setDoc(window.fb.doc(window.fb.db, 'users', cred.user.uid), {
-        name, occupation: S.occSel, personalId, email, createdAt: Date.now(), agreedTermsAt: Date.now()
+        name, occupation: S.occSel, personalId, createdAt: Date.now(), agreedTermsAt: Date.now()
       });
       applyAuthUser(cred.user, {name, occupation:S.occSel, id:personalId});
       try{ await window.fb.sendEmailVerification(cred.user); }catch(e){ console.error(e); }
       toast('個人ID「'+personalId+'」を発行しました。確認メールも送信しましたのでご確認ください');
+      authInProgress = false;
       go('home');
     }catch(e){
+      console.error(e);
+      // アカウントだけ作られてプロフィールが無い中途半端な状態を残さない(同じメールで再登録できるように)
+      if(cred && cred.user){ try{ await window.fb.deleteUser(cred.user); }catch(e2){ console.error(e2); } }
+      authInProgress = false;
       toast(authErrorMessage(e));
       btn.textContent = originalLabel;
+      btn.disabled = false;
     }
   } else {
     const email = (document.getElementById('li-email').value||'').trim();
     const password = document.getElementById('li-password').value||'';
     if(!email || !password){ toast('メールアドレスとパスワードを入力してください'); return; }
     btn.textContent = 'ログイン中…';
+    btn.disabled = true;
+    authInProgress = true;
     try{
       const cred = await window.fb.signInWithEmailAndPassword(window.fb.auth, email, password);
       await loadProfileAndApply(cred.user);
+      authInProgress = false;
       go('home');
     }catch(e){
+      authInProgress = false;
       toast(authErrorMessage(e));
       btn.textContent = originalLabel;
+      btn.disabled = false;
     }
   }
 }
+let authInProgress = false;
 
 // Firestoreからプロフィール(氏名・職種・個人ID)を取得してMEに反映する
 async function loadProfileAndApply(user){
@@ -733,12 +763,16 @@ async function doLogout(){
 
 async function deleteAccount(){
   if(!window.fb || !window.fb.auth.currentUser) return;
+  const pwInput = document.getElementById('acct-current-pw');
+  if(!pwInput || !pwInput.value){ toast('上の「現在のパスワード」欄にパスワードを入力してから削除してください'); if(pwInput) pwInput.focus(); return; }
   const ok = window.confirm('本当にアカウントを削除しますか?この操作は取り消せません。');
   if(!ok) return;
   const user = window.fb.auth.currentUser;
   try{
+    // 先に再認証しておく。これで deleteUser が「再ログインが必要」で失敗し、
+    // プロフィールだけ消えた壊れたアカウントが残る、ということが起きなくなる
+    await reauth();
     stopReportsListener();
-    // プロフィール情報(Firestore)を先に削除してから、認証アカウント自体を削除する
     await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'users', user.uid));
     await window.fb.deleteUser(user);
     toast('アカウントを削除しました');
@@ -750,6 +784,9 @@ async function deleteAccount(){
     if(e.code === 'auth/requires-recent-login'){
       toast('セキュリティのため、再ログインしてからもう一度お試しください');
       await doLogout();
+    } else if(e.code && e.code.startsWith('auth/')){
+      startReportsListener();
+      toast(authErrorMessage(e));
     } else {
       console.error(e);
       toast('削除に失敗しました(' + (e.code || e.message) + ')');
@@ -819,11 +856,10 @@ function screenHome(){
     <div class="topbar"><h1>ホーム</h1></div>
     <div class="content no-pad-top">
       <div class="id-card">
-        <div class="role">${ME.occupation}</div>
-        <div class="name">${ME.name} さん</div>
+        <div class="role">${escapeHtml(ME.occupation)}</div>
+        <div class="name">${escapeHtml(ME.name)} さん</div>
         <div class="idrow">
-          <div><div class="idlabel">個人ID</div><div class="idval">${ME.id}</div></div>
-          <div style="font-size:11px; opacity:.8;">Web ⇄ アプリ 同期済み</div>
+          <div><div class="idlabel">個人ID</div><div class="idval">${escapeHtml(ME.id)}</div></div>
         </div>
       </div>
 
@@ -858,18 +894,19 @@ function screenHome(){
 
       <div class="section-title">最近の通知</div>
       ${shown.map(r=>{
-        const unread = r.recipients.some(x=>!x.read);
-        const isMine = r.authorUid===ME.uid;
+        const mine = isMine(r);
+        // 自分が送ったもの:誰かが未読か / 受け取ったもの:自分がまだ読んでいないか
+        const unread = mine ? r.recipients.some(x=>!x.read) : r.recipients.some(x=>x.id===ME.id && !x.read);
         let sub;
         if(r.hasUnreadComment){ sub = '💬 新しい返信'; }
-        else if(isMine){ sub = unread ? '未読あり' : '全員既読'; }
+        else if(mine){ sub = unread ? '未読あり' : '全員既読'; }
         else { sub = (r.authorName||'')+'さんから'; }
-        return `<div class="activity-item compact" onclick="openDetail('${r.id}')">
+        return `<div class="activity-item compact" onclick="openDetail(${jsArg(r.id)})">
           <div class="dot ${(unread||r.hasUnreadComment)?'unread':'read'}"></div>
           <div class="activity-body">
-            <div class="activity-title">${escapeHtml(r.title)} <span class="activity-sub-inline" style="${r.hasUnreadComment?'color:var(--amber);font-weight:700;':''}">・${sub}</span></div>
+            <div class="activity-title">${escapeHtml(r.title)} <span class="activity-sub-inline" style="${r.hasUnreadComment?'color:var(--amber);font-weight:700;':''}">・${escapeHtml(sub)}</span></div>
           </div>
-          <div class="activity-time">${r.createdAt}</div>
+          <div class="activity-time">${escapeHtml(r.createdAt)}</div>
         </div>`;
       }).join('') || `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🔔</div>まだ通知はありません</div>`}
       ${notifItems.length>4 ? `<div style="text-align:center; margin-top:6px;"><a style="font-size:12.5px; color:var(--primary-dark); font-weight:700; cursor:pointer;" onclick="go('saved')">すべて見る(${notifItems.length}件)</a></div>` : ''}
@@ -913,7 +950,7 @@ function screenCreate(){
       <div class="attach-row">
         ${(d.attachments||[]).map((a,i)=>`
           <div class="attach-thumb" style="padding:0; overflow:hidden; position:relative;">
-            <img src="${a.url}" style="width:100%;height:100%;object-fit:cover;" alt="添付画像">
+            <img src="${safeUrl(a.url)}" style="width:100%;height:100%;object-fit:cover;" alt="添付画像">
             <div onclick="removeAttachment(${i})" style="position:absolute; top:2px; right:2px; width:16px;height:16px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center; cursor:pointer;">✕</div>
           </div>
         `).join('')}
@@ -1021,7 +1058,7 @@ function addAttachment(){
     if(file.size > 8*1024*1024){ toast('8MB以下の画像を選んでください'); return; }
     toast('アップロード中…');
     try{
-      const path = `attachments/${ME.uid}/${Date.now()}_${file.name}`;
+      const path = `attachments/${ME.uid}/${Date.now()}_${file.name.replace(/[^\w.\-]/g,'_')}`;
       const storageRef = window.fb.ref(window.fb.storage, path);
       await window.fb.uploadBytes(storageRef, file);
       const url = await window.fb.getDownloadURL(storageRef);
@@ -1041,8 +1078,20 @@ async function removeAttachment(i){
   if(!a) return;
   d.attachments.splice(i,1);
   render();
-  if(a.path && window.fb){
+  // 保存済みのレポート(このレポート自身の保存版や、再編集元のレポート)が参照している画像は、
+  // ここでは消さない。保存し直したときに persistDraft が不要になった分を片付ける。
+  // どこからも参照されていない(アップロードしたばかりの)画像だけをすぐ削除する。
+  if(a.path && window.fb && !isPathReferenced(a.path, null)){
     try{ await window.fb.deleteObject(window.fb.ref(window.fb.storage, a.path)); }catch(e){ console.error(e); }
+  }
+}
+// 自分のフォルダにあり、どのレポートからも参照されていない画像だけを削除する
+async function deleteUnreferencedAttachments(paths, exceptId){
+  if(!window.fb) return;
+  for(const path of paths){
+    if(!path || !path.startsWith(`attachments/${ME.uid}/`)) continue;
+    if(isPathReferenced(path, exceptId)) continue;
+    try{ await window.fb.deleteObject(window.fb.ref(window.fb.storage, path)); }catch(e){ console.error(e); }
   }
 }
 function addField(){
@@ -1076,7 +1125,13 @@ async function persistDraft(d){
   try{
     if(d.id){
       // 既存ドキュメントの更新時は作成日時を上書きしない
+      const before = findReport(d.id);
+      const removedPaths = before
+        ? (before.attachments||[]).map(a=>a.path).filter(p=>p && !payload.attachments.some(a=>a.path===p))
+        : [];
       await window.fb.updateDoc(window.fb.doc(window.fb.db,'reports', d.id), payload);
+      // 保存し直して外れた画像を、他のレポート(再編集元など)が使っていなければ削除する
+      if(removedPaths.length) deleteUnreferencedAttachments(removedPaths, d.id);
     } else {
       payload.createdAt = window.fb.serverTimestamp();
       const ref = await window.fb.addDoc(window.fb.collection(window.fb.db,'reports'), payload);
@@ -1103,17 +1158,25 @@ async function goToSend(){
 }
 
 /* ---- Saved list ---- */
-function screenSaved(){
+function savedListHtml(){
   const q = S.filterQuery.toLowerCase();
-  let list = reports.filter(r=>{
+  const list = reports.filter(r=>{
     if(S.filterStatus!=='all' && r.status!==S.filterStatus) return false;
     if(q && !r.title.toLowerCase().includes(q)) return false;
     return true;
   });
+  return list.length? list.map(r=>reportCard(r)).join('') : `<div class="empty-state"><div class="em-ic">📭</div>該当するレポートがありません</div>`;
+}
+// 検索欄の入力中は画面全体を作り直さず、一覧部分だけを差し替える(フォーカス・日本語変換を保つため)
+function renderSavedList(){
+  const el = document.getElementById('saved-list');
+  if(el) el.innerHTML = savedListHtml(); else render();
+}
+function screenSaved(){
   return `
     <div class="topbar"><h1>保存</h1></div>
     <div class="content no-pad-top">
-      <div class="search-bar">🔍 <input type="text" placeholder="タイトルで検索" value="${escapeHtml(S.filterQuery)}" oninput="S.filterQuery=this.value;render()"></div>
+      <div class="search-bar">🔍 <input type="text" id="saved-search" placeholder="タイトルで検索" value="${escapeHtml(S.filterQuery)}" oninput="S.filterQuery=this.value;renderSavedList()"></div>
 
       <div class="filter-row">
         ${chip('all','すべて')}${chip('draft','下書き')}${chip('saved','保存済み')}${chip('sent','送信済み')}
@@ -1128,7 +1191,7 @@ function screenSaved(){
         </div>
       </div>` : ''}
 
-      ${list.length? list.map(r=>reportCard(r)).join('') : `<div class="empty-state"><div class="em-ic">📭</div>該当するレポートがありません</div>`}
+      <div id="saved-list">${savedListHtml()}</div>
     </div>
   `;
 }
@@ -1138,6 +1201,7 @@ function toggleDeleteMode(){
   render();
 }
 function toggleDeleteSelect(id){
+  if(!isMine(findReport(id))){ toast('受け取ったレポートは削除できません'); return; }
   const i = S.deleteSelected.indexOf(id);
   if(i>-1) S.deleteSelected.splice(i,1); else S.deleteSelected.push(id);
   render();
@@ -1147,8 +1211,9 @@ async function bulkDeleteSelected(){
   const ok = window.confirm(S.deleteSelected.length + '件を削除しますか?この操作は取り消せません。');
   if(!ok) return;
   const ids = [...S.deleteSelected];
-  for(const id of ids){ await deleteReportById(id); }
-  toast(ids.length+'件削除しました');
+  let done = 0;
+  for(const id of ids){ if(await deleteReportById(id)) done++; }
+  toast(done+'件削除しました');
   S.deleteMode = false;
   S.deleteSelected = [];
   render();
@@ -1157,17 +1222,20 @@ function chip(key,label){
   return `<div class="chip ${S.filterStatus===key?'active':''}" onclick="S.filterStatus='${key}';render()">${label}</div>`;
 }
 function reportCard(r){
-  const badgeLabel = {draft:'下書き',saved:'保存済み',sent:'送信済み'}[r.status];
   const readCount = r.recipients.filter(x=>x.read).length;
   const checked = S.deleteSelected.includes(r.id);
+  const mine = isMine(r);
+  const status = ['draft','saved','sent'].includes(r.status) ? r.status : 'draft';
+  const badgeLabel = {draft:'下書き',saved:'保存済み',sent:'送信済み'}[status];
   return `
-    <div class="report-card" onclick="${S.deleteMode ? `toggleDeleteSelect('${r.id}')` : `openDetail('${r.id}')`}" style="${r.hasUnreadComment?'border-color:var(--amber);':''} ${S.deleteMode && checked ? 'border-color:var(--danger); background:#FBEAE7;' : ''}">
+    <div class="report-card" onclick="${S.deleteMode ? `toggleDeleteSelect(${jsArg(r.id)})` : `openDetail(${jsArg(r.id)})`}" style="${r.hasUnreadComment?'border-color:var(--amber);':''} ${S.deleteMode && checked ? 'border-color:var(--danger); background:#FBEAE7;' : ''} ${S.deleteMode && !mine ? 'opacity:.5;' : ''}">
       <div class="rc-top">
-        <div class="rc-title">${S.deleteMode ? `<span style="margin-right:8px;">${checked?'☑️':'⬜'}</span>` : ''}${r.hasUnreadComment?'🔴 ':''}${escapeHtml(r.title)}</div>
-        <div class="badge ${r.status}">${badgeLabel}</div>
+        <div class="rc-title">${S.deleteMode && mine ? `<span style="margin-right:8px;">${checked?'☑️':'⬜'}</span>` : ''}${r.hasUnreadComment?'🔴 ':''}${escapeHtml(r.title)}</div>
+        <div class="badge ${status}">${mine ? badgeLabel : '受信'}</div>
       </div>
       <div class="rc-meta">
-        <span>${r.createdAt}</span>
+        <span>${escapeHtml(r.createdAt)}</span>
+        ${!mine ? `<span>${escapeHtml(r.authorName||'')}さんから</span>` : ''}
         ${r.recipients.length ? `<span class="rc-read">✓ 既読 ${readCount}/${r.recipients.length}</span>` : ''}
         ${r.originalId ? `<span>🔗 再編集版</span>` : ''}
       </div>
@@ -1214,6 +1282,7 @@ let currentComments = [];
 let unsubComments = null;
 function startCommentsListener(id){
   stopCommentsListener();
+  currentComments = []; // 直前に開いていたレポートのコメントが一瞬表示されないようにする
   if(!window.fb) return;
   unsubComments = window.fb.onSnapshot(
     window.fb.query(window.fb.collection(window.fb.db,'reports',id,'comments'), window.fb.orderBy('createdAt','asc')),
@@ -1240,10 +1309,10 @@ function screenDetail(){
     <div class="topbar bordered">
       <div class="back-btn" onclick="go('saved')">←</div>
       <h1 style="font-size:16px;">詳細</h1>
-      <div style="margin-left:auto; display:flex; gap:8px;">
-        <button class="btn sm" style="border-color:transparent; color:var(--danger);" onclick="deleteReportFromDetail('${r.id}')">🗑</button>
-        <button class="btn sm" onclick="editReport('${r.id}')">編集</button>
-      </div>
+      ${isMine(r) ? `<div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn sm" style="border-color:transparent; color:var(--danger);" onclick="deleteReportFromDetail(${jsArg(r.id)})">🗑</button>
+        <button class="btn sm" onclick="editReport(${jsArg(r.id)})">編集</button>
+      </div>` : `<div style="margin-left:auto; font-size:12px; color:var(--ink-soft);">${escapeHtml(r.authorName||'')}さんから</div>`}
     </div>
     <div class="content">
       <div class="tab-row">
@@ -1258,13 +1327,13 @@ function screenDetail(){
 function detailContent(r){
   return `
     <div class="detail-title">${escapeHtml(r.title)}</div>
-    <div class="detail-meta">${r.createdAt} 作成 ${r.originalId?'・🔗 再編集版':''}</div>
+    <div class="detail-meta">${escapeHtml(r.createdAt)} 作成 ${r.originalId?'・🔗 再編集版':''}</div>
     <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
-      <button class="btn sm" onclick="printReport('${r.id}')">🖨 印刷</button>
-      <button class="btn sm" onclick="pdfReport('${r.id}')">📄 PDF化</button>
+      <button class="btn sm" onclick="printReport(${jsArg(r.id)})">🖨 印刷</button>
+      <button class="btn sm" onclick="pdfReport(${jsArg(r.id)})">📄 PDF化</button>
     </div>
     <div class="detail-body">${escapeHtml(r.body)}
-    ${(r.attachments && r.attachments.length) ? `<div class="attach-row" style="margin-top:12px;">${r.attachments.map(a=>`<a href="${a.url}" target="_blank" class="attach-thumb" style="padding:0; overflow:hidden;"><img src="${a.url}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(a.name||'添付画像')}"></a>`).join('')}</div>` : ''}
+    ${(r.attachments && r.attachments.length) ? `<div class="attach-row" style="margin-top:12px;">${r.attachments.filter(a=>safeUrl(a.url)).map(a=>`<a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" class="attach-thumb" style="padding:0; overflow:hidden;"><img src="${safeUrl(a.url)}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(a.name||'添付画像')}"></a>`).join('')}</div>` : ''}
     ${(r.fields||[]).map(f=>`<div class="cf-view"><div class="cfn">${escapeHtml(f.name||'項目')}</div><div class="cfv">${escapeHtml(f.value)}</div></div>`).join('')}
     ${r.question ? `<div class="cf-view"><div class="cfn" style="color:var(--amber);">疑問・困りごと</div><div class="cfv">${escapeHtml(r.question)}</div></div>` : ''}
     </div>
@@ -1276,7 +1345,7 @@ function detailRead(r){
     ${r.recipients.map(rc=>{
       const c = DIRECTORY.find(x=>x.id===rc.id);
       return `<div class="read-row">
-        <div><div class="rr-name">${c?c.name:rc.id}</div><div class="set-sub">${rc.id}</div></div>
+        <div><div class="rr-name">${escapeHtml(c?c.name:(rc.name||rc.id))}</div><div class="set-sub">${escapeHtml(rc.id)}</div></div>
         <div class="rr-status ${rc.read?'read':'unread'}">${rc.read? '✓ 既読':'未読'}</div>
       </div>`;
     }).join('')}
@@ -1289,13 +1358,13 @@ function detailChat(r){
         <div class="msg ${c.me?'me':'other'}">
           ${!c.me?`<div class="msg-sender">${escapeHtml(c.sender)}</div>`:''}
           ${escapeHtml(c.text)}
-          <div class="msg-time">${c.time}</div>
+          <div class="msg-time">${escapeHtml(c.time)}</div>
         </div>
       `).join('') : `<div class="empty-state"><div class="em-ic">💬</div>まだコメントはありません</div>`}
     </div>
     <div class="chat-input-row">
-      <input type="text" id="chatInput" placeholder="コメント・アドバイスを送る">
-      <button class="btn solid sm" onclick="sendComment('${r.id}')">送信</button>
+      <input type="text" id="chatInput" placeholder="コメント・アドバイスを送る" maxlength="2000">
+      <button class="btn solid sm" onclick="sendComment(${jsArg(r.id)})">送信</button>
     </div>
   `;
 }
@@ -1318,20 +1387,23 @@ async function sendComment(id){
     toast('送信しました');
   }catch(e){
     console.error(e);
+    // 失敗したら入力内容を戻して、打ち直さなくて済むようにする
+    const again = document.getElementById('chatInput');
+    if(again && !again.value) again.value = text;
     toast('送信に失敗しました');
   }
 }
 // レポートをFirestoreから削除する(添付ファイルもあわせて削除)。成功時true
 async function deleteReportById(id){
   if(!window.fb) return false;
+  const r = findReport(id);
+  if(r && !isMine(r)){ toast('受け取ったレポートは削除できません'); return false; }
   try{
-    const r = findReport(id);
-    if(r && r.attachments && r.attachments.length){
-      for(const a of r.attachments){
-        if(a.path){ try{ await window.fb.deleteObject(window.fb.ref(window.fb.storage, a.path)); }catch(e){} }
-      }
-    }
     await window.fb.deleteDoc(window.fb.doc(window.fb.db,'reports', id));
+    // 再編集版と元レポートは同じ画像を共有しているので、他のレポートが使っていない画像だけを消す
+    if(r && r.attachments && r.attachments.length){
+      await deleteUnreferencedAttachments(r.attachments.map(a=>a.path), id);
+    }
     return true;
   }catch(e){
     console.error(e);
@@ -1347,6 +1419,8 @@ async function deleteCurrentDraft(){
   if(!ok) return;
   const success = await deleteReportById(d.id);
   if(!success) return;
+  // 保存前に追加していた画像も片付ける
+  await deleteUnreferencedAttachments((d.attachments||[]).map(a=>a.path), d.id);
   toast('削除しました');
   S.draft = null;
   await go('home');
@@ -1363,6 +1437,7 @@ async function deleteReportFromDetail(id){
 
 function editReport(id){
   const r = findReport(id);
+  if(!isMine(r)) return;
   if(r.status==='sent'){
     // 送信済みのものを編集する場合は、仕様通り「新しいレポート」として作り直す
     S.draft = {...r, id:null, originalId: r.id, status:'draft', fields:(r.fields||[]).map(f=>({...f})), recipients:[], comments:[]};
@@ -1376,10 +1451,23 @@ function editReport(id){
 }
 
 /* ---- Send ---- */
+function sendResultsHtml(){
+  const q = S.sendQuery.toLowerCase();
+  const results = q ? DIRECTORY.filter(c=>String(c.name||'').toLowerCase().includes(q) || String(c.id||'').toLowerCase().includes(q)) : [];
+  return results.length? `<div class="recipient-search-results">
+    ${results.map(c=>`<div class="rsr-item" onclick="toggleRecipient(${jsArg(c.id)})">
+      <span>${escapeHtml(c.name)} <small>・${escapeHtml(c.occupation)}</small></span>
+      <span>${S.sendSelected.includes(c.id)?'✓':'＋'}</span>
+    </div>`).join('')}
+  </div>` : '';
+}
+// 検索欄の入力中は画面全体を作り直さず、検索結果だけを差し替える(フォーカス・日本語変換を保つため)
+function renderSendResults(){
+  const el = document.getElementById('send-results');
+  if(el) el.innerHTML = sendResultsHtml(); else render();
+}
 function screenSend(){
   const d = S.draft;
-  const q = S.sendQuery.toLowerCase();
-  const results = q ? DIRECTORY.filter(c=>c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q)) : [];
   return `
     <div class="topbar bordered">
       <div class="back-btn" onclick="S.screen='create';render()">←</div>
@@ -1393,20 +1481,15 @@ function screenSend(){
 
       ${S.sendMode==='search' ? `
         <div class="field-label" style="margin-top:4px;">送信先(個人ID・氏名で検索、複数選択可)</div>
-        <input type="text" placeholder="個人ID または 氏名を入力" value="${escapeHtml(S.sendQuery)}" oninput="S.sendQuery=this.value;render()">
-        ${results.length? `<div class="recipient-search-results">
-          ${results.map(c=>`<div class="rsr-item" onclick="toggleRecipient('${c.id}')">
-            <span>${c.name} <small>・${c.occupation}</small></span>
-            <span>${S.sendSelected.includes(c.id)?'✓':'＋'}</span>
-          </div>`).join('')}
-        </div>` : ''}
+        <input type="text" placeholder="個人ID または 氏名を入力" value="${escapeHtml(S.sendQuery)}" oninput="S.sendQuery=this.value;renderSendResults()">
+        <div id="send-results">${sendResultsHtml()}</div>
       ` : `
         <div class="field-label" style="margin-top:4px;">登録済みの相手(タップで選択)</div>
         ${S.myContacts.length ? `<div class="recipient-search-results">
           ${S.myContacts.map(id=>{
             const c = DIRECTORY.find(x=>x.id===id);
-            return `<div class="rsr-item" onclick="toggleRecipient('${id}')">
-              <span>${c?c.name:id} <small>・${c?c.occupation:id}</small></span>
+            return `<div class="rsr-item" onclick="toggleRecipient(${jsArg(id)})">
+              <span>${escapeHtml(c?c.name:id)} <small>・${escapeHtml(c?c.occupation:id)}</small></span>
               <span>${S.sendSelected.includes(id)?'✓':'＋'}</span>
             </div>`;
           }).join('')}
@@ -1419,7 +1502,7 @@ function screenSend(){
       <div class="selected-chips">
         ${S.sendSelected.length? S.sendSelected.map(id=>{
           const c = DIRECTORY.find(x=>x.id===id);
-          return `<div class="sel-chip">${c?c.name:id}<div class="x" onclick="toggleRecipient('${id}')">✕</div></div>`;
+          return `<div class="sel-chip">${escapeHtml(c?c.name:id)}<div class="x" onclick="toggleRecipient(${jsArg(id)})">✕</div></div>`;
         }).join('') : `<span style="font-size:13px; color:var(--ink-soft);">まだ選択されていません</span>`}
       </div>
 
@@ -1434,6 +1517,7 @@ function toggleRecipient(id){
 }
 async function doSend(){
   if(!S.sendSelected.length){ toast('送信先を選択してください'); return; }
+  if(S.sendSelected.length > 50){ toast('一度に送信できるのは50名までです'); return; }
   const btn = document.getElementById('send-submit-btn');
   const originalLabel = btn ? btn.textContent : null;
   if(btn){ btn.textContent = '送信中…'; btn.disabled = true; }
@@ -1475,8 +1559,8 @@ function screenContacts(){
         ${S.myContacts.length ? S.myContacts.map(id=>{
           const c = DIRECTORY.find(x=>x.id===id);
           return `<div class="set-row">
-            <div><div class="set-label">${c?c.name:id}</div><div class="set-sub">${id}${c?'・'+c.occupation:''}</div></div>
-            <div class="btn sm ghost" style="border-color:transparent; color:var(--danger); padding:6px 8px;" onclick="removeMyContact('${id}')">削除</div>
+            <div><div class="set-label">${escapeHtml(c?c.name:id)}</div><div class="set-sub">${escapeHtml(id)}${c?'・'+escapeHtml(c.occupation):''}</div></div>
+            <div class="btn sm ghost" style="border-color:transparent; color:var(--danger); padding:6px 8px;" onclick="removeMyContact(${jsArg(id)})">削除</div>
           </div>`;
         }).join('') : `<div class="set-row"><div class="set-sub">まだ追加した相手はいません</div></div>`}
       </div>
@@ -1492,7 +1576,7 @@ function screenSettings(){
       <div class="section-title">アカウント</div>
       <div class="set-card">
         <div class="set-row">
-          <div><div class="set-label">${ME.name}</div><div class="set-sub">${ME.occupation}・個人ID ${ME.id}</div></div>
+          <div><div class="set-label">${escapeHtml(ME.name)}</div><div class="set-sub">${escapeHtml(ME.occupation)}・個人ID ${escapeHtml(ME.id)}</div></div>
         </div>
         <div class="set-row">
           <div><div class="set-label">メールアドレスの確認</div><div class="set-sub">${ME.emailVerified ? '確認済みです' : '未確認です。メール内のリンクから確認してください'}</div></div>
@@ -1522,8 +1606,9 @@ function screenSettings(){
         </div>
       </div>
 
-      <div class="section-title">通知</div>
-      <div class="set-card">
+      <div class="section-title">通知(準備中)</div>
+      <div class="set-sub" style="margin:-4px 0 8px;">通知機能は開発中です。現在は切り替えても動作は変わりません。</div>
+      <div class="set-card" style="opacity:.6;">
         ${switchRow('push','プッシュ通知','返信・コメントをプッシュ通知で受け取る')}
         ${switchRow('sound','通知音','アプリ内で通知音を鳴らす')}
         ${switchRow('quiet','勤務中モード','一時的に通知をすべて止める')}
@@ -1542,15 +1627,14 @@ function screenSettings(){
 
       <div class="section-title">その他</div>
       <div class="set-card">
-        <div class="set-row"><div class="set-label">Web版とデータ同期</div></div>
         <div class="set-row" style="cursor:pointer;" onclick="S._legalFrom='settings';S.screen='terms';render()"><div class="set-label">利用規約</div></div>
         <div class="set-row" style="cursor:pointer;" onclick="S._legalFrom='settings';S.screen='privacy';render()"><div class="set-label">プライバシーポリシー</div></div>
-        <div class="set-row"><div class="set-label" style="color:var(--danger);" onclick="doLogout()">ログアウト</div></div>
+        <div class="set-row" style="cursor:pointer;" onclick="doLogout()"><div class="set-label" style="color:var(--danger);">ログアウト</div></div>
       </div>
 
       <div class="section-title">アカウント削除</div>
       <div class="set-card" style="padding:16px;">
-        <div class="set-sub" style="margin-bottom:12px;">アカウントを削除すると、プロフィール情報にアクセスできなくなります。作成したレポートや送信履歴は削除されません。この操作は取り消せません。</div>
+        <div class="set-sub" style="margin-bottom:12px;">アカウントを削除すると、プロフィール情報にアクセスできなくなります。作成したレポートや送信履歴は削除されません。この操作は取り消せません。<br>確認のため、上の「現在のパスワード」欄にパスワードを入力してから押してください。</div>
         <button class="btn block" style="border-color:var(--danger); color:var(--danger);" onclick="deleteAccount()">アカウントを削除する</button>
       </div>
     </div>
@@ -1567,14 +1651,14 @@ function toggleNotif(key){ S.notif[key] = !S.notif[key]; render(); }
 async function addMyContact(){
   const id = (S.addContactInput||'').trim().toUpperCase();
   if(!id){ toast('個人IDを入力してください'); return; }
-  const c = DIRECTORY.find(x=>x.id.toUpperCase()===id);
+  const c = DIRECTORY.find(x=>String(x.id||'').toUpperCase()===id);
   if(!c){ toast('その個人IDは見つかりませんでした'); return; }
   if(S.myContacts.includes(c.id)){ toast('すでに追加されています'); return; }
   try{
     await window.fb.updateDoc(window.fb.doc(window.fb.db,'users',ME.uid), { favoriteIds: window.fb.arrayUnion(c.id) });
     S.myContacts.push(c.id);
     S.addContactInput='';
-    toast(c.name+'さんを追加しました');
+    toast((c.name||c.id)+'さんを追加しました');
     render();
   }catch(e){ console.error(e); toast('追加に失敗しました'); }
 }
@@ -1587,13 +1671,28 @@ async function removeMyContact(id){
 }
 
 /* ---- utils ---- */
-function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+// onclick="fn(${jsArg(x)})" のように、HTML属性内のJS引数として安全に埋め込む
+function jsArg(s){ return escapeHtml(JSON.stringify(String(s==null?'':s))); }
+// 添付画像のURLは Firebase Storage のものだけを許可する(javascript: などを埋め込まれないように)
+function safeUrl(u){
+  const s = String(u||'');
+  return s.startsWith('https://firebasestorage.googleapis.com/') ? escapeHtml(s) : '';
+}
+function isMine(r){ return !!r && r.authorUid===ME.uid; }
+// このStorageパスを、指定したレポート以外がまだ参照しているか(再編集版と元レポートで画像を共有しているため)
+function isPathReferenced(path, exceptId){
+  return reports.some(r=>r.id!==exceptId && (r.attachments||[]).some(a=>a.path===path));
+}
 
 function buildPrintDocumentHTML(d, mode){
-  const authorLabel = `${escapeHtml(ME.name)}(${escapeHtml(ME.occupation)}・${escapeHtml(ME.id)})`;
+  // 受け取ったレポートを印刷するときは、自分ではなく作成者の名前を載せる
+  const authorLabel = (d.authorUid && d.authorUid!==ME.uid)
+    ? `${escapeHtml(d.authorName)}(${escapeHtml(d.authorId)})`
+    : `${escapeHtml(ME.name)}(${escapeHtml(ME.occupation)}・${escapeHtml(ME.id)})`;
   const fieldsHtml = (d.fields||[]).map(f=>`<div class="field"><div class="n">${escapeHtml(f.name||'項目')}</div><div class="v">${escapeHtml(f.value)}</div></div>`).join('');
   const questionHtml = d.question ? `<div class="field"><div class="n" style="color:#C4842B;">疑問・困りごと</div><div class="v">${escapeHtml(d.question)}</div></div>` : '';
-  const imgsHtml = (d.attachments && d.attachments.length) ? `<div class="imgs">${d.attachments.map(a=>`<img src="${a.url}">`).join('')}</div>` : '';
+  const imgsHtml = (d.attachments && d.attachments.length) ? `<div class="imgs">${d.attachments.filter(a=>safeUrl(a.url)).map(a=>`<img src="${safeUrl(a.url)}">`).join('')}</div>` : '';
   const isPdf = mode==='pdf';
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8">
@@ -1676,6 +1775,7 @@ render();
 // Firebase の準備ができたら、ログイン状態を確認して画面を切り替える
 window.addEventListener('fb-ready', function(){
   window.fb.onAuthStateChanged(window.fb.auth, async function(user){
+    if(authInProgress) return; // ログイン・登録処理の側で画面遷移まで面倒を見る
     if(user){
       await loadProfileAndApply(user);
       if(S.screen==='login'){ await go('home'); } else { render(); }

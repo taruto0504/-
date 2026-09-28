@@ -1,0 +1,17 @@
+rules_version = '2';
+
+// 医療教育アプリ(education/index.html)用の Cloud Storage セキュリティルール
+// デプロイ: firebase deploy --only storage
+service firebase.storage {
+  match /b/{bucket}/o {
+    // 添付画像は attachments/{自分のuid}/ の下にだけ、8MB未満の画像としてアップロードできる
+    match /attachments/{uid}/{fileName} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.size < 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow update: if false;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
