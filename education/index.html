@@ -2,7 +2,17 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#2E6F6A">
+<meta name="description" content="医療従事者向けのレポート作成・共有・フィードバックアプリ">
+<!-- アプリ化(ホーム画面に追加 / インストール)用 -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="医療教育">
 <title>医療教育アプリ プロトタイプ</title>
 <style>
   :root{
@@ -40,7 +50,7 @@
   .topbar{
     position:sticky; top:0; z-index:10;
     background:var(--paper);
-    padding:18px 18px 10px;
+    padding:calc(18px + env(safe-area-inset-top,0px)) 18px 10px;
     display:flex; align-items:center; gap:10px;
     border-bottom:1px solid transparent;
   }
@@ -108,12 +118,12 @@
   /* ---- Buttons / inputs ---- */
   .field-label{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:18px 0 7px;}
   .req{color:var(--danger); font-weight:700; margin-left:3px;}
-  input[type=text], textarea, .fake-input{
+  input[type=text], input[type=email], input[type=password], textarea, .fake-input{
     width:100%; border:1px solid var(--line); border-radius:var(--radius-sm);
     padding:12px 13px; font-size:14.5px; font-family:inherit; background:var(--panel); color:var(--ink);
   }
   textarea{min-height:130px; resize:vertical; line-height:1.6;}
-  input[type=text]:focus, textarea:focus{outline:2px solid var(--primary); outline-offset:0; border-color:var(--primary);}
+  input[type=text]:focus, input[type=email]:focus, input[type=password]:focus, textarea:focus{outline:2px solid var(--primary); outline-offset:0; border-color:var(--primary);}
 
   .btn{
     display:inline-flex; align-items:center; justify-content:center; gap:6px;
@@ -245,7 +255,8 @@
   }
   .navbtn{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0; cursor:pointer; color:#9AA5A1; border:none; background:none; font-family:inherit;}
   .navbtn.active{color:var(--primary-dark);}
-  .navbtn .navic{font-size:19px;}
+  .navbtn .navic{font-size:19px; position:relative;}
+  .nav-dot{position:absolute; top:-1px; right:-6px; width:8px; height:8px; border-radius:50%; background:var(--amber); border:1.5px solid #fff;}
   .navbtn .navlbl{font-size:10.5px; font-weight:700;}
 
   .toast{
@@ -256,7 +267,7 @@
   .toast.show{opacity:1;}
 
   /* ---- Login ---- */
-  .login-wrap{padding:60px 26px 40px; text-align:center;}
+  .login-wrap{padding:calc(60px + env(safe-area-inset-top,0px)) 26px 40px; text-align:center;}
   .login-logo{width:56px;height:56px;border-radius:16px;background:var(--primary); color:#fff; display:flex;align-items:center;justify-content:center; font-size:24px; font-weight:800; margin:0 auto 18px;}
   .login-wrap h2{font-size:21px; margin:0 0 6px;}
   .login-wrap p{font-size:13.5px; color:var(--ink-soft); margin:0 0 30px;}
@@ -267,7 +278,63 @@
   .switch-mode{margin-top:22px; text-align:center; font-size:13px; color:var(--ink-soft);}
   .switch-mode a{color:var(--primary-dark); font-weight:700; cursor:pointer; text-decoration:none;}
 
-  ::-webkit-scrollbar{width:0;height:0;}
+  .sidebar-brand{display:none;}
+
+  /* ==== 端末に合わせた自動切り替え ==== */
+
+  /* タッチ端末(スマホ・タブレット):iOSで入力欄をタップしたときに勝手に拡大されないよう16px以上にする */
+  @media (pointer:coarse){
+    input[type=text], input[type=email], input[type=password], textarea, .search-bar input{font-size:16px;}
+    .btn, .chip, .navbtn, .tab-btn{min-height:40px;}
+  }
+
+  /* マウス操作の端末:ホバーで反応を返す */
+  @media (hover:hover) and (pointer:fine){
+    .report-card:hover, .action-btn:hover:not(.primary), .rsr-item:hover, .set-row[onclick]:hover{background:#F8FAF8;}
+    .report-card:hover{border-color:#C9D3CD;}
+    .btn:hover{filter:brightness(.97);}
+    .navbtn:hover{color:var(--primary-dark);}
+    ::-webkit-scrollbar{width:10px;height:10px;}
+    ::-webkit-scrollbar-thumb{background:#CBD3CE; border-radius:999px; border:3px solid var(--paper);}
+  }
+  @media not all and (hover:hover) and (pointer:fine){
+    ::-webkit-scrollbar{width:0;height:0;}
+  }
+
+  /* タブレット:少し広げる */
+  @media (min-width:600px){
+    #app{max-width:640px;}
+    .bottomnav{max-width:640px;}
+  }
+
+  /* パソコン(横幅900px以上):左にメニュー、中央に広い本文 */
+  @media (min-width:900px){
+    #app{max-width:1120px;}
+    #app.has-nav{padding-left:232px;}
+    .bottomnav{
+      top:0; bottom:0; left:max(0px, calc((100vw - 1120px) / 2)); transform:none;
+      width:232px; max-width:none; flex-direction:column; justify-content:flex-start; gap:4px;
+      border-top:none; border-right:1px solid var(--line); padding:24px 14px;
+    }
+    .sidebar-brand{display:flex; align-items:center; gap:10px; padding:0 10px 22px; font-weight:800; font-size:15px; color:var(--ink);}
+    .sidebar-brand .logo{width:34px;height:34px;border-radius:10px;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;}
+    .navbtn{flex:none; flex-direction:row; justify-content:flex-start; gap:12px; padding:11px 14px; border-radius:10px; color:var(--ink-soft);}
+    .navbtn.active{background:var(--primary-tint);}
+    .navbtn .navlbl{font-size:14px;}
+    .navbtn .navic{font-size:17px; position:relative;}
+    .topbar{padding:26px 32px 14px;}
+    .topbar h1{font-size:22px;}
+    .content{padding:8px 32px 48px; max-width:860px; width:100%;}
+    .actions-row{gap:12px;}
+    .action-btn{padding:18px 8px;}
+    #saved-list{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px;}
+    #saved-list .report-card{margin-bottom:0;}
+    #saved-list .empty-state{grid-column:1 / -1;}
+    .chat-input-row{bottom:16px;}
+    .msg{max-width:65%;}
+    .toast{bottom:32px;}
+    .login-wrap{max-width:440px; margin:56px auto; padding:44px 36px; background:var(--panel); border:1px solid var(--line); border-radius:20px; box-shadow:0 10px 30px rgba(22,35,43,.06);}
+  }
 </style>
 </head>
 <body>
@@ -355,8 +422,19 @@ const S = {
   sendMode:'search', // search | saved
   myContacts:[],
   addContactInput:'',
+  contactEditMode:false,
+  contactSelected:[],
   notif:{ push:true, sound:true, quiet:false },
 };
+
+/* ============ 端末の判定 ============ */
+// 画面レイアウトはCSSのメディアクエリで自動的に切り替わる。ここでは操作方法の違い(マウスかタッチか)を判定する
+const IS_DESKTOP = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
+const HAS_SPEECH = !!(window.SpeechRecognition || window.webkitSpeechRecognition); // 音声入力に対応していない端末ではボタンを出さない
+const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; // インストール済みアプリとして起動中か
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+// Enterキー判定(日本語入力の変換確定のEnterでは反応しない)
+function isEnter(e){ return e.key==='Enter' && !e.isComposing && e.keyCode!==229 && !e.shiftKey; }
 
 function toast(msg){
   const t = document.createElement('div');
@@ -462,6 +540,8 @@ function render(){
   const chat = document.getElementById('chatInput');
   const chatState = chat ? { value:chat.value, focused: document.activeElement===chat } : null;
   app.innerHTML = html;
+  // メニューがある画面だけ、パソコン表示で左側にメニュー分の余白を取る
+  app.classList.toggle('has-nav', !!app.querySelector('.bottomnav'));
   const chatAfter = document.getElementById('chatInput');
   if(chatState && chatAfter){
     chatAfter.value = chatState.value;
@@ -479,6 +559,7 @@ function wrap(inner, activeTab){
   return `
     ${inner}
     <div class="bottomnav">
+      <div class="sidebar-brand"><div class="logo">医</div>医療教育アプリ</div>
       ${navBtn('home','🏠','ホーム',activeTab)}
       ${navBtn('create','✏️','作成',activeTab)}
       ${navBtn('saved','📁','保存',activeTab, hasUnread)}
@@ -488,7 +569,7 @@ function wrap(inner, activeTab){
 }
 function navBtn(key,icon,label,active,showDot){
   return `<button class="navbtn ${active===key?'active':''}" onclick="go('${key}')" style="position:relative;">
-    <span class="navic">${icon}${showDot?'<span style="position:absolute; top:2px; right:calc(50% - 16px); width:8px; height:8px; border-radius:50%; background:var(--amber); border:1.5px solid #fff;"></span>':''}</span><span class="navlbl">${label}</span>
+    <span class="navic">${icon}${showDot?'<span class="nav-dot"></span>':''}</span><span class="navlbl">${label}</span>
   </button>`;
 }
 
@@ -519,9 +600,9 @@ function screenLogin(){
     <div class="login-form">
       ${isLogin ? `
         <div class="field-label">メールアドレス</div>
-        <input type="text" id="li-email" placeholder="you@example.com" autocomplete="username">
+        <input type="email" id="li-email" placeholder="you@example.com" autocomplete="username" inputmode="email" autocapitalize="off">
         <div class="field-label">パスワード</div>
-        <input type="password" id="li-password" placeholder="••••••••" autocomplete="current-password">
+        <input type="password" id="li-password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(isEnter(event)) doLogin()">
         <div style="text-align:right; margin-top:8px;">
           <a style="font-size:12.5px; color:var(--ink-soft); cursor:pointer;" onclick="sendPasswordReset()">パスワードをお忘れですか?</a>
         </div>
@@ -533,7 +614,7 @@ function screenLogin(){
         <div class="field-label">氏名</div>
         <input type="text" id="rg-name" placeholder="山田 太郎">
         <div class="field-label">メールアドレス</div>
-        <input type="text" id="rg-email" placeholder="you@example.com" autocomplete="username">
+        <input type="email" id="rg-email" placeholder="you@example.com" autocomplete="username" inputmode="email" autocapitalize="off">
         <div class="field-label">パスワード</div>
         <input type="password" id="rg-password" placeholder="6文字以上" autocomplete="new-password">
         <div style="display:flex; align-items:flex-start; gap:8px; margin-top:16px;">
@@ -939,9 +1020,9 @@ function screenCreate(){
       <div class="field-label">自由欄(メイン)<span class="req">必須</span></div>
       <textarea id="f-body" placeholder="調べたこと・レポート内容を自由に入力してください" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
 
-      <div class="mic-btn ${S.recording?'recording':''}" onclick="toggleMic()">
-        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… タップで停止` : `🎙 音声入力で自由欄に文字起こし`}
-      </div>
+      ${HAS_SPEECH ? `<div class="mic-btn ${S.recording?'recording':''}" onclick="toggleMic()">
+        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声入力で自由欄に文字起こし`}
+      </div>` : ''}
 
       <div class="field-label">疑問・困りごと<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></div>
       <textarea id="f-question" style="min-height:90px;" placeholder="分からなかったこと、意見が欲しい点など、相手に聞きたいことがあれば書いてください" oninput="d_.question=this.value">${escapeHtml(d.question||'')}</textarea>
@@ -1236,7 +1317,7 @@ function reportCard(r){
       <div class="rc-meta">
         <span>${escapeHtml(r.createdAt)}</span>
         ${!mine ? `<span>${escapeHtml(r.authorName||'')}さんから</span>` : ''}
-        ${r.recipients.length ? `<span class="rc-read">✓ 既読 ${readCount}/${r.recipients.length}</span>` : ''}
+        ${mine && r.recipients.length ? `<span class="rc-read">✓ 既読 ${readCount}/${r.recipients.length}</span>` : ''}
         ${r.originalId ? `<span>🔗 再編集版</span>` : ''}
       </div>
       ${r.hasUnreadComment ? `<div class="rc-meta" style="color:var(--amber);font-weight:700;margin-top:4px;">💬 新しい返信があります</div>` : ''}
@@ -1363,7 +1444,7 @@ function detailChat(r){
       `).join('') : `<div class="empty-state"><div class="em-ic">💬</div>まだコメントはありません</div>`}
     </div>
     <div class="chat-input-row">
-      <input type="text" id="chatInput" placeholder="コメント・アドバイスを送る" maxlength="2000">
+      <input type="text" id="chatInput" placeholder="${IS_DESKTOP ? 'コメント・アドバイスを送る(Enterで送信)' : 'コメント・アドバイスを送る'}" maxlength="2000" onkeydown="if(isEnter(event)) sendComment(${jsArg(r.id)})">
       <button class="btn solid sm" onclick="sendComment(${jsArg(r.id)})">送信</button>
     </div>
   `;
@@ -1455,10 +1536,16 @@ function sendResultsHtml(){
   const q = S.sendQuery.toLowerCase();
   const results = q ? DIRECTORY.filter(c=>String(c.name||'').toLowerCase().includes(q) || String(c.id||'').toLowerCase().includes(q)) : [];
   return results.length? `<div class="recipient-search-results">
-    ${results.map(c=>`<div class="rsr-item" onclick="toggleRecipient(${jsArg(c.id)})">
+    ${results.map(c=>{
+      const fav = S.myContacts.includes(c.id);
+      return `<div class="rsr-item" onclick="toggleRecipient(${jsArg(c.id)})">
       <span>${escapeHtml(c.name)} <small>・${escapeHtml(c.occupation)}</small></span>
-      <span>${S.sendSelected.includes(c.id)?'✓':'＋'}</span>
-    </div>`).join('')}
+      <span style="display:flex; align-items:center; gap:12px;">
+        <span title="${fav?'相手一覧から削除':'相手一覧に登録'}" style="font-size:16px; cursor:pointer; ${fav?'':'filter:grayscale(1); opacity:.45;'}" onclick="event.stopPropagation(); toggleFavoriteFromSend(${jsArg(c.id)})">⭐</span>
+        <span>${S.sendSelected.includes(c.id)?'✓':'＋'}</span>
+      </span>
+    </div>`;
+    }).join('')}
   </div>` : '';
 }
 // 検索欄の入力中は画面全体を作り直さず、検索結果だけを差し替える(フォーカス・日本語変換を保つため)
@@ -1484,7 +1571,8 @@ function screenSend(){
         <input type="text" placeholder="個人ID または 氏名を入力" value="${escapeHtml(S.sendQuery)}" oninput="S.sendQuery=this.value;renderSendResults()">
         <div id="send-results">${sendResultsHtml()}</div>
       ` : `
-        <div class="field-label" style="margin-top:4px;">登録済みの相手(タップで選択)</div>
+        <div class="field-label" style="margin-top:4px; display:flex; align-items:center;">登録済みの相手(${IS_DESKTOP?'クリック':'タップ'}で選択)
+          <a style="margin-left:auto; color:var(--primary-dark); cursor:pointer;" onclick="openContactsFromSend()">相手一覧を編集 ›</a></div>
         ${S.myContacts.length ? `<div class="recipient-search-results">
           ${S.myContacts.map(id=>{
             const c = DIRECTORY.find(x=>x.id===id);
@@ -1493,7 +1581,7 @@ function screenSend(){
               <span>${S.sendSelected.includes(id)?'✓':'＋'}</span>
             </div>`;
           }).join('')}
-        </div>` : `<div class="empty-state" style="padding:26px 10px;"><div class="em-ic">👤</div>登録済みの相手がいません。<br>設定画面の「よく送る相手」から追加できます。</div>`}
+        </div>` : `<div class="empty-state" style="padding:26px 10px;"><div class="em-ic">👤</div>登録済みの相手がいません。<br>検索結果の ⭐ を押すか、「相手一覧を編集」から追加できます。</div>`}
       `}
 
       ${d.originalId ? `<div class="link-note">↩︎ 最初の送信相手が自動で選択されています。必要に応じて削除・追加できます。</div>` : ''}
@@ -1541,31 +1629,98 @@ async function doSend(){
 }
 
 /* ---- Contacts (よく送る相手の一覧) ---- */
+function contactCandidatesHtml(){
+  const q = (S.addContactInput||'').trim().toLowerCase();
+  if(!q) return '';
+  const results = DIRECTORY.filter(c=>String(c.name||'').toLowerCase().includes(q) || String(c.id||'').toLowerCase().includes(q)).slice(0,20);
+  if(!results.length) return `<div class="set-sub" style="margin-top:8px;">該当する相手が見つかりません</div>`;
+  return `<div class="recipient-search-results">
+    ${results.map(c=>{
+      const added = S.myContacts.includes(c.id);
+      return `<div class="rsr-item" ${added?'':`onclick="addMyContact(${jsArg(c.id)})"`}>
+        <span>${escapeHtml(c.name)} <small>・${escapeHtml(c.id)}・${escapeHtml(c.occupation)}</small></span>
+        <span style="font-size:12.5px; font-weight:700; white-space:nowrap; color:${added?'var(--ink-soft)':'var(--primary-dark)'};">${added?'追加済み':'＋ 追加'}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+// 入力中は候補部分だけを差し替える(フォーカス・日本語変換を保つため)
+function renderContactCandidates(){
+  const el = document.getElementById('contact-candidates');
+  if(el) el.innerHTML = contactCandidatesHtml(); else render();
+}
 function screenContacts(){
+  const sel = S.contactSelected;
+  const editing = S.contactEditMode;
   return `
     <div class="topbar bordered">
-      <div class="back-btn" onclick="go('home')">←</div>
+      <div class="back-btn" onclick="leaveContacts()">←</div>
       <h1>相手一覧</h1>
+      ${S.myContacts.length ? `<button class="btn sm" style="margin-left:auto;" onclick="toggleContactEditMode()">${editing?'完了':'選択して削除'}</button>` : ''}
     </div>
     <div class="content">
-      <div class="field-label" style="margin-top:8px;">個人IDを追加</div>
+      ${editing ? '' : `
+      <div class="field-label" style="margin-top:8px;">相手を追加(個人ID または 氏名で検索)</div>
       <div style="display:flex; gap:8px;">
-        <input type="text" style="flex:1;" placeholder="例:NR-1077" value="${escapeHtml(S.addContactInput)}" oninput="S.addContactInput=this.value">
+        <input type="text" id="contact-add-input" style="flex:1;" placeholder="例:NR-1077 / 山田" value="${escapeHtml(S.addContactInput)}"
+          oninput="S.addContactInput=this.value;renderContactCandidates()" onkeydown="if(isEnter(event)) addMyContact()" autocapitalize="off">
         <button class="btn solid sm" onclick="addMyContact()">追加</button>
       </div>
+      <div id="contact-candidates">${contactCandidatesHtml()}</div>
+      `}
+
+      ${editing ? `<div class="delete-actionbar" style="margin-top:8px;">
+        <span>${sel.length}名選択中</span>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <button class="btn sm" onclick="selectAllContacts()">${sel.length===S.myContacts.length?'選択解除':'すべて選択'}</button>
+          <button class="btn sm solid" style="background:var(--danger); border-color:var(--danger);" onclick="removeSelectedContacts()">削除する</button>
+        </div>
+      </div>` : ''}
 
       <div class="field-label">登録済み(${S.myContacts.length}名)</div>
       <div class="set-card">
         ${S.myContacts.length ? S.myContacts.map(id=>{
           const c = DIRECTORY.find(x=>x.id===id);
-          return `<div class="set-row">
-            <div><div class="set-label">${escapeHtml(c?c.name:id)}</div><div class="set-sub">${escapeHtml(id)}${c?'・'+escapeHtml(c.occupation):''}</div></div>
-            <div class="btn sm ghost" style="border-color:transparent; color:var(--danger); padding:6px 8px;" onclick="removeMyContact(${jsArg(id)})">削除</div>
-          </div>`;
-        }).join('') : `<div class="set-row"><div class="set-sub">まだ追加した相手はいません</div></div>`}
+          const checked = sel.includes(id);
+          const info = `<div style="min-width:0;"><div class="set-label">${escapeHtml(c?c.name:id)}</div><div class="set-sub">${escapeHtml(id)}${c?'・'+escapeHtml(c.occupation):'・見つからないユーザー(退会済みの可能性があります)'}</div></div>`;
+          return editing
+            ? `<div class="set-row" style="cursor:pointer; justify-content:flex-start; gap:12px;" onclick="toggleContactSelect(${jsArg(id)})">
+                 <span style="font-size:18px;">${checked?'☑️':'⬜'}</span>${info}
+               </div>`
+            : `<div class="set-row" style="gap:10px;">
+                 ${info}
+                 <button class="btn sm" style="border-color:var(--danger); color:var(--danger); flex-shrink:0;" onclick="removeMyContact(${jsArg(id)})">🗑 削除</button>
+               </div>`;
+        }).join('') : `<div class="set-row"><div class="set-sub">まだ追加した相手はいません。上の欄から検索して追加できます。</div></div>`}
       </div>
     </div>
   `;
+}
+function leaveContacts(){
+  S.contactEditMode = false; S.contactSelected = [];
+  // 送信画面から来た場合は送信画面に戻す(作成中のレポートを失わないように)
+  if(S._contactsFrom==='send' && S.draft){ S._contactsFrom=null; S.screen='send'; render(); return; }
+  S._contactsFrom=null;
+  go('home');
+}
+function openContactsFromSend(){
+  S._contactsFrom='send';
+  S.screen='contacts';
+  render();
+}
+function toggleContactEditMode(){
+  S.contactEditMode = !S.contactEditMode;
+  S.contactSelected = [];
+  render();
+}
+function toggleContactSelect(id){
+  const i = S.contactSelected.indexOf(id);
+  if(i>-1) S.contactSelected.splice(i,1); else S.contactSelected.push(id);
+  render();
+}
+function selectAllContacts(){
+  S.contactSelected = S.contactSelected.length===S.myContacts.length ? [] : [...S.myContacts];
+  render();
 }
 
 /* ---- Settings ---- */
@@ -1594,7 +1749,7 @@ function screenSettings(){
 
         <div class="field-label">新しいメールアドレス</div>
         <div style="display:flex; gap:8px;">
-          <input type="text" id="acct-new-email" style="flex:1;" placeholder="new-address@example.com" autocomplete="email">
+          <input type="email" id="acct-new-email" style="flex:1;" placeholder="new-address@example.com" autocomplete="email" inputmode="email" autocapitalize="off">
           <button class="btn sm" onclick="changeEmail()">変更</button>
         </div>
         <div class="set-sub" style="margin-top:6px;">新しいアドレス宛に届く確認メールのリンクを開くと切り替わります。</div>
@@ -1625,6 +1780,15 @@ function screenSettings(){
       <div class="section-title">広告</div>
       <div class="ad-slot">広告スペース(準備中)</div>
 
+      ${IS_STANDALONE ? '' : `
+      <div class="section-title">アプリ</div>
+      <div class="set-card">
+        <div class="set-row" style="cursor:pointer;" onclick="installApp()">
+          <div><div class="set-label">📲 アプリとしてインストール</div><div class="set-sub">${IS_DESKTOP ? 'パソコンのアプリ一覧やデスクトップから起動できるようになります' : 'ホーム画面のアイコンから、アプリのように起動できるようになります'}</div></div>
+          <div style="color:var(--ink-soft);">›</div>
+        </div>
+      </div>`}
+
       <div class="section-title">その他</div>
       <div class="set-card">
         <div class="set-row" style="cursor:pointer;" onclick="S._legalFrom='settings';S.screen='terms';render()"><div class="set-label">利用規約</div></div>
@@ -1648,26 +1812,51 @@ function switchRow(key,label,sub){
   </div>`;
 }
 function toggleNotif(key){ S.notif[key] = !S.notif[key]; render(); }
-async function addMyContact(){
-  const id = (S.addContactInput||'').trim().toUpperCase();
+async function addMyContact(idArg){
+  const id = (idArg || S.addContactInput || '').trim().toUpperCase();
   if(!id){ toast('個人IDを入力してください'); return; }
   const c = DIRECTORY.find(x=>String(x.id||'').toUpperCase()===id);
-  if(!c){ toast('その個人IDは見つかりませんでした'); return; }
+  if(!c){ toast('その個人IDは見つかりませんでした。氏名で検索して候補から選ぶこともできます'); return; }
   if(S.myContacts.includes(c.id)){ toast('すでに追加されています'); return; }
+  if(S.myContacts.length >= 200){ toast('登録できるのは200名までです'); return; }
   try{
     await window.fb.updateDoc(window.fb.doc(window.fb.db,'users',ME.uid), { favoriteIds: window.fb.arrayUnion(c.id) });
     S.myContacts.push(c.id);
-    S.addContactInput='';
+    if(S.screen==='contacts') S.addContactInput='';
     toast((c.name||c.id)+'さんを追加しました');
     render();
   }catch(e){ console.error(e); toast('追加に失敗しました'); }
 }
 async function removeMyContact(id){
+  const c = DIRECTORY.find(x=>x.id===id);
+  if(!window.confirm(`${c?c.name:id}さんを相手一覧から削除しますか?\n(相手には通知されません。送信済みのレポートはそのまま残ります)`)) return;
+  await removeContacts([id]);
+}
+async function removeSelectedContacts(){
+  const ids = [...S.contactSelected];
+  if(!ids.length){ toast('削除する相手を選択してください'); return; }
+  if(!window.confirm(`${ids.length}名を相手一覧から削除しますか?\n(相手には通知されません。送信済みのレポートはそのまま残ります)`)) return;
+  const ok = await removeContacts(ids);
+  if(ok){ S.contactEditMode = false; S.contactSelected = []; render(); }
+}
+async function removeContacts(ids){
   try{
-    await window.fb.updateDoc(window.fb.doc(window.fb.db,'users',ME.uid), { favoriteIds: window.fb.arrayRemove(id) });
-    S.myContacts = S.myContacts.filter(x=>x!==id);
+    await window.fb.updateDoc(window.fb.doc(window.fb.db,'users',ME.uid), { favoriteIds: window.fb.arrayRemove(...ids) });
+    S.myContacts = S.myContacts.filter(x=>!ids.includes(x));
+    S.contactSelected = S.contactSelected.filter(x=>!ids.includes(x));
+    toast(ids.length===1 ? '削除しました' : ids.length+'名を削除しました');
     render();
-  }catch(e){ console.error(e); toast('削除に失敗しました'); }
+    return true;
+  }catch(e){ console.error(e); toast('削除に失敗しました'); return false; }
+}
+// 送信画面の検索結果から、相手一覧への登録・解除を切り替える
+async function toggleFavoriteFromSend(id){
+  if(S.myContacts.includes(id)){
+    if(!window.confirm('相手一覧から削除しますか?')) return;
+    await removeContacts([id]);
+  } else {
+    await addMyContact(id);
+  }
 }
 
 /* ---- utils ---- */
@@ -1769,6 +1958,31 @@ function doPrint(){ openPrintWindow(S.draft, 'print'); }
 function doPdf(){ openPrintWindow(S.draft, 'pdf'); }
 function printReport(id){ openPrintWindow(findReport(id), 'print'); }
 function pdfReport(id){ openPrintWindow(findReport(id), 'pdf'); }
+
+/* ---- アプリ化(PWA) ---- */
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  // Chrome / Edge / Android では、ブラウザ標準のインストール案内をこちらのボタンから出す
+  e.preventDefault();
+  deferredInstallPrompt = e;
+});
+window.addEventListener('appinstalled', ()=>{ deferredInstallPrompt = null; toast('インストールしました'); });
+async function installApp(){
+  if(deferredInstallPrompt){
+    deferredInstallPrompt.prompt();
+    try{ await deferredInstallPrompt.userChoice; }catch(e){}
+    deferredInstallPrompt = null;
+    return;
+  }
+  if(IS_IOS){
+    alert('iPhone / iPad の場合:\n\nSafariの画面下(または上)にある「共有」ボタン(□に↑)を押し、\n「ホーム画面に追加」を選んでください。');
+  } else {
+    alert('ブラウザのメニュー(︙ や …)から「アプリをインストール」または「ホーム画面に追加」を選んでください。\n\n表示されない場合は、Chrome または Edge で開いてお試しください。');
+  }
+}
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(e=>console.error(e)); });
+}
 
 render();
 
