@@ -1,0 +1,1691 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>医療教育アプリ プロトタイプ</title>
+<style>
+  :root{
+    --ink:#16232B;
+    --ink-soft:#4B5A58;
+    --paper:#F3F5F2;
+    --panel:#FFFFFF;
+    --line:#DDE3DE;
+    --primary:#2E6F6A;
+    --primary-dark:#1E4E4A;
+    --primary-tint:#E4EFEC;
+    --amber:#C4842B;
+    --amber-tint:#FBF0DE;
+    --danger:#B14A3E;
+    --radius:14px;
+    --radius-sm:9px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    max-width:430px;
+    margin:0 auto;
+    min-height:100vh;
+    background:var(--paper);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    background:var(--paper);
+    padding:18px 18px 10px;
+    display:flex; align-items:center; gap:10px;
+    border-bottom:1px solid transparent;
+  }
+  .topbar.bordered{border-bottom:1px solid var(--line); background:var(--panel);}
+  .topbar h1{font-size:20px; font-weight:700; margin:0; letter-spacing:.01em;}
+  .back-btn{
+    width:34px;height:34px;border-radius:50%;border:1px solid var(--line);
+    background:var(--panel); display:flex;align-items:center;justify-content:center;
+    cursor:pointer; flex-shrink:0; color:var(--ink);
+  }
+  .content{flex:1; padding:6px 18px 96px; overflow-y:auto;}
+  .content.no-pad-top{padding-top:0;}
+
+  /* ---- Home ---- */
+  .id-card{
+    background:linear-gradient(135deg,var(--primary-dark),var(--primary));
+    color:#fff; border-radius:18px; padding:20px 22px; margin:6px 0 22px;
+    position:relative; overflow:hidden;
+  }
+  .id-card::after{
+    content:""; position:absolute; right:-30px; top:-40px; width:140px;height:140px;
+    border-radius:50%; background:rgba(255,255,255,.08);
+  }
+  .id-card .role{font-size:12px; opacity:.85; letter-spacing:.04em;}
+  .id-card .name{font-size:21px; font-weight:700; margin:2px 0 14px;}
+  .id-card .idrow{display:flex; justify-content:space-between; align-items:flex-end;}
+  .id-card .idlabel{font-size:11px; opacity:.75;}
+  .id-card .idval{font-size:16px; font-weight:600; letter-spacing:.03em; font-variant-numeric: tabular-nums;}
+
+  .actions-row{display:flex; gap:8px; margin-bottom:20px;}
+  .action-btn{
+    flex:1; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px 8px; text-align:center; cursor:pointer; transition:transform .12s ease;
+  }
+  .action-btn:active{transform:scale(.97);}
+  .action-btn .ic{font-size:19px;}
+  .action-btn .lbl{display:block; margin-top:7px; font-size:12.5px; font-weight:700;}
+  .action-btn.primary{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .action-btn{position:relative;}
+  .action-dot{position:absolute; top:8px; right:8px; width:9px;height:9px; border-radius:50%; background:var(--amber); border:1.5px solid #fff;}
+
+  .ad-slot{
+    border:1px dashed var(--line); border-radius:var(--radius-sm); background:var(--panel);
+    color:#B7BEBB; font-size:12px; font-weight:700; text-align:center;
+    padding:16px; margin-bottom:16px; letter-spacing:.04em;
+  }
+
+  .section-title{font-size:13px; font-weight:700; color:var(--ink-soft); margin:22px 0 10px; letter-spacing:.02em;}
+
+  .activity-item{
+    display:flex; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); cursor:pointer;
+  }
+  .activity-item:last-child{border-bottom:none;}
+  .activity-item.compact{padding:8px 0; align-items:center;}
+  .activity-item.compact .dot{margin-top:0;}
+  .dot{width:8px;height:8px;border-radius:50%; margin-top:6px; flex-shrink:0;}
+  .dot.unread{background:var(--amber);}
+  .dot.read{background:transparent;}
+  .activity-body{flex:1; min-width:0;}
+  .activity-title{font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .activity-sub{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+  .activity-sub-inline{font-size:12px; font-weight:500; color:var(--ink-soft);}
+  .activity-time{font-size:11.5px; color:#8C9793; white-space:nowrap;}
+
+  /* ---- Buttons / inputs ---- */
+  .field-label{font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:18px 0 7px;}
+  .req{color:var(--danger); font-weight:700; margin-left:3px;}
+  input[type=text], textarea, .fake-input{
+    width:100%; border:1px solid var(--line); border-radius:var(--radius-sm);
+    padding:12px 13px; font-size:14.5px; font-family:inherit; background:var(--panel); color:var(--ink);
+  }
+  textarea{min-height:130px; resize:vertical; line-height:1.6;}
+  input[type=text]:focus, textarea:focus{outline:2px solid var(--primary); outline-offset:0; border-color:var(--primary);}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    border-radius:999px; border:1px solid var(--line); background:var(--panel);
+    padding:11px 18px; font-size:14px; font-weight:700; cursor:pointer; color:var(--ink);
+  }
+  .btn:active{transform:scale(.97);}
+  .btn.solid{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .btn.ghost{background:transparent;}
+  .btn.block{width:100%;}
+  .btn.sm{padding:8px 14px; font-size:13px;}
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+    background:var(--panel); border-radius:999px; padding:7px 13px; font-size:13px; cursor:pointer;
+    color:var(--ink-soft); font-weight:600; white-space:nowrap; flex-shrink:0;
+  }
+  .chip.active{background:var(--primary); border-color:var(--primary); color:#fff;}
+
+  .custom-field{
+    border:1px dashed var(--line); border-radius:var(--radius-sm); padding:12px; margin-top:10px;
+    background:var(--panel);
+  }
+  .custom-field .cf-name{font-size:12px; color:var(--ink-soft); font-weight:700; margin-bottom:5px;}
+  .mini-x{float:right; cursor:pointer; color:#98A2A0; font-size:13px;}
+
+  .attach-row{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;}
+  .attach-thumb{
+    width:56px;height:56px; border-radius:10px; background:var(--primary-tint);
+    display:flex; align-items:center; justify-content:center; font-size:18px; position:relative; color:var(--primary-dark);
+  }
+
+  .mic-btn{
+    display:flex; align-items:center; gap:8px; margin-top:10px; padding:10px 14px;
+    border-radius:999px; border:1px solid var(--line); background:var(--panel); cursor:pointer; font-size:13.5px; font-weight:600;
+  }
+  .mic-btn.recording{background:#FBEAE7; border-color:var(--danger); color:var(--danger);}
+  .mic-dot{width:8px;height:8px;border-radius:50%; background:var(--danger); animation:pulse 1s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  /* ---- Saved list ---- */
+  .search-bar{
+    display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line);
+    border-radius:999px; padding:10px 14px; margin:6px 0 14px;
+  }
+  .search-bar input{border:none; padding:0; font-size:14px; flex:1;}
+  .search-bar input:focus{outline:none;}
+  .filter-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:14px;}
+  .delete-actionbar{
+    display:flex; align-items:center; gap:8px; background:#FBEAE7; border:1px solid var(--danger);
+    border-radius:var(--radius-sm); padding:10px 14px; margin-bottom:14px; font-size:13.5px; font-weight:700; color:var(--danger);
+  }
+
+  .report-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:15px 16px; margin-bottom:11px; cursor:pointer;
+  }
+  .report-card:active{transform:scale(.99);}
+  .rc-top{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
+  .rc-title{font-size:15px; font-weight:700; line-height:1.4;}
+  .badge{
+    font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; flex-shrink:0;
+  }
+  .badge.draft{background:#EFEDE5; color:#8A7F5B;}
+  .badge.saved{background:var(--primary-tint); color:var(--primary-dark);}
+  .badge.sent{background:var(--amber-tint); color:var(--amber);}
+  .rc-meta{font-size:12.5px; color:var(--ink-soft); margin-top:7px; display:flex; gap:10px; align-items:center;}
+  .rc-read{display:flex; align-items:center; gap:4px;}
+
+  .empty-state{text-align:center; padding:60px 20px; color:var(--ink-soft);}
+  .empty-state .em-ic{font-size:34px; margin-bottom:10px;}
+
+  /* ---- Detail ---- */
+  .tab-row{display:flex; gap:4px; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:4px; margin:4px 0 16px;}
+  .tab-btn{flex:1; text-align:center; padding:9px 0; border-radius:999px; font-size:13.5px; font-weight:700; cursor:pointer; color:var(--ink-soft);}
+  .tab-btn.active{background:var(--primary); color:#fff;}
+
+  .detail-title{font-size:19px; font-weight:800; line-height:1.45; margin:4px 0 4px;}
+  .detail-meta{font-size:12.5px; color:var(--ink-soft); margin-bottom:16px;}
+  .detail-body{font-size:14.5px; line-height:1.85; white-space:pre-wrap; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+  .cf-view{margin-top:12px; padding-top:12px; border-top:1px solid var(--line);}
+  .cf-view .cfn{font-size:12px; font-weight:700; color:var(--primary-dark);}
+  .cf-view .cfv{font-size:14px; margin-top:2px;}
+
+  .read-list{display:flex; flex-direction:column; gap:10px; margin-top:6px;}
+  .read-row{display:flex; align-items:center; justify-content:space-between; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius-sm); padding:11px 14px;}
+  .rr-name{font-size:14px; font-weight:600;}
+  .rr-status{font-size:12px; font-weight:700; display:flex; align-items:center; gap:5px;}
+  .rr-status.read{color:var(--primary-dark);}
+  .rr-status.unread{color:var(--amber);}
+
+  .chat-list{display:flex; flex-direction:column; gap:12px; margin-bottom:14px;}
+  .msg{max-width:80%; padding:10px 13px; border-radius:14px; font-size:14px; line-height:1.55;}
+  .msg.other{background:var(--panel); border:1px solid var(--line); border-bottom-left-radius:4px; align-self:flex-start;}
+  .msg.me{background:var(--primary); color:#fff; border-bottom-right-radius:4px; align-self:flex-end;}
+  .msg-sender{font-size:11px; font-weight:700; color:var(--ink-soft); margin-bottom:3px;}
+  .msg-time{font-size:10.5px; opacity:.7; margin-top:4px; text-align:right;}
+  .chat-input-row{display:flex; gap:8px; position:sticky; bottom:80px;}
+  .chat-input-row input{flex:1;}
+
+  /* ---- Send screen ---- */
+  .recipient-search-results{margin-top:8px; border:1px solid var(--line); border-radius:var(--radius-sm); overflow:hidden;}
+  .rsr-item{padding:11px 14px; border-bottom:1px solid var(--line); font-size:14px; cursor:pointer; display:flex; justify-content:space-between; align-items:center;}
+  .rsr-item:last-child{border-bottom:none;}
+  .rsr-item small{color:var(--ink-soft); font-weight:600;}
+  .selected-chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .sel-chip{display:flex; align-items:center; gap:6px; background:var(--primary-tint); color:var(--primary-dark); border-radius:999px; padding:7px 8px 7px 13px; font-size:13px; font-weight:700;}
+  .sel-chip .x{cursor:pointer; width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.08); display:flex;align-items:center;justify-content:center; font-size:11px;}
+  .link-note{font-size:12.5px; color:var(--ink-soft); background:var(--primary-tint); border-radius:var(--radius-sm); padding:10px 13px; margin-top:14px; display:flex; gap:8px; align-items:flex-start;}
+
+  /* ---- Settings ---- */
+  .set-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:4px 16px; margin-bottom:16px;}
+  .set-row{display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--line);}
+  .set-row:last-child{border-bottom:none;}
+  .set-label{font-size:14.5px; font-weight:600;}
+  .set-sub{font-size:12px; color:var(--ink-soft); margin-top:2px;}
+  .switch{width:44px; height:26px; border-radius:999px; background:var(--line); position:relative; cursor:pointer; flex-shrink:0; transition:background .15s;}
+  .switch.on{background:var(--primary);}
+  .switch .knob{position:absolute; top:3px; left:3px; width:20px;height:20px; border-radius:50%; background:#fff; transition:left .15s; box-shadow:0 1px 2px rgba(0,0,0,.25);}
+  .switch.on .knob{left:21px;}
+
+  /* ---- Bottom nav ---- */
+  .bottomnav{
+    position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+    width:100%; max-width:430px; background:var(--panel); border-top:1px solid var(--line);
+    display:flex; padding:8px 6px calc(env(safe-area-inset-bottom,0px) + 8px);
+    z-index:20;
+  }
+  .navbtn{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 0; cursor:pointer; color:#9AA5A1; border:none; background:none; font-family:inherit;}
+  .navbtn.active{color:var(--primary-dark);}
+  .navbtn .navic{font-size:19px;}
+  .navbtn .navlbl{font-size:10.5px; font-weight:700;}
+
+  .toast{
+    position:fixed; bottom:96px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+    padding:11px 20px; border-radius:999px; font-size:13.5px; font-weight:600; z-index:50;
+    opacity:0; transition:opacity .25s, transform .25s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+
+  /* ---- Login ---- */
+  .login-wrap{padding:60px 26px 40px; text-align:center;}
+  .login-logo{width:56px;height:56px;border-radius:16px;background:var(--primary); color:#fff; display:flex;align-items:center;justify-content:center; font-size:24px; font-weight:800; margin:0 auto 18px;}
+  .login-wrap h2{font-size:21px; margin:0 0 6px;}
+  .login-wrap p{font-size:13.5px; color:var(--ink-soft); margin:0 0 30px;}
+  .login-form{text-align:left;}
+  .seg{display:flex; gap:8px; margin-top:8px;}
+  .seg-opt{flex:1; text-align:center; padding:10px 4px; border:1px solid var(--line); border-radius:var(--radius-sm); font-size:12.5px; font-weight:700; cursor:pointer; color:var(--ink-soft);}
+  .seg-opt.active{background:var(--primary); border-color:var(--primary); color:#fff;}
+  .switch-mode{margin-top:22px; text-align:center; font-size:13px; color:var(--ink-soft);}
+  .switch-mode a{color:var(--primary-dark); font-weight:700; cursor:pointer; text-decoration:none;}
+
+  ::-webkit-scrollbar{width:0;height:0;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script type="module">
+  // ==== Firebase 初期化(認証 + データベース) ====
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+  import {
+    getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+    signOut, onAuthStateChanged, updateProfile, deleteUser, sendPasswordResetEmail,
+    reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail, updatePassword, sendEmailVerification
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+  import {
+    getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy,
+    onSnapshot, serverTimestamp, arrayUnion, arrayRemove, runTransaction
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import {
+    getStorage, ref, uploadBytes, getDownloadURL, deleteObject
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
+  import {
+    initializeAppCheck, ReCaptchaEnterpriseProvider
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDKjjhZiuxPIo3P1QVaUqWlQr99TX-4sMU",
+    authDomain: "hospitalapp-72871.firebaseapp.com",
+    projectId: "hospitalapp-72871",
+    storageBucket: "hospitalapp-72871.firebasestorage.app",
+    messagingSenderId: "896726919033",
+    appId: "1:896726919033:web:0c64057e4bafc99489b1a8",
+    measurementId: "G-P8EQXXVBT3"
+  };
+
+  const fbApp = initializeApp(firebaseConfig);
+
+  // App Check(不正利用対策):このアプリからの本物のリクエストであることを確認する
+  initializeAppCheck(fbApp, {
+    provider: new ReCaptchaEnterpriseProvider('6LefFL8tAAAAAK3CPOH-Plp7VZ8u4elz3tjzkX39'),
+    isTokenAutoRefreshEnabled: true
+  });
+
+  const auth = getAuth(fbApp);
+  const db = getFirestore(fbApp);
+  const storage = getStorage(fbApp);
+
+  // 下の通常スクリプト(画面側)から使えるように window に橋渡しする
+  window.fb = {
+    auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, deleteUser, sendPasswordResetEmail,
+    reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail, updatePassword, sendEmailVerification,
+    db, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy,
+    onSnapshot, serverTimestamp, arrayUnion, arrayRemove, runTransaction,
+    storage, ref, uploadBytes, getDownloadURL, deleteObject
+  };
+  window.dispatchEvent(new Event('fb-ready'));
+</script>
+
+
+
+<script>
+/* ============ Data (Firestoreと連携) ============ */
+const ME = { uid:null, id:'-', name:'-', occupation:'-', emailVerified:false };
+
+// 検索・送信先の候補(Firestoreのusersコレクションから読み込む)
+let DIRECTORY = [];
+
+// レポート一覧(Firestoreから読み込んでここに入れる。ログイン前は空)
+let reports = [];
+
+/* ============ App State ============ */
+const S = {
+  screen:'login',
+  authMode:'login', // login | register
+  occSel:'医師',
+  currentId:null,
+  detailTab:'content', // content | read | chat
+  filterStatus:'all',
+  deleteMode:false,
+  deleteSelected:[],
+  filterQuery:'',
+  draft:null,     // report being created/edited
+  recording:false,
+  sendSelected:[], // contact ids
+  sendQuery:'',
+  sendMode:'search', // search | saved
+  myContacts:[],
+  addContactInput:'',
+  notif:{ push:true, sound:true, quiet:false },
+};
+
+function toast(msg){
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{ t.classList.remove('show'); setTimeout(()=>t.remove(),300); }, 1800);
+}
+
+function newDraft(){
+  return { id:null, title:'', body:'', question:'', fields:[], status:'draft', createdAt:'今日', originalId:null, recipients:[], comments:[] };
+}
+
+/* ============ Firestore データ読み込み ============ */
+/* ---- レポート一覧のリアルタイム監視 ---- */
+let unsubAuthoredReports = null;
+let unsubReceivedReports = null;
+let authoredMap = {};
+let receivedMap = {};
+
+function startReportsListener(){
+  stopReportsListener();
+  if(!window.fb || !ME.uid) return;
+  unsubAuthoredReports = window.fb.onSnapshot(
+    window.fb.query(window.fb.collection(window.fb.db,'reports'), window.fb.where('authorUid','==',ME.uid)),
+    (snap)=>{
+      authoredMap = {};
+      snap.forEach(d=> authoredMap[d.id] = fromFirestoreReport(d.id, d.data()));
+      mergeAndRenderReports();
+    },
+    (err)=>{ console.error(err); }
+  );
+  unsubReceivedReports = window.fb.onSnapshot(
+    window.fb.query(window.fb.collection(window.fb.db,'reports'), window.fb.where('recipientIdList','array-contains',ME.id)),
+    (snap)=>{
+      receivedMap = {};
+      snap.forEach(d=> receivedMap[d.id] = fromFirestoreReport(d.id, d.data()));
+      mergeAndRenderReports();
+    },
+    (err)=>{ console.error(err); }
+  );
+}
+function stopReportsListener(){
+  if(unsubAuthoredReports){ unsubAuthoredReports(); unsubAuthoredReports=null; }
+  if(unsubReceivedReports){ unsubReceivedReports(); unsubReceivedReports=null; }
+  authoredMap = {}; receivedMap = {};
+}
+function mergeAndRenderReports(){
+  const map = Object.assign({}, authoredMap, receivedMap);
+  reports = Object.values(map).sort((a,b)=> (b._ts||0) - (a._ts||0));
+  // ホーム・保存済み一覧・詳細画面を見ているときだけ再描画(他画面での入力を邪魔しないため)
+  if(['home','saved','detail'].includes(S.screen)) render();
+}
+
+function fromFirestoreReport(id, data){
+  const recipientsArr = Object.keys(data.recipients||{}).map(pid=>({ id:pid, read: !!data.recipients[pid].read, name: data.recipients[pid].name }));
+  const ts = data.createdAt && data.createdAt.toMillis ? data.createdAt.toMillis() : (data.createdAtMs||0);
+  const lastCommentAt = data.lastCommentAt && data.lastCommentAt.toMillis ? data.lastCommentAt.toMillis() : 0;
+  const myReadAt = data.commentReads && data.commentReads[ME.uid] && data.commentReads[ME.uid].toMillis ? data.commentReads[ME.uid].toMillis() : 0;
+  const hasUnreadComment = !!lastCommentAt && lastCommentAt > myReadAt && data.lastCommentByUid !== ME.uid;
+  return {
+    id, title:data.title||'', body:data.body||'', question:data.question||'',
+    fields: data.fields||[], attachments: data.attachments||[], status: data.status||'draft',
+    createdAt: ts ? new Date(ts).toLocaleDateString('ja-JP', {month:'2-digit', day:'2-digit'}) : '下書き',
+    originalId: data.originalId||null,
+    authorUid: data.authorUid, authorId: data.authorId, authorName: data.authorName,
+    recipients: recipientsArr, comments: [], _ts: ts,
+    lastCommentAt, hasUnreadComment,
+  };
+}
+
+async function loadDirectory(){
+  if(!window.fb) return;
+  try{
+    const snap = await window.fb.getDocs(window.fb.collection(window.fb.db,'users'));
+    DIRECTORY = snap.docs
+      .filter(d=>d.id!==ME.uid)
+      .map(d=>({ uid:d.id, id:d.data().personalId, name:d.data().name, occupation:d.data().occupation }));
+  }catch(e){
+    console.error(e);
+  }
+}
+
+/* ============ Render ============ */
+let _lastRenderedScreen = null;
+function render(){
+  const app = document.getElementById('app');
+  let html = '';
+  if(S.screen==='login') html = screenLogin();
+  else if(S.screen==='home') html = wrap(screenHome(), 'home');
+  else if(S.screen==='create') html = wrap(screenCreate(), 'create');
+  else if(S.screen==='saved') html = wrap(screenSaved(), 'saved');
+  else if(S.screen==='detail') html = wrap(screenDetail(), 'saved');
+  else if(S.screen==='send') html = wrap(screenSend(), 'create');
+  else if(S.screen==='settings') html = wrap(screenSettings(), 'settings');
+  else if(S.screen==='contacts') html = wrap(screenContacts(), 'home');
+  else if(S.screen==='terms') html = screenLegal('terms');
+  else if(S.screen==='privacy') html = screenLegal('privacy');
+  app.innerHTML = html;
+  // 画面そのものが切り替わったときだけ一番上に戻す(同じ画面内の再描画では今のスクロール位置を保つ)
+  if(_lastRenderedScreen !== S.screen){
+    window.scrollTo(0,0);
+    _lastRenderedScreen = S.screen;
+  }
+}
+
+function wrap(inner, activeTab){
+  const hasUnread = reports.some(r=>r.hasUnreadComment);
+  return `
+    ${inner}
+    <div class="bottomnav">
+      ${navBtn('home','🏠','ホーム',activeTab)}
+      ${navBtn('create','✏️','作成',activeTab)}
+      ${navBtn('saved','📁','保存',activeTab, hasUnread)}
+      ${navBtn('settings','⚙️','設定',activeTab)}
+    </div>
+  `;
+}
+function navBtn(key,icon,label,active,showDot){
+  return `<button class="navbtn ${active===key?'active':''}" onclick="go('${key}')" style="position:relative;">
+    <span class="navic">${icon}${showDot?'<span style="position:absolute; top:2px; right:calc(50% - 16px); width:8px; height:8px; border-radius:50%; background:var(--amber); border:1.5px solid #fff;"></span>':''}</span><span class="navlbl">${label}</span>
+  </button>`;
+}
+
+async function go(screen){
+  if(screen!=='detail') stopCommentsListener();
+  S.screen = screen;
+  if(screen==='create'){ S.draft = S.draft && S.draft.id===S._editingId ? S.draft : newDraft(); S._editingId=null; }
+  render();
+  if(screen==='settings' || screen==='contacts'){ await loadDirectory(); await loadFavorites(); render(); }
+}
+
+async function loadFavorites(){
+  if(!window.fb || !ME.uid) return;
+  try{
+    const snap = await window.fb.getDoc(window.fb.doc(window.fb.db,'users',ME.uid));
+    S.myContacts = (snap.exists() && snap.data().favoriteIds) || [];
+  }catch(e){ console.error(e); }
+}
+
+/* ---- Login ---- */
+function screenLogin(){
+  const isLogin = S.authMode==='login';
+  return `
+  <div class="login-wrap">
+    <div class="login-logo">医</div>
+    <h2>医療教育アプリ</h2>
+    <p>レポート作成・共有・フィードバックをひとつに</p>
+    <div class="login-form">
+      ${isLogin ? `
+        <div class="field-label">メールアドレス</div>
+        <input type="text" id="li-email" placeholder="you@example.com" autocomplete="username">
+        <div class="field-label">パスワード</div>
+        <input type="password" id="li-password" placeholder="••••••••" autocomplete="current-password">
+        <div style="text-align:right; margin-top:8px;">
+          <a style="font-size:12.5px; color:var(--ink-soft); cursor:pointer;" onclick="sendPasswordReset()">パスワードをお忘れですか?</a>
+        </div>
+      ` : `
+        <div class="field-label">職種</div>
+        <div class="seg">
+          ${['医師','看護師','救急救命士','その他'].map(o=>`<div class="seg-opt ${S.occSel===o?'active':''}" onclick="S.occSel='${o}';render()">${o}</div>`).join('')}
+        </div>
+        <div class="field-label">氏名</div>
+        <input type="text" id="rg-name" placeholder="山田 太郎">
+        <div class="field-label">メールアドレス</div>
+        <input type="text" id="rg-email" placeholder="you@example.com" autocomplete="username">
+        <div class="field-label">パスワード</div>
+        <input type="password" id="rg-password" placeholder="6文字以上" autocomplete="new-password">
+        <div style="display:flex; align-items:flex-start; gap:8px; margin-top:16px;">
+          <input type="checkbox" id="rg-agree" style="margin-top:3px; width:16px; height:16px; flex-shrink:0;" onchange="render()">
+          <label for="rg-agree" style="font-size:12.5px; color:var(--ink-soft); line-height:1.6;">
+            <a style="color:var(--primary-dark); font-weight:700; cursor:pointer;" onclick="event.preventDefault();S._legalFrom='login';S.screen='terms';render()">利用規約</a>
+            と
+            <a style="color:var(--primary-dark); font-weight:700; cursor:pointer;" onclick="event.preventDefault();S._legalFrom='login';S.screen='privacy';render()">プライバシーポリシー</a>
+            に同意する
+          </label>
+        </div>
+      `}
+      <button class="btn solid block" id="auth-submit-btn" style="margin-top:22px;" onclick="doLogin()">${isLogin?'ログイン':'登録して個人IDを発行'}</button>
+    </div>
+    <div class="switch-mode">
+      ${isLogin ? `アカウントをお持ちでない方は <a onclick="S.authMode='register';render()">新規登録</a>`
+                : `すでにアカウントをお持ちの方は <a onclick="S.authMode='login';render()">ログイン</a>`}
+    </div>
+  </div>`;
+}
+
+function screenLegal(kind){
+  const isTerms = kind==='terms';
+  return `
+    <div class="topbar bordered">
+      <div class="back-btn" onclick="S.screen = S._legalFrom||'login'; render();">←</div>
+      <h1 style="font-size:16px;">${isTerms?'利用規約':'プライバシーポリシー'}</h1>
+    </div>
+    <div class="content" style="font-size:13px; line-height:1.9;">
+      ${isTerms ? TERMS_TEXT : PRIVACY_TEXT}
+    </div>
+  `;
+}
+
+const TERMS_TEXT = `
+<p style="color:var(--ink-soft); font-size:12px;">最終改定日:2026年9月17日(施行前・準備稿)</p>
+<p>この利用規約(以下「本規約」)は、医療教育アプリ(以下「本サービス」)の利用条件を定めるものです。利用者は、本サービスを利用することで本規約に同意したものとみなします。</p>
+<h3 style="font-size:14px;">第1条(適用対象)</h3>
+<p>本サービスは、医師・看護師・救急救命士等の医療従事者を対象とした、レポート・学習内容の作成、共有、意見交換のためのツールです。</p>
+<h3 style="font-size:14px;">第2条(禁止事項)</h3>
+<p>利用者は、以下の行為をしてはなりません。</p>
+<p>・患者を特定できる情報を、本人・ご家族の同意なく記載すること<br>
+・第三者の個人情報を不正に取得・記載すること<br>
+・本サービスを診療録(カルテ)の代替として利用すること<br>
+・不正アクセス、その他本サービスの運営を妨げる行為</p>
+<h3 style="font-size:14px;">第3条(投稿内容の取り扱い)</h3>
+<p>利用者が作成したレポート等の内容は、利用者本人が指定した送信先にのみ共有されます。運営者は、サービス運営上必要な範囲を除き、投稿内容の内容そのものを閲覧・利用しません。</p>
+<h3 style="font-size:14px;">第4条(免責事項)</h3>
+<p>本サービスは学習・情報共有を目的としたものであり、記載内容の医学的正確性を保証するものではありません。診療上の最終判断は、必ず所属施設のルールおよび利用者自身の専門的判断に基づいて行ってください。</p>
+<h3 style="font-size:14px;">第5条(規約の変更)</h3>
+<p>運営者は、必要と判断した場合、利用者への通知の上、本規約を変更できるものとします。</p>
+<p style="color:var(--ink-soft); font-size:12px; margin-top:20px;">※これは開発中のプロトタイプ向けのひな形です。実際の運用前に、必ず医療機関の法務・コンプライアンス部門、または弁護士による確認を受けてください。</p>
+`;
+
+const PRIVACY_TEXT = `
+<p style="color:var(--ink-soft); font-size:12px;">最終改定日:2026年9月17日(施行前・準備稿)</p>
+<p>医療教育アプリ(以下「本サービス」)は、利用者の個人情報を以下の方針に基づき取り扱います。</p>
+<h3 style="font-size:14px;">1. 取得する情報</h3>
+<p>・登録時に入力される氏名、職種、メールアドレス<br>
+・作成されたレポートの内容、添付画像、コメントのやり取り<br>
+・ログイン日時等の利用状況に関する情報</p>
+<h3 style="font-size:14px;">2. 利用目的</h3>
+<p>・本サービスの提供、本人確認、送信先とのレポート共有のため<br>
+・不正利用の防止、お問い合わせへの対応のため</p>
+<h3 style="font-size:14px;">3. 第三者提供</h3>
+<p>法令に基づく場合を除き、利用者の同意なく、取得した情報を第三者に提供することはありません。</p>
+<h3 style="font-size:14px;">4. データの保管</h3>
+<p>取得した情報は、Google Cloud(Firebase)のサーバー上で、通信・保存時ともに暗号化された状態で管理します。</p>
+<h3 style="font-size:14px;">5. 患者情報の取り扱いについて</h3>
+<p>本サービスは患者個人を特定できる情報の入力を想定していません。レポート作成にあたっては、患者を特定できる情報(氏名・診察券番号等)を記載しないでください。</p>
+<h3 style="font-size:14px;">6. 開示・削除請求</h3>
+<p>利用者は、設定画面からいつでも自身のアカウントを削除できます。登録情報の開示・訂正を希望する場合は、運営者までお問い合わせください。</p>
+<h3 style="font-size:14px;">7. お問い合わせ窓口</h3>
+<p>本サービスに関するお問い合わせは、運営者(準備中:問い合わせ先メールアドレスを記載)までご連絡ください。</p>
+<p style="color:var(--ink-soft); font-size:12px; margin-top:20px;">※これは開発中のプロトタイプ向けのひな形です。実際の運用前に、必ず医療機関の法務・コンプライアンス部門、または弁護士による確認を受けてください。</p>
+`;
+
+function makePersonalId(occupation, uid){
+  // 何らかの理由でmakeUniquePersonalIdが使えなかった場合のフォールバック用(通常は使用されない)
+  const prefix = {'医師':'DR','看護師':'NR','救急救命士':'EMT'}[occupation] || 'ID';
+  return prefix + '-' + (uid||'0000').slice(0,4).toUpperCase();
+}
+
+// 新規登録時に使う、衝突しない個人IDの発行(Firestoreのカウンターをトランザクションでアトミックに+1する)
+async function makeUniquePersonalId(occupation){
+  const prefix = {'医師':'DR','看護師':'NR','救急救命士':'EMT'}[occupation] || 'ID';
+  const counterRef = window.fb.doc(window.fb.db, 'counters', prefix);
+  const next = await window.fb.runTransaction(window.fb.db, async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const value = (snap.exists() ? snap.data().value : 0) + 1;
+    tx.set(counterRef, { value });
+    return value;
+  });
+  return prefix + '-' + String(next).padStart(4,'0'); // 例: DR-0001, DR-0002...
+}
+
+function authErrorMessage(e){
+  const map = {
+    'auth/email-already-in-use':'このメールアドレスは既に登録されています',
+    'auth/invalid-email':'メールアドレスの形式が正しくありません',
+    'auth/weak-password':'パスワードは6文字以上にしてください',
+    'auth/wrong-password':'メールアドレスまたはパスワードが正しくありません',
+    'auth/invalid-credential':'メールアドレスまたはパスワードが正しくありません',
+    'auth/user-not-found':'該当するアカウントが見つかりません',
+    'auth/too-many-requests':'試行回数が多すぎます。しばらくしてから再度お試しください',
+    'auth/network-request-failed':'通信に失敗しました。回線状況を確認してください',
+  };
+  return map[e.code] || ('エラーが発生しました(' + (e.code || e.message) + ')');
+}
+
+async function sendPasswordReset(){
+  if(!window.fb){ toast('Firebaseの読み込み中です。少し待ってから再度お試しください'); return; }
+  const emailInput = document.getElementById('li-email');
+  const email = (emailInput && emailInput.value || '').trim();
+  if(!email){ toast('まずメールアドレスの欄に登録済みのメールアドレスを入力してください'); return; }
+  try{
+    await window.fb.sendPasswordResetEmail(window.fb.auth, email);
+    toast(email + ' 宛にパスワード再設定メールを送信しました');
+  }catch(e){
+    toast(authErrorMessage(e));
+  }
+}
+
+function applyAuthUser(user, fallback){
+  let name = fallback && fallback.name, occupation = fallback && fallback.occupation, id = fallback && fallback.id;
+  if(!name && user.displayName){
+    const parts = user.displayName.split('|');
+    if(parts.length===3){ name=parts[0]; occupation=parts[1]; id=parts[2]; }
+  }
+  ME.uid = user.uid;
+  ME.name = name || (user.email||'').split('@')[0];
+  ME.occupation = occupation || '(未設定)';
+  ME.id = id || makePersonalId('', user.uid);
+  ME.emailVerified = !!user.emailVerified;
+  startReportsListener(); // ログインしたら、レポートのリアルタイム監視を開始する
+}
+
+async function doLogin(){
+  if(!window.fb){ toast('Firebaseの読み込み中です。少し待ってから再度お試しください'); return; }
+  const btn = document.getElementById('auth-submit-btn');
+  const originalLabel = btn.textContent;
+
+  if(S.authMode==='register'){
+    const name = (document.getElementById('rg-name').value||'').trim();
+    const email = (document.getElementById('rg-email').value||'').trim();
+    const password = document.getElementById('rg-password').value||'';
+    const agreed = document.getElementById('rg-agree') && document.getElementById('rg-agree').checked;
+    if(!name || !email || !password){ toast('氏名・メールアドレス・パスワードを入力してください'); return; }
+    if(!agreed){ toast('利用規約とプライバシーポリシーへの同意が必要です'); return; }
+    btn.textContent = '登録中…';
+    try{
+      const cred = await window.fb.createUserWithEmailAndPassword(window.fb.auth, email, password);
+      const personalId = await makeUniquePersonalId(S.occSel);
+      await window.fb.updateProfile(cred.user, { displayName: `${name}|${S.occSel}|${personalId}` });
+      // Firestoreにプロフィールを保存(他の人から検索・送信できるようにするため)
+      await window.fb.setDoc(window.fb.doc(window.fb.db, 'users', cred.user.uid), {
+        name, occupation: S.occSel, personalId, email, createdAt: Date.now(), agreedTermsAt: Date.now()
+      });
+      applyAuthUser(cred.user, {name, occupation:S.occSel, id:personalId});
+      try{ await window.fb.sendEmailVerification(cred.user); }catch(e){ console.error(e); }
+      toast('個人ID「'+personalId+'」を発行しました。確認メールも送信しましたのでご確認ください');
+      go('home');
+    }catch(e){
+      toast(authErrorMessage(e));
+      btn.textContent = originalLabel;
+    }
+  } else {
+    const email = (document.getElementById('li-email').value||'').trim();
+    const password = document.getElementById('li-password').value||'';
+    if(!email || !password){ toast('メールアドレスとパスワードを入力してください'); return; }
+    btn.textContent = 'ログイン中…';
+    try{
+      const cred = await window.fb.signInWithEmailAndPassword(window.fb.auth, email, password);
+      await loadProfileAndApply(cred.user);
+      go('home');
+    }catch(e){
+      toast(authErrorMessage(e));
+      btn.textContent = originalLabel;
+    }
+  }
+}
+
+// Firestoreからプロフィール(氏名・職種・個人ID)を取得してMEに反映する
+async function loadProfileAndApply(user){
+  try{
+    const snap = await window.fb.getDoc(window.fb.doc(window.fb.db, 'users', user.uid));
+    if(snap.exists()){
+      const data = snap.data();
+      applyAuthUser(user, { name:data.name, occupation:data.occupation, id:data.personalId });
+    } else {
+      applyAuthUser(user); // 万が一Firestoreにまだ記録がない場合はdisplayNameから復元
+    }
+  }catch(e){
+    applyAuthUser(user);
+  }
+}
+
+
+async function doLogout(){
+  stopReportsListener();
+  if(!window.fb){ S.screen='login'; render(); return; }
+  try{ await window.fb.signOut(window.fb.auth); }catch(e){}
+  toast('ログアウトしました');
+  S.screen='login';
+  render();
+}
+
+async function deleteAccount(){
+  if(!window.fb || !window.fb.auth.currentUser) return;
+  const ok = window.confirm('本当にアカウントを削除しますか?この操作は取り消せません。');
+  if(!ok) return;
+  const user = window.fb.auth.currentUser;
+  try{
+    stopReportsListener();
+    // プロフィール情報(Firestore)を先に削除してから、認証アカウント自体を削除する
+    await window.fb.deleteDoc(window.fb.doc(window.fb.db, 'users', user.uid));
+    await window.fb.deleteUser(user);
+    toast('アカウントを削除しました');
+    ME.uid = null; ME.name = '-'; ME.occupation = '-'; ME.id = '-';
+    reports = []; DIRECTORY = [];
+    S.screen = 'login';
+    render();
+  }catch(e){
+    if(e.code === 'auth/requires-recent-login'){
+      toast('セキュリティのため、再ログインしてからもう一度お試しください');
+      await doLogout();
+    } else {
+      console.error(e);
+      toast('削除に失敗しました(' + (e.code || e.message) + ')');
+    }
+  }
+}
+
+// 確認メールの再送(設定画面・ホームのバナーから呼ばれる)
+async function resendVerificationEmail(){
+  if(!window.fb || !window.fb.auth.currentUser) return;
+  try{
+    await window.fb.sendEmailVerification(window.fb.auth.currentUser);
+    toast(ME.name ? '確認メールを再送しました' : '確認メールを再送しました');
+  }catch(e){
+    if(e.code === 'auth/too-many-requests'){ toast('少し時間をおいてから再度お試しください'); }
+    else{ toast(authErrorMessage(e)); }
+  }
+}
+
+// 現在のパスワードで再認証してから、メール/パスワードの変更を許可する
+async function reauth(){
+  const pwInput = document.getElementById('acct-current-pw');
+  const currentPw = pwInput ? pwInput.value : '';
+  if(!currentPw){ toast('現在のパスワードを入力してください'); return false; }
+  const user = window.fb.auth.currentUser;
+  const cred = window.fb.EmailAuthProvider.credential(user.email, currentPw);
+  await window.fb.reauthenticateWithCredential(user, cred);
+  return true;
+}
+
+async function changeEmail(){
+  if(!window.fb || !window.fb.auth.currentUser) return;
+  const newEmail = (document.getElementById('acct-new-email').value||'').trim();
+  if(!newEmail){ toast('新しいメールアドレスを入力してください'); return; }
+  try{
+    const ok = await reauth();
+    if(!ok) return;
+    await window.fb.verifyBeforeUpdateEmail(window.fb.auth.currentUser, newEmail);
+    toast(newEmail + ' 宛に確認メールを送信しました。リンクを開くと変更が完了します');
+  }catch(e){
+    toast(authErrorMessage(e));
+  }
+}
+
+async function changePassword(){
+  if(!window.fb || !window.fb.auth.currentUser) return;
+  const newPw = document.getElementById('acct-new-pw').value||'';
+  if(!newPw || newPw.length<6){ toast('パスワードは6文字以上にしてください'); return; }
+  try{
+    const ok = await reauth();
+    if(!ok) return;
+    await window.fb.updatePassword(window.fb.auth.currentUser, newPw);
+    document.getElementById('acct-new-pw').value = '';
+    document.getElementById('acct-current-pw').value = '';
+    toast('パスワードを変更しました');
+  }catch(e){
+    toast(authErrorMessage(e));
+  }
+}
+
+/* ---- Home ---- */
+function screenHome(){
+  const unreadCommentAny = reports.some(r=>r.hasUnreadComment);
+  const notifItems = reports.filter(r=>r.recipients.length || r.hasUnreadComment);
+  const shown = notifItems.slice(0,4);
+  return `
+    <div class="topbar"><h1>ホーム</h1></div>
+    <div class="content no-pad-top">
+      <div class="id-card">
+        <div class="role">${ME.occupation}</div>
+        <div class="name">${ME.name} さん</div>
+        <div class="idrow">
+          <div><div class="idlabel">個人ID</div><div class="idval">${ME.id}</div></div>
+          <div style="font-size:11px; opacity:.8;">Web ⇄ アプリ 同期済み</div>
+        </div>
+      </div>
+
+      ${!ME.emailVerified ? `
+        <div class="link-note" style="background:var(--amber-tint); color:#7A5A16;">
+          ✉️ メールアドレスがまだ確認されていません。届いたメールのリンクを開いて確認を完了してください。
+          <a style="font-weight:700; cursor:pointer; margin-left:6px;" onclick="resendVerificationEmail()">確認メールを再送する</a>
+        </div>
+      ` : ''}
+
+      <div class="actions-row">
+        <div class="action-btn primary" onclick="go('create')">
+          <div class="ic">📝</div>
+          <span class="lbl">作成する</span>
+        </div>
+        <div class="action-btn" onclick="go('saved')">
+          <div class="ic">📁</div>
+          <span class="lbl">保存</span>
+        </div>
+        <div class="action-btn" onclick="goToExchanges()">
+          ${unreadCommentAny ? `<span class="action-dot"></span>` : ''}
+          <div class="ic">💬</div>
+          <span class="lbl">やりとり</span>
+        </div>
+        <div class="action-btn" onclick="go('contacts')">
+          <div class="ic">👥</div>
+          <span class="lbl">相手一覧</span>
+        </div>
+      </div>
+
+      <div class="ad-slot">広告スペース(準備中)</div>
+
+      <div class="section-title">最近の通知</div>
+      ${shown.map(r=>{
+        const unread = r.recipients.some(x=>!x.read);
+        const isMine = r.authorUid===ME.uid;
+        let sub;
+        if(r.hasUnreadComment){ sub = '💬 新しい返信'; }
+        else if(isMine){ sub = unread ? '未読あり' : '全員既読'; }
+        else { sub = (r.authorName||'')+'さんから'; }
+        return `<div class="activity-item compact" onclick="openDetail('${r.id}')">
+          <div class="dot ${(unread||r.hasUnreadComment)?'unread':'read'}"></div>
+          <div class="activity-body">
+            <div class="activity-title">${escapeHtml(r.title)} <span class="activity-sub-inline" style="${r.hasUnreadComment?'color:var(--amber);font-weight:700;':''}">・${sub}</span></div>
+          </div>
+          <div class="activity-time">${r.createdAt}</div>
+        </div>`;
+      }).join('') || `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🔔</div>まだ通知はありません</div>`}
+      ${notifItems.length>4 ? `<div style="text-align:center; margin-top:6px;"><a style="font-size:12.5px; color:var(--primary-dark); font-weight:700; cursor:pointer;" onclick="go('saved')">すべて見る(${notifItems.length}件)</a></div>` : ''}
+    </div>
+  `;
+}
+
+function goToExchanges(){
+  S.filterStatus = 'sent';
+  S.filterQuery = '';
+  go('saved');
+}
+
+/* ---- Create ---- */
+function screenCreate(){
+  const d = S.draft || (S.draft = newDraft());
+  const isReedit = !!d.originalId || S._editingId;
+  return `
+    <div class="topbar bordered">
+      <div class="back-btn" onclick="go('home')">←</div>
+      <h1>${isReedit ? '再編集' : '作成'}</h1>
+      ${d.id ? `<button class="btn sm" style="margin-left:auto; border-color:transparent; color:var(--danger);" onclick="deleteCurrentDraft()">🗑 削除</button>` : ''}
+    </div>
+    <div class="content">
+      ${isReedit ? `<div class="link-note">🔗 元のレポート「${escapeHtml((findReport(d.originalId)||{}).title || '元レポート')}」からの再編集です。送信すると新しいレポートとして届きます。</div>` : ''}
+
+      <div class="field-label">タイトル<span class="req">必須</span></div>
+      <input type="text" id="f-title" placeholder="例:急性心筋梗塞の初期対応まとめ" value="${escapeHtml(d.title)}" oninput="d_.title=this.value">
+
+      <div class="field-label">自由欄(メイン)<span class="req">必須</span></div>
+      <textarea id="f-body" placeholder="調べたこと・レポート内容を自由に入力してください" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
+
+      <div class="mic-btn ${S.recording?'recording':''}" onclick="toggleMic()">
+        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… タップで停止` : `🎙 音声入力で自由欄に文字起こし`}
+      </div>
+
+      <div class="field-label">疑問・困りごと<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></div>
+      <textarea id="f-question" style="min-height:90px;" placeholder="分からなかったこと、意見が欲しい点など、相手に聞きたいことがあれば書いてください" oninput="d_.question=this.value">${escapeHtml(d.question||'')}</textarea>
+
+      <div class="field-label">資料・画像添付</div>
+      <div class="attach-row">
+        ${(d.attachments||[]).map((a,i)=>`
+          <div class="attach-thumb" style="padding:0; overflow:hidden; position:relative;">
+            <img src="${a.url}" style="width:100%;height:100%;object-fit:cover;" alt="添付画像">
+            <div onclick="removeAttachment(${i})" style="position:absolute; top:2px; right:2px; width:16px;height:16px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; font-size:10px; display:flex; align-items:center; justify-content:center; cursor:pointer;">✕</div>
+          </div>
+        `).join('')}
+        <div class="attach-thumb" style="cursor:pointer; border:1px dashed var(--line); background:transparent;" onclick="addAttachment()">＋</div>
+      </div>
+
+      <div class="field-label">追加項目</div>
+      ${(d.fields||[]).map((f,i)=>`
+        <div class="custom-field">
+          <span class="mini-x" onclick="removeField(${i})">✕ 削除</span>
+          <div class="cf-name">項目名</div>
+          <input type="text" value="${escapeHtml(f.name)}" oninput="d_.fields[${i}].name=this.value" placeholder="例:処置">
+          <div class="cf-name" style="margin-top:8px;">内容</div>
+          <input type="text" value="${escapeHtml(f.value)}" oninput="d_.fields[${i}].value=this.value" placeholder="例:NGチューブ">
+        </div>
+      `).join('')}
+      <button class="btn sm" style="margin-top:10px;" onclick="addField()">＋ 項目を追加</button>
+
+      <div class="btn-row">
+        <button class="btn" onclick="saveDraft('temp')">一時保存</button>
+        <button class="btn" onclick="saveDraft('saved')">保存</button>
+        <button class="btn" onclick="doPrint()">🖨 印刷</button>
+        <button class="btn" onclick="doPdf()">📄 PDF化</button>
+      </div>
+      <button class="btn solid block" style="margin-top:16px;" onclick="goToSend()">この内容を送信する →</button>
+    </div>
+  `;
+}
+// convenience proxy so inline oninput can mutate the live draft object
+Object.defineProperty(window,'d_',{ get(){ return S.draft; } });
+
+let speechRecognizer = null;
+let micSafetyTimer = null;
+function toggleMic(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){
+    toast('お使いのブラウザは音声入力に対応していません(Android版Chromeを推奨します)');
+    return;
+  }
+  if(S.recording){
+    stopMic();
+    return;
+  }
+  try{
+    speechRecognizer = new SR();
+  }catch(e){
+    toast('音声認識を開始できませんでした');
+    return;
+  }
+  speechRecognizer.lang = 'ja-JP';
+  speechRecognizer.continuous = false;   // 1文ずつ認識する安定モード(継続モードは固まりやすいため)
+  speechRecognizer.interimResults = false;
+  speechRecognizer.maxAlternatives = 1;
+
+  speechRecognizer.onresult = (event)=>{
+    let text = '';
+    for(let i=0; i<event.results.length; i++){
+      if(event.results[i].isFinal){ text += event.results[i][0].transcript; }
+    }
+    if(text && S.draft){
+      S.draft.body += (S.draft.body ? '\n' : '') + text;
+      const ta = document.getElementById('f-body');
+      if(ta) ta.value = S.draft.body;
+    }
+  };
+  speechRecognizer.onerror = (event)=>{
+    if(event.error === 'not-allowed'){ toast('マイクの使用が許可されていません。ブラウザの設定を確認してください'); stopMic(); }
+    else if(event.error !== 'no-speech' && event.error !== 'aborted'){ toast('音声認識でエラーが発生しました('+event.error+')'); stopMic(); }
+  };
+  speechRecognizer.onend = ()=>{
+    stopMic();
+  };
+  S.recording = true;
+  render();
+  toast('聞き取り中です。話し終えると自動で反映されます(もう一度タップでも終了できます)');
+  try{
+    speechRecognizer.start();
+  }catch(e){
+    stopMic();
+    toast('音声認識を開始できませんでした');
+    return;
+  }
+  // 8秒たっても終わらない場合は強制的に元に戻す(固まり対策)
+  micSafetyTimer = setTimeout(()=>{ stopMic(); }, 8000);
+}
+function stopMic(){
+  if(micSafetyTimer){ clearTimeout(micSafetyTimer); micSafetyTimer=null; }
+  if(speechRecognizer){
+    try{ speechRecognizer.onend=null; speechRecognizer.onerror=null; speechRecognizer.stop(); }catch(e){}
+    speechRecognizer = null;
+  }
+  if(S.recording){ S.recording = false; render(); }
+}
+
+function addAttachment(){
+  S.draft.attachments = S.draft.attachments||[];
+  if(S.draft.attachments.length>=6){ toast('添付は6件までです'); return; }
+  if(!window.fb || !ME.uid){ toast('ログイン状態を確認してください'); return; }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async ()=>{
+    const file = input.files[0];
+    if(!file) return;
+    if(file.size > 8*1024*1024){ toast('8MB以下の画像を選んでください'); return; }
+    toast('アップロード中…');
+    try{
+      const path = `attachments/${ME.uid}/${Date.now()}_${file.name}`;
+      const storageRef = window.fb.ref(window.fb.storage, path);
+      await window.fb.uploadBytes(storageRef, file);
+      const url = await window.fb.getDownloadURL(storageRef);
+      S.draft.attachments.push({ url, name:file.name, path });
+      toast('画像を添付しました');
+      render();
+    }catch(e){
+      console.error(e);
+      toast('アップロードに失敗しました('+(e.code||e.message)+')');
+    }
+  };
+  input.click();
+}
+async function removeAttachment(i){
+  const d = S.draft;
+  const a = (d.attachments||[])[i];
+  if(!a) return;
+  d.attachments.splice(i,1);
+  render();
+  if(a.path && window.fb){
+    try{ await window.fb.deleteObject(window.fb.ref(window.fb.storage, a.path)); }catch(e){ console.error(e); }
+  }
+}
+function addField(){
+  S.draft.fields = S.draft.fields||[];
+  S.draft.fields.push({name:'', value:''});
+  render();
+}
+function removeField(i){ S.draft.fields.splice(i,1); render(); }
+
+async function saveDraft(kind){
+  const d = S.draft;
+  if(!d.title || !d.body){ toast('タイトルと自由欄は必須です'); return; }
+  d.status = kind==='temp' ? 'draft' : 'saved';
+  const ok = await persistDraft(d);
+  if(!ok) return; // 保存に失敗した場合は、成功したかのような表示をしない
+  toast(kind==='temp' ? '一時保存しました' : '保存しました');
+  render();
+}
+
+// 下書き・保存の内容をFirestoreに書き込む(新規なら作成、既存なら更新)。成功時true、失敗時falseを返す
+async function persistDraft(d){
+  if(!window.fb || !ME.uid){ toast('ログイン状態を確認できません。再読み込みしてからお試しください'); return false; }
+  const payload = {
+    title:d.title, body:d.body, question:d.question||'', fields:d.fields||[],
+    attachments: (d.attachments||[]).map(a=>({url:a.url, name:a.name, path:a.path})),
+    status:d.status, originalId:d.originalId||null,
+    authorUid: ME.uid, authorId: ME.id, authorName: ME.name,
+    recipients: d.recipients && d.recipients.length ? Object.fromEntries(d.recipients.map(r=>[r.id,{read:!!r.read,name:(DIRECTORY.find(x=>x.id===r.id)||{}).name||r.id}])) : {},
+    recipientIdList: (d.recipients||[]).map(r=>r.id),
+  };
+  try{
+    if(d.id){
+      // 既存ドキュメントの更新時は作成日時を上書きしない
+      await window.fb.updateDoc(window.fb.doc(window.fb.db,'reports', d.id), payload);
+    } else {
+      payload.createdAt = window.fb.serverTimestamp();
+      const ref = await window.fb.addDoc(window.fb.collection(window.fb.db,'reports'), payload);
+      d.id = ref.id;
+    }
+    return true;
+  }catch(e){
+    console.error(e);
+    toast('保存に失敗しました(' + (e.code || e.message) + ')。もう一度お試しください');
+    return false;
+  }
+}
+
+async function goToSend(){
+  const d = S.draft;
+  if(!d.title || !d.body){ toast('タイトルと自由欄は必須です'); return; }
+  await loadDirectory();
+  await loadFavorites();
+  // prefill original recipients when this is a re-edit
+  S.sendSelected = d.originalId ? (findReport(d.originalId)?.recipients||[]).map(r=>r.id) : (d.recipients||[]).map(r=>r.id);
+  S.sendQuery='';
+  S.screen='send';
+  render();
+}
+
+/* ---- Saved list ---- */
+function screenSaved(){
+  const q = S.filterQuery.toLowerCase();
+  let list = reports.filter(r=>{
+    if(S.filterStatus!=='all' && r.status!==S.filterStatus) return false;
+    if(q && !r.title.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  return `
+    <div class="topbar"><h1>保存</h1></div>
+    <div class="content no-pad-top">
+      <div class="search-bar">🔍 <input type="text" placeholder="タイトルで検索" value="${escapeHtml(S.filterQuery)}" oninput="S.filterQuery=this.value;render()"></div>
+
+      <div class="filter-row">
+        ${chip('all','すべて')}${chip('draft','下書き')}${chip('saved','保存済み')}${chip('sent','送信済み')}
+        <div class="chip" style="${S.deleteMode?'background:var(--danger);border-color:var(--danger);color:#fff;':'color:var(--danger);'}" onclick="toggleDeleteMode()">🗑 ${S.deleteMode?'選択中':'削除'}</div>
+      </div>
+
+      ${S.deleteMode ? `<div class="delete-actionbar">
+        <span>${S.deleteSelected.length}件選択中</span>
+        <div style="margin-left:auto; display:flex; gap:8px;">
+          <button class="btn sm" onclick="toggleDeleteMode()">キャンセル</button>
+          <button class="btn sm solid" style="background:var(--danger); border-color:var(--danger);" onclick="bulkDeleteSelected()">削除する</button>
+        </div>
+      </div>` : ''}
+
+      ${list.length? list.map(r=>reportCard(r)).join('') : `<div class="empty-state"><div class="em-ic">📭</div>該当するレポートがありません</div>`}
+    </div>
+  `;
+}
+function toggleDeleteMode(){
+  S.deleteMode = !S.deleteMode;
+  S.deleteSelected = [];
+  render();
+}
+function toggleDeleteSelect(id){
+  const i = S.deleteSelected.indexOf(id);
+  if(i>-1) S.deleteSelected.splice(i,1); else S.deleteSelected.push(id);
+  render();
+}
+async function bulkDeleteSelected(){
+  if(!S.deleteSelected.length){ toast('削除するものを選択してください'); return; }
+  const ok = window.confirm(S.deleteSelected.length + '件を削除しますか?この操作は取り消せません。');
+  if(!ok) return;
+  const ids = [...S.deleteSelected];
+  for(const id of ids){ await deleteReportById(id); }
+  toast(ids.length+'件削除しました');
+  S.deleteMode = false;
+  S.deleteSelected = [];
+  render();
+}
+function chip(key,label){
+  return `<div class="chip ${S.filterStatus===key?'active':''}" onclick="S.filterStatus='${key}';render()">${label}</div>`;
+}
+function reportCard(r){
+  const badgeLabel = {draft:'下書き',saved:'保存済み',sent:'送信済み'}[r.status];
+  const readCount = r.recipients.filter(x=>x.read).length;
+  const checked = S.deleteSelected.includes(r.id);
+  return `
+    <div class="report-card" onclick="${S.deleteMode ? `toggleDeleteSelect('${r.id}')` : `openDetail('${r.id}')`}" style="${r.hasUnreadComment?'border-color:var(--amber);':''} ${S.deleteMode && checked ? 'border-color:var(--danger); background:#FBEAE7;' : ''}">
+      <div class="rc-top">
+        <div class="rc-title">${S.deleteMode ? `<span style="margin-right:8px;">${checked?'☑️':'⬜'}</span>` : ''}${r.hasUnreadComment?'🔴 ':''}${escapeHtml(r.title)}</div>
+        <div class="badge ${r.status}">${badgeLabel}</div>
+      </div>
+      <div class="rc-meta">
+        <span>${r.createdAt}</span>
+        ${r.recipients.length ? `<span class="rc-read">✓ 既読 ${readCount}/${r.recipients.length}</span>` : ''}
+        ${r.originalId ? `<span>🔗 再編集版</span>` : ''}
+      </div>
+      ${r.hasUnreadComment ? `<div class="rc-meta" style="color:var(--amber);font-weight:700;margin-top:4px;">💬 新しい返信があります</div>` : ''}
+    </div>`;
+}
+function findReport(id){ return reports.find(r=>r.id===id); }
+
+async function openDetail(id){
+  S.currentId=id; S.detailTab='content'; S.screen='detail'; render();
+  const r = findReport(id);
+  if(r) await markReadIfNeeded(r);
+  render();
+}
+
+async function markReadIfNeeded(r){
+  if(!window.fb || !ME.uid) return;
+  const rec = (r.recipients||[]).find(rc=>rc.id===ME.id);
+  if(!rec || rec.read) return;
+  try{
+    await window.fb.updateDoc(window.fb.doc(window.fb.db,'reports', r.id), {
+      [`recipients.${ME.id}.read`]: true
+    });
+    rec.read = true;
+  }catch(e){ console.error(e); }
+}
+
+async function openChatTab(){
+  S.detailTab='chat'; render();
+  startCommentsListener(S.currentId);
+  await markCommentsReadIfNeeded(S.currentId);
+}
+async function markCommentsReadIfNeeded(id){
+  if(!window.fb || !ME.uid) return;
+  const r = findReport(id);
+  if(r){ r.hasUnreadComment = false; } // 画面上はすぐ既読扱いにする
+  try{
+    await window.fb.updateDoc(window.fb.doc(window.fb.db,'reports', id), {
+      [`commentReads.${ME.uid}`]: window.fb.serverTimestamp()
+    });
+  }catch(e){ console.error(e); }
+}
+let currentComments = [];
+let unsubComments = null;
+function startCommentsListener(id){
+  stopCommentsListener();
+  if(!window.fb) return;
+  unsubComments = window.fb.onSnapshot(
+    window.fb.query(window.fb.collection(window.fb.db,'reports',id,'comments'), window.fb.orderBy('createdAt','asc')),
+    (snap)=>{
+      currentComments = snap.docs.map(d=>{
+        const data = d.data();
+        const time = data.createdAt && data.createdAt.toDate ? data.createdAt.toDate().toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'たった今';
+        return { sender:data.senderName, me:data.senderUid===ME.uid, text:data.text, time };
+      });
+      if(S.screen==='detail' && S.detailTab==='chat') render();
+    },
+    (err)=>{ console.error(err); }
+  );
+}
+function stopCommentsListener(){
+  if(unsubComments){ unsubComments(); unsubComments=null; }
+}
+
+/* ---- Detail ---- */
+function screenDetail(){
+  const r = findReport(S.currentId);
+  if(!r) return `<div class="content">見つかりませんでした</div>`;
+  return `
+    <div class="topbar bordered">
+      <div class="back-btn" onclick="go('saved')">←</div>
+      <h1 style="font-size:16px;">詳細</h1>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button class="btn sm" style="border-color:transparent; color:var(--danger);" onclick="deleteReportFromDetail('${r.id}')">🗑</button>
+        <button class="btn sm" onclick="editReport('${r.id}')">編集</button>
+      </div>
+    </div>
+    <div class="content">
+      <div class="tab-row">
+        <div class="tab-btn ${S.detailTab==='content'?'active':''}" onclick="S.detailTab='content';render()">内容</div>
+        <div class="tab-btn ${S.detailTab==='read'?'active':''}" onclick="S.detailTab='read';render()">既読状況</div>
+        <div class="tab-btn ${S.detailTab==='chat'?'active':''}" onclick="openChatTab()">コメント</div>
+      </div>
+      ${S.detailTab==='content' ? detailContent(r) : S.detailTab==='read' ? detailRead(r) : detailChat(r)}
+    </div>
+  `;
+}
+function detailContent(r){
+  return `
+    <div class="detail-title">${escapeHtml(r.title)}</div>
+    <div class="detail-meta">${r.createdAt} 作成 ${r.originalId?'・🔗 再編集版':''}</div>
+    <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
+      <button class="btn sm" onclick="printReport('${r.id}')">🖨 印刷</button>
+      <button class="btn sm" onclick="pdfReport('${r.id}')">📄 PDF化</button>
+    </div>
+    <div class="detail-body">${escapeHtml(r.body)}
+    ${(r.attachments && r.attachments.length) ? `<div class="attach-row" style="margin-top:12px;">${r.attachments.map(a=>`<a href="${a.url}" target="_blank" class="attach-thumb" style="padding:0; overflow:hidden;"><img src="${a.url}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(a.name||'添付画像')}"></a>`).join('')}</div>` : ''}
+    ${(r.fields||[]).map(f=>`<div class="cf-view"><div class="cfn">${escapeHtml(f.name||'項目')}</div><div class="cfv">${escapeHtml(f.value)}</div></div>`).join('')}
+    ${r.question ? `<div class="cf-view"><div class="cfn" style="color:var(--amber);">疑問・困りごと</div><div class="cfv">${escapeHtml(r.question)}</div></div>` : ''}
+    </div>
+  `;
+}
+function detailRead(r){
+  if(!r.recipients.length) return `<div class="empty-state"><div class="em-ic">📤</div>まだ送信されていません</div>`;
+  return `<div class="read-list">
+    ${r.recipients.map(rc=>{
+      const c = DIRECTORY.find(x=>x.id===rc.id);
+      return `<div class="read-row">
+        <div><div class="rr-name">${c?c.name:rc.id}</div><div class="set-sub">${rc.id}</div></div>
+        <div class="rr-status ${rc.read?'read':'unread'}">${rc.read? '✓ 既読':'未読'}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function detailChat(r){
+  return `
+    <div class="chat-list">
+      ${currentComments.length ? currentComments.map(c=>`
+        <div class="msg ${c.me?'me':'other'}">
+          ${!c.me?`<div class="msg-sender">${escapeHtml(c.sender)}</div>`:''}
+          ${escapeHtml(c.text)}
+          <div class="msg-time">${c.time}</div>
+        </div>
+      `).join('') : `<div class="empty-state"><div class="em-ic">💬</div>まだコメントはありません</div>`}
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="chatInput" placeholder="コメント・アドバイスを送る">
+      <button class="btn solid sm" onclick="sendComment('${r.id}')">送信</button>
+    </div>
+  `;
+}
+async function sendComment(id){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text || !window.fb) return;
+  input.value = '';
+  try{
+    await window.fb.addDoc(window.fb.collection(window.fb.db,'reports',id,'comments'), {
+      senderUid: ME.uid, senderName: ME.name, text, createdAt: window.fb.serverTimestamp()
+    });
+    // 相手が「返信が来た」と気づけるように、レポート側に最終コメント日時を記録する
+    await window.fb.updateDoc(window.fb.doc(window.fb.db,'reports', id), {
+      lastCommentAt: window.fb.serverTimestamp(),
+      lastCommentByUid: ME.uid,
+      [`commentReads.${ME.uid}`]: window.fb.serverTimestamp()
+    });
+    // currentComments はリアルタイム監視で自動更新されるため、ここでの再取得は不要
+    toast('送信しました');
+  }catch(e){
+    console.error(e);
+    toast('送信に失敗しました');
+  }
+}
+// レポートをFirestoreから削除する(添付ファイルもあわせて削除)。成功時true
+async function deleteReportById(id){
+  if(!window.fb) return false;
+  try{
+    const r = findReport(id);
+    if(r && r.attachments && r.attachments.length){
+      for(const a of r.attachments){
+        if(a.path){ try{ await window.fb.deleteObject(window.fb.ref(window.fb.storage, a.path)); }catch(e){} }
+      }
+    }
+    await window.fb.deleteDoc(window.fb.doc(window.fb.db,'reports', id));
+    return true;
+  }catch(e){
+    console.error(e);
+    toast('削除に失敗しました(' + (e.code || e.message) + ')');
+    return false;
+  }
+}
+
+async function deleteCurrentDraft(){
+  const d = S.draft;
+  if(!d || !d.id) return;
+  const ok = window.confirm('この内容を削除しますか?この操作は取り消せません。');
+  if(!ok) return;
+  const success = await deleteReportById(d.id);
+  if(!success) return;
+  toast('削除しました');
+  S.draft = null;
+  await go('home');
+}
+
+async function deleteReportFromDetail(id){
+  const ok = window.confirm('このレポートを削除しますか?この操作は取り消せません。');
+  if(!ok) return;
+  const success = await deleteReportById(id);
+  if(!success) return;
+  toast('削除しました');
+  await go('saved');
+}
+
+function editReport(id){
+  const r = findReport(id);
+  if(r.status==='sent'){
+    // 送信済みのものを編集する場合は、仕様通り「新しいレポート」として作り直す
+    S.draft = {...r, id:null, originalId: r.id, status:'draft', fields:(r.fields||[]).map(f=>({...f})), recipients:[], comments:[]};
+  } else {
+    // 下書き・保存済み(まだ未送信)の場合は、同じレポートをそのまま編集する(複製を作らない)
+    S.draft = {...r, fields:(r.fields||[]).map(f=>({...f})), recipients:[], comments:[]};
+  }
+  S._editingId = S.draft.id;
+  S.screen='create';
+  render();
+}
+
+/* ---- Send ---- */
+function screenSend(){
+  const d = S.draft;
+  const q = S.sendQuery.toLowerCase();
+  const results = q ? DIRECTORY.filter(c=>c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q)) : [];
+  return `
+    <div class="topbar bordered">
+      <div class="back-btn" onclick="S.screen='create';render()">←</div>
+      <h1>送信</h1>
+    </div>
+    <div class="content">
+      <div class="filter-row">
+        <div class="chip ${S.sendMode==='search'?'active':''}" onclick="S.sendMode='search';render()">🔍 個人IDで検索</div>
+        <div class="chip ${S.sendMode==='saved'?'active':''}" onclick="S.sendMode='saved';render()">⭐ 登録済みから選ぶ</div>
+      </div>
+
+      ${S.sendMode==='search' ? `
+        <div class="field-label" style="margin-top:4px;">送信先(個人ID・氏名で検索、複数選択可)</div>
+        <input type="text" placeholder="個人ID または 氏名を入力" value="${escapeHtml(S.sendQuery)}" oninput="S.sendQuery=this.value;render()">
+        ${results.length? `<div class="recipient-search-results">
+          ${results.map(c=>`<div class="rsr-item" onclick="toggleRecipient('${c.id}')">
+            <span>${c.name} <small>・${c.occupation}</small></span>
+            <span>${S.sendSelected.includes(c.id)?'✓':'＋'}</span>
+          </div>`).join('')}
+        </div>` : ''}
+      ` : `
+        <div class="field-label" style="margin-top:4px;">登録済みの相手(タップで選択)</div>
+        ${S.myContacts.length ? `<div class="recipient-search-results">
+          ${S.myContacts.map(id=>{
+            const c = DIRECTORY.find(x=>x.id===id);
+            return `<div class="rsr-item" onclick="toggleRecipient('${id}')">
+              <span>${c?c.name:id} <small>・${c?c.occupation:id}</small></span>
+              <span>${S.sendSelected.includes(id)?'✓':'＋'}</span>
+            </div>`;
+          }).join('')}
+        </div>` : `<div class="empty-state" style="padding:26px 10px;"><div class="em-ic">👤</div>登録済みの相手がいません。<br>設定画面の「よく送る相手」から追加できます。</div>`}
+      `}
+
+      ${d.originalId ? `<div class="link-note">↩︎ 最初の送信相手が自動で選択されています。必要に応じて削除・追加できます。</div>` : ''}
+
+      <div class="field-label">選択中の相手(${S.sendSelected.length}名)</div>
+      <div class="selected-chips">
+        ${S.sendSelected.length? S.sendSelected.map(id=>{
+          const c = DIRECTORY.find(x=>x.id===id);
+          return `<div class="sel-chip">${c?c.name:id}<div class="x" onclick="toggleRecipient('${id}')">✕</div></div>`;
+        }).join('') : `<span style="font-size:13px; color:var(--ink-soft);">まだ選択されていません</span>`}
+      </div>
+
+      <button class="btn solid block" id="send-submit-btn" style="margin-top:26px;" onclick="doSend()">${S.sendSelected.length}名に送信する</button>
+    </div>
+  `;
+}
+function toggleRecipient(id){
+  const i = S.sendSelected.indexOf(id);
+  if(i>-1) S.sendSelected.splice(i,1); else S.sendSelected.push(id);
+  render();
+}
+async function doSend(){
+  if(!S.sendSelected.length){ toast('送信先を選択してください'); return; }
+  const btn = document.getElementById('send-submit-btn');
+  const originalLabel = btn ? btn.textContent : null;
+  if(btn){ btn.textContent = '送信中…'; btn.disabled = true; }
+
+  const d = S.draft;
+  const prevStatus = d.status, prevRecipients = d.recipients;
+  d.status = 'sent';
+  d.recipients = S.sendSelected.map(id=>({id, read:false}));
+  const ok = await persistDraft(d);
+
+  if(!ok){
+    // 失敗した場合は元の状態に戻し、この画面に留まって再送信できるようにする(入力内容は失わない)
+    d.status = prevStatus;
+    d.recipients = prevRecipients;
+    if(btn){ btn.textContent = originalLabel; btn.disabled = false; }
+    return;
+  }
+  toast(d.originalId ? '新しいレポートとして送信しました' : '送信しました');
+  S.draft = null;
+  await go('saved');
+}
+
+/* ---- Contacts (よく送る相手の一覧) ---- */
+function screenContacts(){
+  return `
+    <div class="topbar bordered">
+      <div class="back-btn" onclick="go('home')">←</div>
+      <h1>相手一覧</h1>
+    </div>
+    <div class="content">
+      <div class="field-label" style="margin-top:8px;">個人IDを追加</div>
+      <div style="display:flex; gap:8px;">
+        <input type="text" style="flex:1;" placeholder="例:NR-1077" value="${escapeHtml(S.addContactInput)}" oninput="S.addContactInput=this.value">
+        <button class="btn solid sm" onclick="addMyContact()">追加</button>
+      </div>
+
+      <div class="field-label">登録済み(${S.myContacts.length}名)</div>
+      <div class="set-card">
+        ${S.myContacts.length ? S.myContacts.map(id=>{
+          const c = DIRECTORY.find(x=>x.id===id);
+          return `<div class="set-row">
+            <div><div class="set-label">${c?c.name:id}</div><div class="set-sub">${id}${c?'・'+c.occupation:''}</div></div>
+            <div class="btn sm ghost" style="border-color:transparent; color:var(--danger); padding:6px 8px;" onclick="removeMyContact('${id}')">削除</div>
+          </div>`;
+        }).join('') : `<div class="set-row"><div class="set-sub">まだ追加した相手はいません</div></div>`}
+      </div>
+    </div>
+  `;
+}
+
+/* ---- Settings ---- */
+function screenSettings(){
+  return `
+    <div class="topbar"><h1>設定</h1></div>
+    <div class="content no-pad-top">
+      <div class="section-title">アカウント</div>
+      <div class="set-card">
+        <div class="set-row">
+          <div><div class="set-label">${ME.name}</div><div class="set-sub">${ME.occupation}・個人ID ${ME.id}</div></div>
+        </div>
+        <div class="set-row">
+          <div><div class="set-label">メールアドレスの確認</div><div class="set-sub">${ME.emailVerified ? '確認済みです' : '未確認です。メール内のリンクから確認してください'}</div></div>
+          ${ME.emailVerified
+            ? `<span style="color:var(--primary-dark); font-weight:700; font-size:13px;">✓ 確認済み</span>`
+            : `<button class="btn sm" onclick="resendVerificationEmail()">再送する</button>`}
+        </div>
+      </div>
+
+      <div class="section-title">メールアドレス・パスワードの変更</div>
+      <div class="set-card" style="padding:16px;">
+        <div class="set-sub" style="margin-bottom:12px;">確認のため、変更前に現在のパスワードの入力が必要です。</div>
+        <div class="field-label" style="margin-top:0;">現在のパスワード</div>
+        <input type="password" id="acct-current-pw" placeholder="現在のパスワード" autocomplete="current-password">
+
+        <div class="field-label">新しいメールアドレス</div>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="acct-new-email" style="flex:1;" placeholder="new-address@example.com" autocomplete="email">
+          <button class="btn sm" onclick="changeEmail()">変更</button>
+        </div>
+        <div class="set-sub" style="margin-top:6px;">新しいアドレス宛に届く確認メールのリンクを開くと切り替わります。</div>
+
+        <div class="field-label">新しいパスワード</div>
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="acct-new-pw" style="flex:1;" placeholder="6文字以上" autocomplete="new-password">
+          <button class="btn sm" onclick="changePassword()">変更</button>
+        </div>
+      </div>
+
+      <div class="section-title">通知</div>
+      <div class="set-card">
+        ${switchRow('push','プッシュ通知','返信・コメントをプッシュ通知で受け取る')}
+        ${switchRow('sound','通知音','アプリ内で通知音を鳴らす')}
+        ${switchRow('quiet','勤務中モード','一時的に通知をすべて止める')}
+      </div>
+
+      <div class="section-title">よく送る相手</div>
+      <div class="set-card">
+        <div class="set-row" style="cursor:pointer;" onclick="go('contacts')">
+          <div><div class="set-label">相手一覧を管理</div><div class="set-sub">${S.myContacts.length}名を登録中</div></div>
+          <div style="color:var(--ink-soft);">›</div>
+        </div>
+      </div>
+
+      <div class="section-title">広告</div>
+      <div class="ad-slot">広告スペース(準備中)</div>
+
+      <div class="section-title">その他</div>
+      <div class="set-card">
+        <div class="set-row"><div class="set-label">Web版とデータ同期</div></div>
+        <div class="set-row" style="cursor:pointer;" onclick="S._legalFrom='settings';S.screen='terms';render()"><div class="set-label">利用規約</div></div>
+        <div class="set-row" style="cursor:pointer;" onclick="S._legalFrom='settings';S.screen='privacy';render()"><div class="set-label">プライバシーポリシー</div></div>
+        <div class="set-row"><div class="set-label" style="color:var(--danger);" onclick="doLogout()">ログアウト</div></div>
+      </div>
+
+      <div class="section-title">アカウント削除</div>
+      <div class="set-card" style="padding:16px;">
+        <div class="set-sub" style="margin-bottom:12px;">アカウントを削除すると、プロフィール情報にアクセスできなくなります。作成したレポートや送信履歴は削除されません。この操作は取り消せません。</div>
+        <button class="btn block" style="border-color:var(--danger); color:var(--danger);" onclick="deleteAccount()">アカウントを削除する</button>
+      </div>
+    </div>
+  `;
+}
+function switchRow(key,label,sub){
+  const on = S.notif[key];
+  return `<div class="set-row">
+    <div><div class="set-label">${label}</div><div class="set-sub">${sub}</div></div>
+    <div class="switch ${on?'on':''}" onclick="toggleNotif('${key}')"><div class="knob"></div></div>
+  </div>`;
+}
+function toggleNotif(key){ S.notif[key] = !S.notif[key]; render(); }
+async function addMyContact(){
+  const id = (S.addContactInput||'').trim().toUpperCase();
+  if(!id){ toast('個人IDを入力してください'); return; }
+  const c = DIRECTORY.find(x=>x.id.toUpperCase()===id);
+  if(!c){ toast('その個人IDは見つかりませんでした'); return; }
+  if(S.myContacts.includes(c.id)){ toast('すでに追加されています'); return; }
+  try{
+    await window.fb.updateDoc(window.fb.doc(window.fb.db,'users',ME.uid), { favoriteIds: window.fb.arrayUnion(c.id) });
+    S.myContacts.push(c.id);
+    S.addContactInput='';
+    toast(c.name+'さんを追加しました');
+    render();
+  }catch(e){ console.error(e); toast('追加に失敗しました'); }
+}
+async function removeMyContact(id){
+  try{
+    await window.fb.updateDoc(window.fb.doc(window.fb.db,'users',ME.uid), { favoriteIds: window.fb.arrayRemove(id) });
+    S.myContacts = S.myContacts.filter(x=>x!==id);
+    render();
+  }catch(e){ console.error(e); toast('削除に失敗しました'); }
+}
+
+/* ---- utils ---- */
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function buildPrintDocumentHTML(d, mode){
+  const authorLabel = `${escapeHtml(ME.name)}(${escapeHtml(ME.occupation)}・${escapeHtml(ME.id)})`;
+  const fieldsHtml = (d.fields||[]).map(f=>`<div class="field"><div class="n">${escapeHtml(f.name||'項目')}</div><div class="v">${escapeHtml(f.value)}</div></div>`).join('');
+  const questionHtml = d.question ? `<div class="field"><div class="n" style="color:#C4842B;">疑問・困りごと</div><div class="v">${escapeHtml(d.question)}</div></div>` : '';
+  const imgsHtml = (d.attachments && d.attachments.length) ? `<div class="imgs">${d.attachments.map(a=>`<img src="${a.url}">`).join('')}</div>` : '';
+  const isPdf = mode==='pdf';
+  return `<!DOCTYPE html>
+<html lang="ja"><head><meta charset="UTF-8">
+<title>${escapeHtml(d.title||'レポート')}</title>
+<style>
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif; color:#16232B; margin:0;}
+  .toolbar{
+    position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:10px;
+    background:#1E4E4A; color:#fff; padding:12px 16px;
+  }
+  .toolbar button{
+    border:none; border-radius:999px; padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
+  }
+  .toolbar .back{background:rgba(255,255,255,.16); color:#fff;}
+  .toolbar .action{background:#fff; color:#1E4E4A; margin-left:auto;}
+  .toolbar .ttl{font-size:13.5px; font-weight:700; opacity:.9;}
+  .hint{background:#FBF0DE; color:#7A5A16; font-size:12.5px; padding:10px 16px; line-height:1.6;}
+  .page{padding:26px 30px; font-size:13px; line-height:1.9;}
+  h1{font-size:19px; margin:0 0 4px; font-weight:800;}
+  .meta{font-size:11px; color:#555; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #ccc;}
+  .body{white-space:pre-wrap; font-size:12.5px;}
+  .field{margin-top:14px; page-break-inside:avoid;}
+  .field .n{font-size:11px; font-weight:700; color:#2E6F6A;}
+  .field .v{font-size:12.5px; margin-top:2px; white-space:pre-wrap;}
+  .imgs{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;}
+  .imgs img{width:150px; height:150px; object-fit:cover; border-radius:6px; border:1px solid #ddd;}
+  @media print{
+    .toolbar, .hint{ display:none !important; }
+    @page{ margin:16mm 14mm; }
+  }
+</style></head>
+<body>
+  <div class="toolbar">
+    <button class="back" onclick="window.close()">← 戻る</button>
+    <span class="ttl">${isPdf ? 'PDF化プレビュー' : '印刷プレビュー'}</span>
+    <button class="action" onclick="window.print()">${isPdf ? '📄 PDFとして保存' : '🖨 印刷する'}</button>
+  </div>
+  ${isPdf ? `<div class="hint">「${'📄 PDFとして保存'}」を押すと印刷ダイアログが開きます。送信先(プリンター)の欄で「PDFに保存」を選んでください。</div>` : ''}
+  <div class="page">
+    <h1>${escapeHtml(d.title||'(無題のレポート)')}</h1>
+    <div class="meta">作成者:${authorLabel} ／ ${escapeHtml(d.createdAt||'本日')}</div>
+    <div class="body">${escapeHtml(d.body||'')}</div>
+    ${imgsHtml}
+    ${fieldsHtml}
+    ${questionHtml}
+  </div>
+</body></html>`;
+}
+
+function openPrintWindow(d, mode){
+  if(!d.title || !d.body){ toast('タイトルと自由欄は必須です'); return; }
+  const html = buildPrintDocumentHTML(d, mode);
+  const win = window.open('', '_blank');
+  if(!win){
+    toast('ポップアップがブロックされました。ブラウザの設定でこのサイトのポップアップを許可してください');
+    return;
+  }
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+  if(mode==='print'){
+    // 「印刷」はその場で印刷ダイアログまで自動で開く
+    const triggerPrint = ()=>{ try{ win.focus(); win.print(); }catch(e){} };
+    win.onload = triggerPrint;
+    setTimeout(triggerPrint, 400);
+    toast('別タブが開きます。上の「← 戻る」でこのアプリに戻れます');
+  } else {
+    // 「PDF化」はボタンを押すまで印刷ダイアログを開かず、案内を先に見せる
+    toast('別タブでプレビューを開きました');
+  }
+}
+function doPrint(){ openPrintWindow(S.draft, 'print'); }
+function doPdf(){ openPrintWindow(S.draft, 'pdf'); }
+function printReport(id){ openPrintWindow(findReport(id), 'print'); }
+function pdfReport(id){ openPrintWindow(findReport(id), 'pdf'); }
+
+render();
+
+// Firebase の準備ができたら、ログイン状態を確認して画面を切り替える
+window.addEventListener('fb-ready', function(){
+  window.fb.onAuthStateChanged(window.fb.auth, async function(user){
+    if(user){
+      await loadProfileAndApply(user);
+      if(S.screen==='login'){ await go('home'); } else { render(); }
+    } else {
+      stopReportsListener();
+      S.screen='login';
+      render();
+    }
+  });
+});
+</script>
+</body>
+</html>
