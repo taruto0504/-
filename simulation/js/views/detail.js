@@ -280,7 +280,7 @@ export function detailView(el, scenarioId, openPanel) {
   });
   input.addEventListener("keydown", (e) => {
     // PCでは Enter で送信、Shift+Enter で改行。変換確定中の Enter は無視する
-    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && window.matchMedia("(pointer: fine)").matches) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229 && window.matchMedia("(pointer: fine)").matches) {
       e.preventDefault();
       sendMessage();
     }

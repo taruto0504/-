@@ -88,7 +88,12 @@ export function toggleVoice(button, input) {
   if (label) label.textContent = "停止";
   banner(true);
   input.focus({ preventScroll: true });
-  rec.start();
+  try {
+    rec.start();
+  } catch {
+    finish();
+    toast("音声入力を開始できませんでした。もう一度押してください");
+  }
 }
 
 export function micButton(targetId) {

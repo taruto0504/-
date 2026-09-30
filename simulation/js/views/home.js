@@ -53,7 +53,9 @@ export function homeView(el) {
   const selected = new Set();
 
   function savePrefs() {
-    sessionStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+    try {
+      sessionStorage.setItem(PREF_KEY, JSON.stringify(prefs));
+    } catch {}
   }
 
   function visibleList(all) {

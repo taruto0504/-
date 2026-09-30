@@ -134,7 +134,7 @@ function pickRecipients(scenario, picked) {
       const input = root.querySelector("#send-id");
       root.querySelector("#send-add").addEventListener("click", () => addTyped(root, input.value));
       input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.isComposing) {
+        if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) {
           e.preventDefault();
           addTyped(root, input.value);
         }
@@ -261,7 +261,18 @@ export async function runAiEvaluation(data, { scenarioId = null, canShare = fals
   let saved = store.getAiResult(scenarioId);
   const fresh = saved && !isAiStale(saved, data);
 
+  let busy = false;
   async function evaluate(root) {
+    if (busy) return;
+    busy = true;
+    try {
+      await runEvaluate(root);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function runEvaluate(root) {
     const box = root.querySelector("#ai-result");
     box.innerHTML = `<div class="loading"><span class="spinner"></span>評価しています…（30秒〜1分ほどかかることがあります）</div>`;
     const rules = ruleChecks(data);

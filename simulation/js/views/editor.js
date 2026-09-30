@@ -253,6 +253,7 @@ export function editorView(el, scenarioId) {
             store.saveAiResult(scenario.id, r.snapshot, r.result);
             aiSaved = store.getAiResult(scenario.id);
           } else pendingAi = r;
+          renderAi();
         },
       });
       if (result) renderAi();

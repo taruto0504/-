@@ -27,7 +27,11 @@ function load() {
 }
 
 function commit(db) {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
+  try {
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+  } catch {
+    throw new Error("端末の保存容量がいっぱいのため保存できませんでした。不要なシナリオを削除してから、もう一度お試しください。");
+  }
   emit();
   if (channel) channel.postMessage("change");
 }
@@ -83,6 +87,9 @@ function uid(prefix) {
 }
 
 async function hashPassword(password, salt) {
+  if (!(window.crypto && crypto.subtle)) {
+    throw new Error("このページは https:// で始まるURLで開いてください（安全な接続でないとパスワードを扱えません）");
+  }
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${salt}:${password}`));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }

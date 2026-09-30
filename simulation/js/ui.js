@@ -104,7 +104,7 @@ export function autoGrow(root) {
     // 1行だけの欄（疾患名など）は改行を入れず、長いときだけ折り返して表示する
     if (ta.classList.contains("single-line")) {
       ta.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.isComposing) e.preventDefault();
+        if (e.key === "Enter" && !e.isComposing && e.keyCode !== 229) e.preventDefault();
       });
     }
     ta.addEventListener("input", () => {

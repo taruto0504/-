@@ -178,6 +178,13 @@ store.onChange(() => {
   checkNewNotifications();
 });
 
+function showUnexpected(err) {
+  console.error(err);
+  toast((err && err.message) || "エラーが発生しました。もう一度お試しください");
+}
+window.addEventListener("error", (e) => showUnexpected(e.error || e));
+window.addEventListener("unhandledrejection", (e) => showUnexpected(e.reason));
+
 shell();
 checkNewNotifications();
 render();
