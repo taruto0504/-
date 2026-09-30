@@ -986,3 +986,26 @@ body.sheet-open::before {
 @media print {
   .sheet.print .sheet-table tr { break-inside: avoid; }
 }
+
+/* スマホ：シナリオシートは文字を少し小さく・細くして読みやすくする */
+@media (max-width: 639px) {
+  .sheet { padding: 14px 12px; gap: 10px; }
+  .sheet-title { font-size: 19px; }
+  .sheet-profile { font-size: 14px; font-weight: 500; color: var(--muted); }
+  .sheet-label { font-size: 11px; }
+  .sheet-text p { font-size: 14px; line-height: 1.55; }
+  .sheet-table .col-label { width: 33%; }
+  .sheet-table th, .sheet-table td { padding: 6px 6px; }
+  .sheet-table thead th { font-size: 12px; }
+  .sheet-table th[scope="row"] { font-size: 12.5px; font-weight: 500; color: var(--muted); line-height: 1.35; }
+  .sheet-table .unit { display: block; margin-left: 0; font-size: 10.5px; line-height: 1.2; }
+  .sheet-table td.num { font-size: 15px; font-weight: 500; line-height: 1.35; }
+  .sheet-table td.text { font-size: 13.5px; line-height: 1.5; }
+  .trend { margin-left: 2px; }
+  .detail-meta { font-size: 13px; }
+}
+.sheet-table td .sub { display: block; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0.02em; }
+.sheet.print .sheet-table td .sub { display: inline; margin-left: 4pt; font-size: 8.5pt; color: #333; }
+@media (max-width: 639px) {
+  .sheet-table thead .unit { display: block; margin-left: 0; }
+}
