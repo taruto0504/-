@@ -1,5 +1,6 @@
 // 複数の画面から使う操作：送信、AI評価、PDF・印刷
 import { icon } from "./icons.js";
+import { PREVIEW } from "./env.js";
 
 import * as store from "./store.js";
 import { SECTIONS, formatValue, formatPair, scenarioTitle, gcsTotal, isVitalsEmpty, fieldLabel, normalizeData } from "./fields.js";
@@ -390,6 +391,17 @@ function printHtml(data, meta, { chat, ai }) {
     <p class="print-foot">医療シミュレーションアプリ ─ 教育用シナリオ</p>`;
 }
 
+// プレビュー版：印刷画面の代わりに、A4用紙のイメージを画面に表示する
+function showPrintPreview(data, meta, options, kind) {
+  modal({
+    title: kind === "pdf" ? "PDFのイメージ（A4）" : "印刷のイメージ（A4）",
+    wide: true,
+    body: `<p class="small muted">実際のアプリでは、この内容で印刷画面が開きます。${kind === "pdf" ? "送信先で「PDFに保存」を選ぶとPDFファイルになります。" : ""}</p>
+      <div class="paper-wrap"><div class="paper">${printHtml(data, meta, options)}</div></div>`,
+    buttons: [{ label: "閉じる", value: true, variant: "primary" }],
+  });
+}
+
 function doPrint(data, meta, options) {
   let root = document.getElementById("print-root");
   if (!root) {
@@ -428,9 +440,9 @@ export async function openOutputDialog(scenario) {
     ],
   });
   if (!choice) return;
+  const meta = { ownerName: scenario.ownerName, updatedAt: scenario.updatedAt };
+  const options = { chat: opts.chat ? store.listMessages(scenario.id) : null, ai: opts.ai ? saved : null };
+  if (PREVIEW) return showPrintPreview(scenario.data, meta, options, choice);
   if (choice === "pdf") toast("印刷画面の送信先で「PDFに保存」を選んでください");
-  doPrint(scenario.data, { ownerName: scenario.ownerName, updatedAt: scenario.updatedAt }, {
-    chat: opts.chat ? store.listMessages(scenario.id) : null,
-    ai: opts.ai ? saved : null,
-  });
+  doPrint(scenario.data, meta, options);
 }

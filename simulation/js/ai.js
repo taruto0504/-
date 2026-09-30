@@ -2,6 +2,7 @@
 // 利用者自身の Claude API キーを使い、ブラウザから直接 Claude API を呼び出す。キーはこの端末にだけ保存される。
 
 import { SECTIONS, ALL_FIELDS, formatValue, gcsTotal, isVitalsEmpty } from "./fields.js";
+import { PREVIEW } from "./env.js";
 
 const KEY_STORAGE = "medsim:anthropic-key";
 const SDK_URL = "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk/+esm";
@@ -108,7 +109,59 @@ export function scenarioToText(data) {
     .join("\n\n");
 }
 
+// AIの返答を、画面が前提にしている形にそろえる（欠けた項目は空にする）
+function normalizeResult(r) {
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const str = (v) => (typeof v === "string" ? v : "");
+  const ex = (r && r.explanation) || {};
+  return {
+    summary: str(r && r.summary),
+    issues: arr(r && r.issues)
+      .filter((i) => i && i.message)
+      .map((i) => ({ field: FIELD_ENUM.includes(i.field) ? i.field : "general", message: str(i.message), reason: str(i.reason) })),
+    explanation: {
+      pathophysiology: str(ex.pathophysiology),
+      vitalsRationale: str(ex.vitalsRationale),
+      actions: arr(ex.actions).filter((a) => a && a.action).map((a) => ({ action: str(a.action), reason: str(a.reason) })),
+      deterioration: str(ex.deterioration),
+      learningPoints: arr(ex.learningPoints).map(String),
+      quiz: arr(ex.quiz).filter((q) => q && q.question).map((q) => ({ question: str(q.question), answer: str(q.answer) })),
+      nextTopics: arr(ex.nextTopics).map(String),
+      references: arr(ex.references).map(String),
+    },
+  };
+}
+
+const SAMPLE_ERRORS = {
+  not_granted: "AI評価の利用が許可されませんでした。",
+  sampling_disabled: "このアカウントでは AI を利用できません。",
+  rate_limited: "利用が集中しています。しばらく待ってから再度お試しください。",
+  session_expired: "claude.ai に再度ログインしてください。",
+  refused: "AIがこの内容の評価を控えました。内容を見直して再度お試しください。",
+  invalid_json: "AIの評価結果を読み取れませんでした。もう一度お試しください。",
+};
+
+// claude.ai の公開版：閲覧している人の Claude アカウントで評価する（APIキー不要）
+async function evaluateInViewer(data) {
+  const sample = window.claude && window.claude.use ? await window.claude.use("sample") : null;
+  if (!sample) throw new Error("このページでは AI評価を利用できません。");
+  const prompt = `${SYSTEM_PROMPT}
+
+次の形のJSONだけで答えてください（ほかの文章は書かない）。field は項目キー（[ ] 内の文字列）か "general"。
+{"summary":"総評","issues":[{"field":"v2.hr","message":"指摘","reason":"理由"}],"explanation":{"pathophysiology":"","vitalsRationale":"","actions":[{"action":"","reason":""}],"deterioration":"","learningPoints":[""],"quiz":[{"question":"","answer":""}],"nextTopics":[""],"references":[""]}}
+
+次のシナリオを評価してください。
+
+${scenarioToText(data)}`;
+  try {
+    return normalizeResult(await sample.json(prompt));
+  } catch (e) {
+    throw new Error(SAMPLE_ERRORS[e && e.code] || "AI評価に失敗しました。時間をおいて再度お試しください。");
+  }
+}
+
 export async function evaluateScenario(data) {
+  if (PREVIEW) return evaluateInViewer(data);
   const apiKey = getApiKey();
   if (!apiKey) throw new Error("NO_KEY");
   const { default: Anthropic } = await import(SDK_URL);
@@ -131,7 +184,7 @@ export async function evaluateScenario(data) {
     .map((b) => b.text)
     .join("");
   try {
-    return JSON.parse(text);
+    return normalizeResult(JSON.parse(text));
   } catch {
     throw new Error("AIの評価結果を読み取れませんでした。もう一度お試しください。");
   }

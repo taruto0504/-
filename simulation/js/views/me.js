@@ -1,6 +1,7 @@
 import * as store from "../store.js";
 import { esc, setTitle, formatId, formatDateTime, modal, confirmDialog, toast, copyText } from "../ui.js";
 import { getApiKey, setApiKey } from "../ai.js";
+import { PREVIEW } from "../env.js";
 
 export function meView(el) {
   const me = store.currentUser();
@@ -22,7 +23,13 @@ export function meView(el) {
         <p class="muted small">ログインに使います。相手にこのIDを伝えると、シナリオを受け取れます。</p>
         <button type="button" class="btn small" id="copy-id">IDコピー</button>
       </section>
-      <section class="card">
+      ${
+        PREVIEW
+          ? `<section class="card">
+        <h2>AI評価</h2>
+        <p class="small">このページでは、あなたの Claude アカウントで評価します（APIキーの設定は不要です）。初回だけ利用の許可を確認します。</p>
+      </section>`
+          : `<section class="card">
         <h2>AI評価の設定</h2>
         <p class="small">AI評価には Claude の APIキーが必要です。キーはこの端末のブラウザにだけ保存されます。</p>
         <p class="small muted">状態：${hasKey ? "設定済み" : "未設定"}</p>
@@ -31,7 +38,8 @@ export function meView(el) {
           <button type="button" class="btn primary" id="save-key">保存</button>
         </div>
         ${hasKey ? '<button type="button" class="btn small danger" id="clear-key">APIキーを削除</button>' : ""}
-      </section>
+      </section>`
+      }
       <section class="card">
         <h2>データの保存について</h2>
         <p class="small">現在は「端末内モード」です。データはこのブラウザの中だけに保存されます。送信・チャット・通知は、同じブラウザで登録したアカウント同士で動作します。ブラウザのデータを消去すると、作成物も消えます。</p>
