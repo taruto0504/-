@@ -126,7 +126,7 @@ async function render() {
 
 // 画面を離れる前に、編集中の画面に確認させる（一時保存の確認）
 window.addEventListener("hashchange", async () => {
-  if (rendering) return;
+  if (rendering || !started) return;
   const next = location.hash;
   if (current && current.canLeave) {
     // いったん元のURLに戻してから確認し、許可されたら移動する
@@ -148,6 +148,43 @@ window.addEventListener("beforeunload", (e) => {
 
 // 新しい通知を検知して、画面内トーストとOSの通知で知らせる
 let knownNotificationIds = null;
+// 届いたことを知らせる（LINEの通知のように画面上部に出し、押すとその画面を開く）
+function showLiveNotice(n, count) {
+  const target = `#/s/${n.scenarioId}${n.type === "reply" ? "/chat" : ""}`;
+  // すでにそのシナリオを開いているときは、画面がその場で更新されるので出さない
+  if (location.hash.startsWith(`#/s/${n.scenarioId}`)) return;
+  let preview = n.title ? `「${n.title}」` : "";
+  if (n.type === "reply") {
+    const mine = store.listMessages(n.scenarioId).filter((m) => m.from === n.from);
+    if (mine.length) preview = mine[mine.length - 1].text;
+  }
+  document.querySelectorAll(".live-notice").forEach((el) => el.remove());
+  const box = document.createElement("div");
+  box.className = "live-notice";
+  box.setAttribute("role", "alert");
+  box.innerHTML = `
+    <span class="live-icon">${icon(n.type === "reply" ? "chat" : n.type === "updated" ? "edit" : "mail")}</span>
+    <span class="live-main">
+      <strong>${esc(n.text)}${count > 1 ? `<span class="muted small">（ほか${count - 1}件）</span>` : ""}</strong>
+      ${preview ? `<span class="live-preview">${esc(preview)}</span>` : ""}
+    </span>
+    <span class="live-actions">
+      <button type="button" class="btn small primary" data-live="open">開く</button>
+      <button type="button" class="btn small" data-live="close">閉じる</button>
+    </span>`;
+  box.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-live]");
+    if (!b) return;
+    box.remove();
+    if (b.dataset.live === "open") {
+      store.markNotificationsRead([n.id]);
+      location.hash = target;
+    }
+  });
+  document.body.appendChild(box);
+  setTimeout(() => box.remove(), 8000);
+}
+
 function checkNewNotifications() {
   const user = store.currentUser();
   if (!user) {
@@ -157,8 +194,8 @@ function checkNewNotifications() {
   const list = store.listNotifications();
   if (knownNotificationIds) {
     const fresh = list.filter((n) => !n.read && !knownNotificationIds.has(n.id));
+    if (fresh.length) showLiveNotice(fresh[0], fresh.length);
     for (const n of fresh.slice(0, 3)) {
-      toast(n.text);
       if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
         try {
           const notice = new Notification("医療シミュレーション", { body: n.text, icon: "../icons/icon-192.png", tag: n.id });
@@ -193,9 +230,17 @@ function showUnexpected(err) {
 window.addEventListener("error", (e) => showUnexpected(e.error || e));
 window.addEventListener("unhandledrejection", (e) => showUnexpected(e.reason));
 
+window.addEventListener("medsim:error", (e) => toast(e.detail));
+
+// 共有データの準備ができてから最初の画面を出す
+let started = false;
 shell();
-checkNewNotifications();
-render();
+document.getElementById("view").innerHTML = '<div class="loading"><span class="spinner"></span>読み込んでいます…</div>';
+store.init().then(() => {
+  started = true;
+  checkNewNotifications();
+  render();
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));

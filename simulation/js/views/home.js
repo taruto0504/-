@@ -76,7 +76,11 @@ export function homeView(el) {
 
   function card(s) {
     const badges = [`<span class="badge status-${s.status}">${STATUS_LABEL[s.status]}</span>`];
-    if (s.status === "sent") badges.push(`<span class="badge">${s.activeRecipients.length}人に送信</span>`);
+    if (s.status === "sent") {
+      const rs = s.readStatus || [];
+      const confirmed = rs.filter((r) => r.opened).length;
+      badges.push(`<span class="badge ${confirmed === rs.length && rs.length ? "ok" : ""}">確認 ${confirmed}/${rs.length}人</span>`);
+    }
     if (!s.isOwner) badges.push(`<span class="badge">${esc(s.ownerName)}さんから</span>`);
     if (s.isNew) badges.push('<span class="badge new">未読</span>');
     if (s.hasUpdate) badges.push('<span class="badge warn">更新あり</span>');

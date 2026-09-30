@@ -1,9 +1,12 @@
-// データ層（端末内モード）。
-// すべてのデータをこのブラウザの localStorage に保存する。
-// 同じブラウザ内のアカウント同士であれば、送信・チャット・通知がそのまま動く。
-// サーバー版に置き換えるときは、このファイルと同じ関数を持つモジュールを用意すればよい。
+// データ層。
+// ・端末内モード：すべてのデータをこのブラウザの localStorage に保存する。
+//   同じブラウザ内のアカウント同士であれば、送信・チャット・通知がそのまま動く。
+// ・共有モード（claude.ai の公開版）：ページの共有データベースに保存し、
+//   別の端末で開いている人ともリアルタイムにやりとりできる（remote.js）。
 
 import { ALL_FIELDS, normalizeData, isComplete, scenarioTitle } from "./fields.js";
+import { PREVIEW } from "./env.js";
+import * as remote from "./remote.js";
 
 const DB_KEY = "medsim:db";
 const SESSION_KEY = "medsim:session";
@@ -11,13 +14,30 @@ const UNKNOWN = "Unknown";
 const channel = "BroadcastChannel" in window ? new BroadcastChannel("medsim") : null;
 const listeners = new Set();
 
-export const MODE = "local";
+let mode = "local";
+export function getMode() {
+  return mode;
+}
+
+// 起動時に一度呼ぶ。公開版で共有データベースが使えれば共有モードにする
+export async function init() {
+  if (!PREVIEW || !window.claude || !window.claude.use) return mode;
+  let dbNs = null;
+  try {
+    dbNs = await window.claude.use("db");
+  } catch {
+    dbNs = null;
+  }
+  if (dbNs && (await remote.connect(dbNs, emit))) mode = "shared";
+  return mode;
+}
 
 function emptyDb() {
   return { users: {}, deletedIds: [], scenarios: {}, messages: {}, notifications: [], ai: {}, aiFeedback: [] };
 }
 
 function load() {
+  if (mode === "shared") return { ...emptyDb(), ...remote.read() };
   try {
     const raw = localStorage.getItem(DB_KEY);
     return raw ? { ...emptyDb(), ...JSON.parse(raw) } : emptyDb();
@@ -27,6 +47,11 @@ function load() {
 }
 
 function commit(db) {
+  if (mode === "shared") {
+    remote.write(db);
+    emit();
+    return;
+  }
   try {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
   } catch {
@@ -297,6 +322,19 @@ function view(db, s, meId) {
     isNew: !isOwner && !(s.opened && s.opened[meId]),
     receivedAt: isOwner ? null : (s.receivedAt && s.receivedAt[meId]) || s.sentAt,
     lastMessageAt: msgs.length ? msgs[msgs.length - 1].at : 0,
+    lastMessage: msgs.length ? { text: msgs[msgs.length - 1].text, from: msgs[msgs.length - 1].from, name: nameOf(db, msgs[msgs.length - 1].from) } : null,
+    // 送信者向け：相手ごとの確認状況（opened: 開いた日時、latest: 最新の内容まで確認済み）
+    readStatus: isOwner
+      ? s.recipients
+          .filter((r) => db.users[r])
+          .map((r) => ({
+            id: r,
+            name: nameOf(db, r),
+            opened: (s.opened && s.opened[r]) || 0,
+            latest: !!(s.opened && s.opened[r]) && (s.seen[r] || 0) >= s.version,
+            hidden: s.hiddenFor.includes(r),
+          }))
+      : [],
     editedAfterSendAt: lastEdit ? lastEdit.at : null,
   };
 }
@@ -436,7 +474,7 @@ export function sendScenario(id, rawIds) {
     s.seen[r] = s.version;
     // 再送したときも「未読」に戻し、受信日時を更新する
     (s.receivedAt ||= {})[r] = Date.now();
-    if (s.opened) delete s.opened[r];
+    if (s.opened) s.opened[r] = 0;
     notify(db, r, "received", id, me.id);
   }
   s.sentAt = s.sentAt || Date.now();
@@ -494,6 +532,7 @@ export function listMessages(scenarioId) {
     mine: m.from === me.id,
     name: nameOf(db, m.from),
     readCount: others(m.from).filter((p) => (s.chatRead[p] || 0) >= m.at).length,
+    readTotal: others(m.from).length,
   }));
 }
 

@@ -60,6 +60,7 @@ export function detailView(el, scenarioId, openPanel) {
           <button type="button" class="btn small" data-act="close-chat">閉じる</button>
         </div>
         <div class="chat-log" id="chat-log" aria-live="polite"></div>
+        <button type="button" class="btn small primary new-msg-pill" id="new-msg-pill" hidden>新着メッセージ ↓</button>
         <form class="chat-form" id="chat-form">
           <textarea id="chat-input" rows="1" placeholder="メッセージを入力" aria-label="メッセージ"></textarea>
           ${micButton("chat-input")}
@@ -85,7 +86,34 @@ export function detailView(el, scenarioId, openPanel) {
     const changedCount = Object.keys(changes).length;
     const ai = store.getAiResult(s.id);
     const byField = issuesByField(ai);
-    const people = s.activeRecipients.map((id) => `<span class="chip">${esc(store.userName(id))}（${formatId(id)}）</span>`).join("");
+    // 送信者向け：何人が確認したか（LINEの既読のように）
+    const rs = s.readStatus || [];
+    const confirmed = rs.filter((r) => r.opened).length;
+    const readPanel = rs.length
+      ? `<div class="card read-panel">
+          <div class="read-head">
+            <h3 class="small-head">確認状況</h3>
+            <span class="read-count"><strong>${confirmed}</strong> / ${rs.length}人が確認</span>
+          </div>
+          <div class="read-bar" role="img" aria-label="${rs.length}人中${confirmed}人が確認"><span style="width:${Math.round((confirmed / rs.length) * 100)}%"></span></div>
+          <ul class="read-list">
+            ${rs
+              .map(
+                (r) => `<li>
+                  <span class="read-name">${esc(r.name)}<span class="muted small">（${formatId(r.id)}）</span></span>
+                  ${
+                    !r.opened
+                      ? '<span class="badge">未確認</span>'
+                      : r.latest
+                        ? `<span class="badge ok">確認済み</span><span class="muted small">${formatDateTime(r.opened)}</span>`
+                        : '<span class="badge warn">更新後は未確認</span>'
+                  }
+                </li>`
+              )
+              .join("")}
+          </ul>
+        </div>`
+      : "";
 
     const row = (f) => {
       if (f.pairOf) return "";
@@ -141,7 +169,7 @@ export function detailView(el, scenarioId, openPanel) {
       </div>
       ${changedCount ? `<div class="update-banner">${icon("bell")} 前回確認したあとに <strong>${changedCount}項目</strong> が更新されました。変更箇所は黄色で表示しています。</div>` : ""}
       ${aiStatusHtml(ai, s.data)}
-      ${s.isOwner && people ? `<div class="card"><h3 class="small-head">送信先</h3><div class="chips">${people}</div></div>` : ""}
+      ${s.isOwner ? readPanel : ""}
       ${sections}`;
     el.querySelector("#detail-actions").innerHTML = actionsHtml();
   }
@@ -152,23 +180,42 @@ export function detailView(el, scenarioId, openPanel) {
     const msgs = store.listMessages(scenario.id);
     const members = [scenario.ownerId, ...scenario.activeRecipients].map((id) => store.userName(id));
     el.querySelector("#chat-members").textContent = `参加者：${members.join("、")}`;
+    const prevCount = renderChat.count || 0;
+    renderChat.count = msgs.length;
+    // LINEのように：日付の区切り、同じ人の連続投稿は名前を省略、自分の投稿に既読数
+    let lastDay = "";
+    let lastFrom = "";
     log.innerHTML = msgs.length
       ? msgs
-          .map(
-            (m) => `
-        <div class="msg ${m.mine ? "mine" : ""}">
-          ${m.mine ? "" : `<span class="msg-name">${esc(m.name)}</span>`}
-          <div class="bubble">${esc(m.text)}</div>
-          <span class="msg-time">${m.mine && m.readCount ? `既読 ${m.readCount}　` : ""}${formatDateTime(m.at)}</span>
-        </div>`
-          )
+          .map((m) => {
+            const d = new Date(m.at);
+            const day = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
+            const sep = day !== lastDay ? `<div class="day-sep"><span>${d.getMonth() + 1}月${d.getDate()}日（${"日月火水木金土"[d.getDay()]}）</span></div>` : "";
+            const showName = !m.mine && (m.from !== lastFrom || sep);
+            lastDay = day;
+            lastFrom = m.from;
+            const time = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+            return `${sep}
+        <div class="msg ${m.mine ? "mine" : ""} ${showName ? "" : "cont"}">
+          ${showName ? `<span class="msg-name">${esc(m.name)}</span>` : ""}
+          <div class="msg-line">
+            <div class="bubble">${esc(m.text)}</div>
+            <span class="msg-time">${m.mine && m.readCount ? `<span class="read-mark">既読${m.readTotal > 1 ? ` ${m.readCount}` : ""}</span>` : ""}${time}</span>
+          </div>
+        </div>`;
+          })
           .join("")
       : `<p class="muted small chat-empty">${
           scenario.isOwner && !scenario.recipients.length
             ? "シナリオを送信すると、相手とここで意見交換できます。"
             : "まだメッセージはありません。気づいた点や質問を書いてみましょう。"
         }</p>`;
-    if (nearBottom || !renderChat.done) log.scrollTop = log.scrollHeight;
+    const lastIsMine = msgs.length && msgs[msgs.length - 1].mine;
+    const newPill = el.querySelector("#new-msg-pill");
+    if (nearBottom || !renderChat.done || lastIsMine) {
+      log.scrollTop = log.scrollHeight;
+      newPill.hidden = true;
+    } else if (msgs.length > prevCount) newPill.hidden = false; // 読み返している途中に届いたら知らせる
     renderChat.done = true;
     if (chatOpen) store.markChatRead(scenario.id);
   }
@@ -218,6 +265,16 @@ export function detailView(el, scenarioId, openPanel) {
     toast("削除しました", "success");
     location.hash = "#/home";
   }
+
+  el.querySelector("#new-msg-pill").addEventListener("click", () => {
+    const log = el.querySelector("#chat-log");
+    log.scrollTop = log.scrollHeight;
+    el.querySelector("#new-msg-pill").hidden = true;
+  });
+  el.querySelector("#chat-log").addEventListener("scroll", (e) => {
+    const log = e.currentTarget;
+    if (log.scrollHeight - log.scrollTop - log.clientHeight < 60) el.querySelector("#new-msg-pill").hidden = true;
+  });
 
   el.addEventListener("click", async (e) => {
     const act = e.target.closest("[data-act]");

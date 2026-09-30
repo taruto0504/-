@@ -36,6 +36,13 @@ export function inboxView(el) {
           <span class="sc-title">${esc(scenarioTitle(s.data))}</span>
           <span class="sc-sub">${esc(sub || "年齢・性別 未入力")}${s.data.complaint ? `　主訴：${esc(s.data.complaint)}` : ""}</span>
           ${marks.length ? `<span class="sc-badges">${marks.join("")}</span>` : ""}
+          ${
+            s.lastMessage
+              ? `<span class="last-msg ${s.unreadMessages ? "unread" : ""}">${icon("chat")}<span>${esc(s.lastMessage.from === me.id ? "あなた" : s.lastMessage.name)}：${esc(s.lastMessage.text)}</span>${
+                  s.unreadMessages ? `<span class="unread-count" aria-label="未読${s.unreadMessages}件">${s.unreadMessages}</span>` : ""
+                }</span>`
+              : ""
+          }
           ${s.editedAfterSendAt ? `<span class="small muted">最終更新 ${formatDateTime(s.updatedAt)}</span>` : ""}
         </a>
       </li>`;
@@ -70,7 +77,11 @@ export function inboxView(el) {
             : `<div class="empty">
                 <p class="empty-icon">${icon("inbox")}</p>
                 <p>まだシナリオは届いていません。</p>
-                <p class="muted small">送信されたシナリオは、ここに届きます。<br>今はこのブラウザの中だけで動くお試し版のため、受信を試すには、別のタブで別のアカウントを作り、あなたのIDあてに送信してください。</p>
+                <p class="muted small">送信されたシナリオは、ここに届きます。<br>${
+                  store.getMode() === "shared"
+                    ? "相手にあなたのIDを伝え、このページから送信してもらうと、すぐにここへ表示されます。"
+                    : "今はこのブラウザの中だけで動くお試し版のため、受信を試すには、別のタブで別のアカウントを作り、あなたのIDあてに送信してください。"
+                }</p>
                 <button type="button" class="btn primary" id="receive-sample">サンプルを受け取る</button>
               </div>`
       }`;

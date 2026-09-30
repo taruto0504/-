@@ -2,7 +2,11 @@ import * as store from "../store.js";
 import { icon } from "../icons.js";
 import { esc, setTitle, formatId, copyText } from "../ui.js";
 
-const LOCAL_NOTE = `<p class="muted small auth-note">現在は「端末内モード」です。データはこのブラウザの中だけに保存され、送信やチャットは同じブラウザで登録したアカウント同士で行えます。</p>`;
+// 保存場所の説明（共有モードでは、このページを開いている人同士でやりとりできる）
+const modeNote = () =>
+  store.getMode() === "shared"
+    ? `<p class="muted small auth-note">このページを開いている人同士で、シナリオの送信やチャットがリアルタイムにできます。</p>`
+    : `<p class="muted small auth-note">現在は「端末内モード」です。データはこのブラウザの中だけに保存され、送信やチャットは同じブラウザで登録したアカウント同士で行えます。</p>`;
 
 // パスワード欄＋表示/非表示の切替ボタン
 function passwordField(id, label, autocomplete) {
@@ -43,7 +47,7 @@ export function loginView(el, presetId) {
         <button class="btn primary block" type="submit">ログイン</button>
       </form>
       <div class="auth-switch"><span>はじめての方は</span><a class="btn block" href="#/register">新規登録</a></div>
-      ${LOCAL_NOTE}
+      ${modeNote()}
     </div>`;
   bindPasswordToggles(el);
   if (presetId) el.querySelector("#login-pass").focus();
@@ -77,7 +81,7 @@ export function registerView(el) {
         <button class="btn primary block" type="submit">登録</button>
       </form>
       <div class="auth-switch"><span>IDをお持ちの方は</span><a class="btn block" href="#/login">ログイン</a></div>
-      ${LOCAL_NOTE}
+      ${modeNote()}
     </div>`;
   bindPasswordToggles(el);
   el.querySelector("#reg-form").addEventListener("submit", async (e) => {
