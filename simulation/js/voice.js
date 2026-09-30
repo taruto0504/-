@@ -1,4 +1,5 @@
 // 音声入力（Web Speech API）。Chrome（PC / Android）と Safari（iPhone / Mac）で利用できる。
+// 文章を書く欄（概要・主訴・既往歴・処置・備考・チャット）で使う。
 // マイクボタンで開始、もう一度押すと終了。認識した内容はそのまま入力欄に入り、手で直せる。
 
 import { toast, esc } from "./ui.js";
@@ -8,81 +9,12 @@ let active = null;
 
 export const voiceSupported = !!Recognition;
 
-function toHalfWidth(s) {
-  return s.replace(/[０-９．－]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0));
-}
-
-const KANJI_DIGITS = { 〇: 0, 零: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9 };
-const KANJI_UNITS = { 十: 10, 百: 100, 千: 1000 };
-
-function kanjiToNumber(s) {
-  let total = 0;
-  let current = 0;
-  for (const ch of s) {
-    if (ch in KANJI_DIGITS) current = current * 10 + KANJI_DIGITS[ch];
-    else {
-      total += (current || 1) * KANJI_UNITS[ch];
-      current = 0;
-    }
-  }
-  return total + current;
-}
-
-// 「HR 110」「体温 38.5」「三十八度二分」「3リットル」などから数値を取り出す
-export function extractNumber(text) {
-  const t = toHalfWidth(text)
-    .replace(/\s/g, "")
-    .replace(/[〇零一二三四五六七八九十百千]+/g, (m) => String(kanjiToNumber(m)))
-    .replace(/(\d)点(\d)/g, "$1.$2")
-    .replace(/SpO2|SPO2|spo2|O2/g, "");
-  const doBu = t.match(/(\d+)度(\d)分?/);
-  if (doBu) return `${doBu[1]}.${doBu[2]}`;
-  const nums = t.match(/-?\d+(?:\.\d+)?/g);
-  return nums ? nums[nums.length - 1] : "";
-}
-
-// 選択肢の言い換え（話し言葉で出やすい表現）
-const ALIASES = {
-  男性: ["男"],
-  女性: ["女"],
-  なし: ["無し", "ない", "ルームエア", "RA"],
-  鼻カニューレ: ["カニューレ", "カニューラ", "鼻カヌラ"],
-  中濃度マスク: ["中濃度", "シンプルマスク", "普通のマスク"],
-  高濃度マスク: ["高濃度", "リザーバー"],
-  BVM: ["バッグバルブマスク", "バッグバルブ", "アンビュー"],
-  ジャクソンリース: ["ジャクソン"],
-};
-
-function matchOption(select, text) {
-  const options = [...select.options].map((o) => o.value).filter(Boolean);
-  const t = toHalfWidth(text).replace(/\s/g, "");
-  // 文字の選択肢：長いものから順に一致を探す（「中濃度マスク」を「マスク」より優先）
-  const textual = options.filter((o) => !/^\d+$/.test(o)).sort((a, b) => b.length - a.length);
-  for (const o of textual) {
-    if (t.toUpperCase().includes(o.toUpperCase())) return o;
-    if ((ALIASES[o] || []).some((a) => t.toUpperCase().includes(a.toUpperCase()))) return o;
-  }
-  // 数字の選択肢（JCS・GCS・酸素投与量）
-  const n = extractNumber(text);
-  if (n && options.includes(String(Number(n)))) return String(Number(n));
-  return "";
-}
-
+// 認識した文章を入力欄の末尾に追記する（複数行の欄は改行して追記）
 function applyResult(input, text) {
-  if (input.tagName === "SELECT") {
-    const hit = matchOption(input, text);
-    if (hit) input.value = hit;
-    else toast(`「${text}」を選択肢に当てはめられませんでした`);
-  } else if (input.type === "number" || input.inputMode === "numeric") {
-    const n = extractNumber(text);
-    if (n) input.value = n;
-    else toast(`「${text}」から数値を読み取れませんでした`);
-  } else {
-    const cur = input.value;
-    input.value = cur && !/\s$/.test(cur) ? `${cur}${input.tagName === "TEXTAREA" ? "\n" : " "}${text}` : cur + text;
-  }
+  const cur = input.value;
+  const sep = input.tagName === "TEXTAREA" ? "\n" : " ";
+  input.value = cur && !/\s$/.test(cur) ? `${cur}${sep}${text}` : cur + text;
   input.dispatchEvent(new Event("input", { bubbles: true }));
-  input.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
 function banner(show, text = "") {

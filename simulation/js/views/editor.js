@@ -1,6 +1,7 @@
 import * as store from "../store.js";
 import {
   SECTIONS,
+  getField,
   VITAL_GROUPS,
   emptyData,
   normalizeData,
@@ -18,33 +19,57 @@ import { confirmDelete } from "./home.js";
 
 const fieldId = (key) => `f-${key.replace(".", "-")}`;
 
-function inputHtml(f, value) {
+function numberInput(f, value, extra = "") {
+  const integer = !f.step;
+  return `<input id="${fieldId(f.key)}" name="${esc(f.key)}" type="number" inputmode="${integer ? "numeric" : "decimal"}" step="${f.step || "1"}" min="${f.min ?? ""}" max="${f.max ?? ""}" value="${esc(value)}" ${extra}>`;
+}
+
+// 血圧：収縮期 / 拡張期 を1行で入力する
+function pairHtml(f, data) {
+  const dia = getField(f.pair);
+  return `
+    <div class="field" data-field="${esc(f.key)}">
+      <label for="${fieldId(f.key)}">${esc(f.pairLabel)}<span class="unit">（${esc(f.unit)}）</span></label>
+      <div class="input-row bp-row">
+        ${numberInput(f, data[f.key], 'aria-label="収縮期" placeholder="収縮期"')}
+        <span class="bp-slash" aria-hidden="true">/</span>
+        ${numberInput(dia, data[dia.key], 'aria-label="拡張期" placeholder="拡張期"')}
+      </div>
+      <div class="field-issues" data-issues-for="${esc(f.key)}"></div>
+      <div class="field-issues" data-issues-for="${esc(dia.key)}"></div>
+    </div>`;
+}
+
+// 1項目分の入力欄。音声入力ボタンは文章を書く欄（複数行）だけに付ける
+function inputHtml(f, data) {
+  if (f.pairOf) return "";
+  if (f.pair) return pairHtml(f, data);
+  const value = data[f.key];
   const id = fieldId(f.key);
   const common = `id="${id}" name="${esc(f.key)}"`;
   let control;
   if (f.type === "textarea") {
-    control = `<textarea ${common} rows="3" placeholder="${esc(f.placeholder || "")}">${esc(value)}</textarea>`;
+    control = `<textarea ${common} rows="3" placeholder="${esc(f.placeholder || "")}">${esc(value)}</textarea>${micButton(id)}`;
   } else if (f.type === "select") {
     control = `<select ${common}><option value="">選択</option>${f.options
-      .map((o) => `<option value="${esc(o)}" ${o === value ? "selected" : ""}>${esc(f.base === "jcs" ? o : o)}${f.unit && f.base === "o2Flow" ? " L/分" : ""}</option>`)
+      .map((o) => `<option value="${esc(o)}" ${o === value ? "selected" : ""}>${esc(o)}${f.base === "o2Flow" ? " L/分" : ""}</option>`)
       .join("")}</select>`;
   } else if (f.type === "number") {
-    const integer = !f.step;
-    control = `<input ${common} type="number" inputmode="${integer ? "numeric" : "decimal"}" step="${f.step || "1"}" min="${f.min ?? ""}" max="${f.max ?? ""}" value="${esc(value)}">`;
+    control = numberInput(f, value);
   } else {
     control = `<input ${common} type="text" placeholder="${esc(f.placeholder || "")}" value="${esc(value)}">`;
   }
   const wide = f.type === "textarea" || f.wide;
   return `
-    <div class="field ${wide ? "wide" : ""} ${f.needsO2 ? "needs-o2" : ""}" data-field="${esc(f.key)}">
+    <div class="field ${wide ? "wide" : ""}" data-field="${esc(f.key)}">
       <label for="${id}">${esc(f.label)}${f.unit ? `<span class="unit">（${esc(f.unit)}）</span>` : ""}</label>
-      <div class="input-row">${control}${micButton(id)}</div>
+      <div class="input-row">${control}</div>
       <div class="field-issues" data-issues-for="${esc(f.key)}"></div>
     </div>`;
 }
 
 function vitalsSectionHtml(section, data) {
-  const groups = VITAL_GROUPS.map((g) => {
+  const groups = VITAL_GROUPS.map((g, i) => {
     const fields = section.fields.filter((f) => f.group === g);
     const extra =
       g === "意識"
@@ -53,7 +78,7 @@ function vitalsSectionHtml(section, data) {
     return `
       <div class="vital-group">
         <h3>${g}</h3>
-        <div class="form-grid group-${g}">${fields.map((f) => inputHtml(f, data[f.key])).join("")}</div>
+        <div class="form-grid vital-grid-${i}">${fields.map((f) => inputHtml(f, data)).join("")}</div>
         ${extra}
       </div>`;
   }).join("");
@@ -84,12 +109,12 @@ export function editorView(el, scenarioId) {
   el.classList.add("with-actionbar");
   el.innerHTML = `
     <p class="notice">⚠️ 実在する患者の氏名など、個人を特定できる情報は入力しないでください。</p>
-    ${voiceSupported ? '<p class="muted small">各項目の「音声」ボタンを押すと、話した内容がその項目に入ります（例：「HR 110」「JCS 30」「鼻カニューレ」「3リットル」）。</p>' : ""}
+    ${voiceSupported ? '<p class="muted small">概要・主訴・既往歴・処置・備考は、「音声」ボタンを押して話すと入力できます。</p>' : ""}
     <div id="ai-status"></div>
     <form id="scenario-form" autocomplete="off" novalidate>
       <section class="card form-section" data-section="basic">
         <h2>基本情報</h2>
-        <div class="form-grid">${SECTIONS[0].fields.map((f) => inputHtml(f, saved[f.key])).join("")}</div>
+        <div class="form-grid">${SECTIONS[0].fields.map((f) => inputHtml(f, saved)).join("")}</div>
       </section>
       ${SECTIONS.slice(1).map((s) => vitalsSectionHtml(s, saved)).join("")}
     </form>
@@ -128,8 +153,6 @@ export function editorView(el, scenarioId) {
         input.disabled = !inUse;
         if (!inUse) input.value = "";
         input.closest(".field").classList.toggle("disabled", !inUse);
-        const mic = input.closest(".field").querySelector(".mic-btn");
-        mic.disabled = !inUse;
       }
     }
   }

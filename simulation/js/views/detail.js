@@ -1,5 +1,5 @@
 import * as store from "../store.js";
-import { SECTIONS, VITAL_GROUPS, formatValue, scenarioTitle, scenarioSubtitle, gcsTotal, isVitalsEmpty, getField, fieldLabel } from "../fields.js";
+import { SECTIONS, VITAL_GROUPS, formatValue, formatPair, scenarioTitle, scenarioSubtitle, gcsTotal, isVitalsEmpty, getField, fieldLabel } from "../fields.js";
 import { esc, setTitle, formatDateTime, formatId, toast, modal, menu } from "../ui.js";
 import { micButton, bindMics, stopVoice } from "../voice.js";
 import { openSendDialog, runAiEvaluation, openOutputDialog, issuesByField, issueHtml, aiStatusHtml } from "../actions.js";
@@ -86,15 +86,25 @@ export function detailView(el, scenarioId, openPanel) {
     const people = s.activeRecipients.map((id) => `<span class="chip">${esc(store.userName(id))}（${formatId(id)}）</span>`).join("");
 
     const row = (f) => {
-      const c = changes[f.key];
-      const val = formatValue(f, s.data[f.key]);
-      if (!val && !c && !byField[f.key]) return "";
+      if (f.pairOf) return "";
+      const keys = f.pair ? [f.key, f.pair] : [f.key];
+      const changed = keys.some((k) => changes[k]);
+      const issues = keys.flatMap((k) => byField[k] || []);
+      const val = f.pair ? formatPair(f, s.data) : formatValue(f, s.data[f.key]);
+      if (!val && !changed && !issues.length) return "";
+      let before = "";
+      if (changed) {
+        // 変更前の値を組み立てる（血圧は収縮期・拡張期をまとめて表示）
+        const old = { ...s.data };
+        for (const k of keys) if (changes[k]) old[k] = changes[k].from;
+        before = (f.pair ? formatPair(f, old) : formatValue(f, old[f.key])) || "（未入力）";
+      }
       return `
-        <div class="data-row ${c ? "changed" : ""} ${f.type === "textarea" || f.wide ? "wide" : ""}">
-          <dt>${esc(f.label)}${c ? '<span class="badge warn">更新</span>' : ""}</dt>
+        <div class="data-row ${changed ? "changed" : ""} ${f.type === "textarea" || f.wide ? "wide" : ""}">
+          <dt>${esc(f.pairLabel || f.label)}${changed ? '<span class="badge warn">更新</span>' : ""}</dt>
           <dd>${val ? `<span class="val">${esc(val)}</span>` : '<span class="muted">—</span>'}${
-            c ? `<span class="before">変更前：${esc(formatValue(f, c.from)) || "（未入力）"}</span>` : ""
-          }${issueHtml(byField[f.key])}</dd>
+            changed ? `<span class="before">変更前：${esc(before)}</span>` : ""
+          }${issueHtml(issues)}</dd>
         </div>`;
     };
 

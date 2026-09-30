@@ -378,12 +378,20 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .vital-group { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 4px; }
 .vital-group:first-of-type { border-top: 0; padding-top: 0; }
 .vital-group h3 { font-size: 14px; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.1em; }
-.form-grid.group-意識, .form-grid.group-循環, .form-grid.group-呼吸 { grid-template-columns: 1fr 1fr; }
+/* 意識・循環・呼吸・体温は2列（スマホ）。血圧は収縮期 / 拡張期を1行で */
+.form-grid.vital-grid-0, .form-grid.vital-grid-1, .form-grid.vital-grid-2 { grid-template-columns: 1fr 1fr; }
+.form-grid.vital-grid-1 .field:first-child { grid-column: 1 / -1; }
+.bp-row { align-items: center; gap: 4px; }
+.bp-row input { padding: 10px 6px; text-align: center; -moz-appearance: textfield; }
+.bp-row input::-webkit-outer-spin-button, .bp-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.bp-row .bp-slash { font-size: 20px; color: var(--muted); }
 .gcs-total { margin: -4px 0 12px; font-size: 15px; }
 .gcs-total strong { font-size: 20px; color: var(--primary-dark); margin: 0 4px; }
 @media (min-width: 640px) {
   .form-grid { grid-template-columns: 1fr 1fr; }
-  .form-grid.group-意識 { grid-template-columns: repeat(4, 1fr); }
+  .form-grid.vital-grid-0 { grid-template-columns: repeat(4, 1fr); }
+  .form-grid.vital-grid-1 { grid-template-columns: repeat(3, 1fr); }
+  .form-grid.vital-grid-1 .field:first-child { grid-column: auto; }
 }
 .save-status { min-height: 20px; margin: 4px 2px 12px; }
 

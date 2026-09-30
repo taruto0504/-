@@ -1,11 +1,10 @@
 // 複数の画面から使う操作：送信、AI評価、PDF・印刷
 
 import * as store from "./store.js";
-import { SECTIONS, formatValue, scenarioTitle, gcsTotal, isVitalsEmpty, fieldLabel, normalizeData } from "./fields.js";
+import { SECTIONS, formatValue, formatPair, scenarioTitle, gcsTotal, isVitalsEmpty, fieldLabel, normalizeData } from "./fields.js";
 import { esc, modal, toast, formatId, formatDateTime, copyText } from "./ui.js";
 import { evaluateScenario, describeAiError, explanationToText, AI_DISCLAIMER } from "./ai.js";
 import { ruleChecks } from "./checks.js";
-import { micButton, bindMics, stopVoice } from "./voice.js";
 
 // ---------- 送信 ----------
 
@@ -63,7 +62,6 @@ function pickRecipients(scenario, picked) {
       <label for="send-id">IDを入力して追加（未登録の相手にも送れます）</label>
       <div class="input-row">
         <input id="send-id" inputmode="numeric" autocomplete="off" placeholder="例：12345678">
-        ${micButton("send-id")}
         <button type="button" class="btn" id="send-add">追加</button>
       </div>
       <p class="error-text" id="send-error" hidden></p>
@@ -118,7 +116,6 @@ function pickRecipients(scenario, picked) {
         value: true,
         variant: "primary",
         onClick(root) {
-          stopVoice();
           const pending = root.querySelector("#send-id").value;
           if (pending.trim() && !addTyped(root, pending)) return false;
           if (!picked.size) {
@@ -132,7 +129,6 @@ function pickRecipients(scenario, picked) {
       },
     ],
     setup(root) {
-      bindMics(root);
       renderChips(root);
       const input = root.querySelector("#send-id");
       root.querySelector("#send-add").addEventListener("click", () => addTyped(root, input.value));
@@ -352,8 +348,9 @@ function printHtml(data, meta, { chat, ai }) {
     .map((s) => {
       const rows = [];
       for (const f of s.fields) {
-        const v = formatValue(f, data[f.key]);
-        if (v) rows.push(`<tr><th>${esc(f.label)}</th><td>${esc(v)}</td></tr>`);
+        if (f.pairOf) continue;
+        const v = f.pair ? formatPair(f, data) : formatValue(f, data[f.key]);
+        if (v) rows.push(`<tr><th>${esc(f.pairLabel || f.label)}</th><td>${esc(v)}</td></tr>`);
         if (f.base === "gcsM") {
           const total = gcsTotal(data, s.id);
           if (total) rows.push(`<tr><th>GCS 合計</th><td>${total}</td></tr>`);

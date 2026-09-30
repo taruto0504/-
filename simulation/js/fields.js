@@ -14,33 +14,41 @@ export const BASIC_FIELDS = [
   { key: "complaint", label: "主訴", type: "textarea", placeholder: "例：胸が締め付けられるように痛い" },
 ];
 
-// バイタルサイン1・2に共通の項目。group は画面上のまとまり（意識・循環・呼吸・体温・その他）
+// バイタルサイン1・2に共通の項目。group は画面上のまとまり（意識・循環・呼吸・体温・その他）。体温は呼吸数の隣に置く
 const VITAL_ITEMS = [
   { key: "jcs", label: "意識レベル（JCS）", short: "JCS", type: "select", options: JCS_OPTIONS, group: "意識" },
   { key: "gcsE", label: "GCS E（開眼）", short: "GCS E", type: "select", options: range(1, 4), group: "意識", gcs: true },
   { key: "gcsV", label: "GCS V（言語）", short: "GCS V", type: "select", options: range(1, 5), group: "意識", gcs: true },
   { key: "gcsM", label: "GCS M（運動）", short: "GCS M", type: "select", options: range(1, 6), group: "意識", gcs: true },
   { key: "hr", label: "HR（心拍数）", short: "HR", type: "number", unit: "回/分", min: 0, max: 300, group: "循環" },
-  { key: "bpRSys", label: "血圧（右）収縮期", short: "右 収縮期", type: "number", unit: "mmHg", min: 0, max: 300, group: "循環" },
-  { key: "bpRDia", label: "血圧（右）拡張期", short: "右 拡張期", type: "number", unit: "mmHg", min: 0, max: 250, group: "循環" },
-  { key: "bpLSys", label: "血圧（左）収縮期", short: "左 収縮期", type: "number", unit: "mmHg", min: 0, max: 300, group: "循環" },
-  { key: "bpLDia", label: "血圧（左）拡張期", short: "左 拡張期", type: "number", unit: "mmHg", min: 0, max: 250, group: "循環" },
-  { key: "spo2", label: "SpO2（RA）", short: "SpO2(RA)", type: "number", unit: "%", min: 0, max: 100, group: "呼吸" },
-  { key: "o2", label: "酸素投与", short: "酸素投与", type: "select", options: O2_OPTIONS, group: "呼吸" },
-  { key: "o2Flow", label: "酸素投与量", short: "投与量", type: "select", options: O2_FLOW_OPTIONS, unit: "L/分", group: "呼吸", needsO2: true },
-  { key: "spo2O2", label: "SpO2（酸素投与後）", short: "SpO2(投与後)", type: "number", unit: "%", min: 0, max: 100, group: "呼吸", needsO2: true },
-  { key: "rr", label: "呼吸数（RR）", short: "RR", type: "number", unit: "回/分", min: 0, max: 100, group: "呼吸" },
-  { key: "temp", label: "体温", short: "体温", type: "number", unit: "℃", min: 25, max: 45, step: "0.1", group: "体温" },
+  // 血圧は収縮期と拡張期を1行で入力する（pair / pairOf で組にする）
+  { key: "bpRSys", label: "血圧（右）収縮期", pairLabel: "血圧（右）", pair: "bpRDia", type: "number", unit: "mmHg", min: 0, max: 300, group: "循環" },
+  { key: "bpRDia", label: "血圧（右）拡張期", pairOf: "bpRSys", type: "number", unit: "mmHg", min: 0, max: 250, group: "循環" },
+  { key: "bpLSys", label: "血圧（左）収縮期", pairLabel: "血圧（左）", pair: "bpLDia", type: "number", unit: "mmHg", min: 0, max: 300, group: "循環" },
+  { key: "bpLDia", label: "血圧（左）拡張期", pairOf: "bpLSys", type: "number", unit: "mmHg", min: 0, max: 250, group: "循環" },
+  { key: "spo2", label: "SpO2（RA）", short: "SpO2(RA)", type: "number", unit: "%", min: 0, max: 100, group: "呼吸・体温" },
+  { key: "o2", label: "酸素投与", short: "酸素投与", type: "select", options: O2_OPTIONS, group: "呼吸・体温" },
+  { key: "o2Flow", label: "酸素投与量", short: "投与量", type: "select", options: O2_FLOW_OPTIONS, unit: "L/分", group: "呼吸・体温", needsO2: true },
+  { key: "spo2O2", label: "SpO2（酸素投与後）", short: "SpO2(投与後)", type: "number", unit: "%", min: 0, max: 100, group: "呼吸・体温", needsO2: true },
+  { key: "rr", label: "呼吸数（RR）", short: "RR", type: "number", unit: "回/分", min: 0, max: 100, group: "呼吸・体温" },
+  { key: "temp", label: "体温", short: "体温", type: "number", unit: "℃", min: 25, max: 45, step: "0.1", group: "呼吸・体温" },
   { key: "history", label: "既往歴", type: "textarea", group: "その他" },
   { key: "treatment", label: "処置", type: "textarea", group: "その他" },
   { key: "notes", label: "備考", type: "textarea", group: "その他" },
 ];
 
-export const VITAL_GROUPS = ["意識", "循環", "呼吸", "体温", "その他"];
+export const VITAL_GROUPS = ["意識", "循環", "呼吸・体温", "その他"];
 export const VITAL_KEYS = VITAL_ITEMS.map((f) => f.key);
 
 function vitalFields(prefix) {
-  return VITAL_ITEMS.map((f) => ({ ...f, key: `${prefix}.${f.key}`, base: f.key, prefix }));
+  return VITAL_ITEMS.map((f) => ({
+    ...f,
+    key: `${prefix}.${f.key}`,
+    base: f.key,
+    prefix,
+    pair: f.pair && `${prefix}.${f.pair}`,
+    pairOf: f.pairOf && `${prefix}.${f.pairOf}`,
+  }));
 }
 
 export const SECTIONS = [
@@ -102,6 +110,14 @@ export function isVitalsEmpty(data, prefix) {
 
 export function isEmptyData(data) {
   return ALL_FIELDS.every((f) => !data[f.key]);
+}
+
+// 血圧のように組になった項目を「150 / 90 mmHg」の形で表示する
+export function formatPair(field, data) {
+  const sys = data[field.key];
+  const dia = data[field.pair];
+  if (!sys && !dia) return "";
+  return `${sys || "—"} / ${dia || "—"} ${field.unit}`;
 }
 
 export function formatValue(field, value) {

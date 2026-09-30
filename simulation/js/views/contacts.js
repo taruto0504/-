@@ -1,6 +1,5 @@
 import * as store from "../store.js";
 import { esc, setTitle, formatId, confirmDialog, toast, copyText, modal } from "../ui.js";
-import { micButton, bindMics } from "../voice.js";
 
 export function contactsView(el) {
   const me = store.currentUser();
@@ -14,7 +13,6 @@ export function contactsView(el) {
       <form id="contact-form" novalidate>
         <div class="input-row">
           <input id="contact-id" inputmode="numeric" autocomplete="off" placeholder="相手の個人ID（8桁）" aria-label="相手の個人ID">
-          ${micButton("contact-id")}
           <button type="submit" class="btn primary">追加</button>
         </div>
       </form>
@@ -30,7 +28,6 @@ export function contactsView(el) {
       <button type="button" role="tab" data-filter="fav" aria-selected="false">お気に入り</button>
     </div>
     <ul class="contact-list" id="contact-list"></ul>`;
-  bindMics(el);
 
   function render() {
     const q = query.trim().toLowerCase();
