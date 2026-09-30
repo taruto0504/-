@@ -1,9 +1,10 @@
 import * as store from "../store.js";
 import { icon } from "../icons.js";
-import { SECTIONS, VITAL_GROUPS, formatValue, formatPair, scenarioTitle, scenarioSubtitle, gcsTotal, isVitalsEmpty, getField, fieldLabel } from "../fields.js";
+import { formatValue, scenarioTitle, getField, fieldLabel } from "../fields.js";
+import { sheetHtml } from "../sheet.js";
 import { esc, setTitle, formatDateTime, formatId, toast, modal, menu, autoGrow } from "../ui.js";
 import { micButton, bindMics, stopVoice } from "../voice.js";
-import { openSendDialog, runAiEvaluation, openOutputDialog, issuesByField, issueHtml, aiStatusHtml } from "../actions.js";
+import { openSendDialog, runAiEvaluation, openOutputDialog, issuesByField, aiStatusHtml } from "../actions.js";
 import { confirmDelete } from "./home.js";
 
 function formatDateTimeLong(ts) {
@@ -115,62 +116,17 @@ export function detailView(el, scenarioId, openPanel) {
         </div>`
       : "";
 
-    const row = (f) => {
-      if (f.pairOf) return "";
-      const keys = f.pair ? [f.key, f.pair] : [f.key];
-      const changed = keys.some((k) => changes[k]);
-      const issues = keys.flatMap((k) => byField[k] || []);
-      const val = f.pair ? formatPair(f, s.data) : formatValue(f, s.data[f.key]);
-      if (!val && !changed && !issues.length) return "";
-      let before = "";
-      if (changed) {
-        // 変更前の値を組み立てる（血圧は収縮期・拡張期をまとめて表示）
-        const old = { ...s.data };
-        for (const k of keys) if (changes[k]) old[k] = changes[k].from;
-        before = (f.pair ? formatPair(f, old) : formatValue(f, old[f.key])) || "（未入力）";
-      }
-      return `
-        <div class="data-row ${changed ? "changed" : ""} ${f.type === "textarea" || f.wide ? "wide" : ""}">
-          <dt>${esc(f.pairLabel || f.label)}${changed ? '<span class="badge warn">更新</span>' : ""}</dt>
-          <dd>${val ? `<span class="val">${esc(val)}</span>` : '<span class="muted">—</span>'}${
-            changed ? `<span class="before">変更前：${esc(before)}</span>` : ""
-          }${issueHtml(issues)}</dd>
-        </div>`;
-    };
-
-    const sections = SECTIONS.filter((sec) => !(sec.optional && isVitalsEmpty(s.data, sec.id)))
-      .map((sec) => {
-        if (sec.id === "basic") {
-          return `<section class="card"><h2>${esc(sec.title)}</h2><dl class="data-list">${sec.fields.map((f) => row(f) || `
-            <div class="data-row ${f.type === "textarea" || f.wide ? "wide" : ""}"><dt>${esc(f.label)}</dt><dd><span class="muted">—</span></dd></div>`).join("")}</dl></section>`;
-        }
-        const groups = VITAL_GROUPS.map((g) => {
-          let rows = sec.fields.filter((f) => f.group === g).map(row).join("");
-          if (g === "意識") {
-            const total = gcsTotal(s.data, sec.id);
-            if (total) rows += `<div class="data-row"><dt>GCS 合計</dt><dd><span class="val">${total}</span></dd></div>`;
-          }
-          return rows.trim() ? `<div class="vital-group"><h3>${g}</h3><dl class="data-list vitals">${rows}</dl></div>` : "";
-        }).join("");
-        return `<section class="card"><h2>${esc(sec.title)}</h2>${groups || '<p class="muted">未入力</p>'}</section>`;
-      })
-      .join("");
-
     el.querySelector("#detail-content").innerHTML = `
-      <div class="card detail-head">
-        <h2 class="detail-title">${esc(scenarioTitle(s.data))}</h2>
-        <p class="muted">${esc(scenarioSubtitle(s.data))}</p>
-        <p class="muted small">
-          ${s.isOwner ? "あなたが作成" : `<span class="received-label">受信</span>${esc(s.ownerName)}さん${s.ownerExists ? `（${formatId(s.ownerId)}）` : ""}から ${formatDateTime(s.receivedAt)}`}
-          ・最終更新 ${formatDateTime(s.updatedAt)}
-        </p>
-        ${s.editedAfterSendAt ? `<p class="edited-note">${icon("edit")} ${esc(formatDateTimeLong(s.editedAfterSendAt))}に編集されました</p>` : ""}
-        ${!s.isOwner && !s.ownerExists ? '<p class="small muted">送信者がこのシナリオを削除したか、退会しました。内容とチャットは引き続き閲覧できます。</p>' : ""}
+      <div class="detail-meta">
+        <span>${s.isOwner ? "あなたが作成" : `<span class="received-label">受信</span>${esc(s.ownerName)}さん${s.ownerExists ? `（${formatId(s.ownerId)}）` : ""}から ${formatDateTime(s.receivedAt)}`}</span>
+        <span>最終更新 ${formatDateTime(s.updatedAt)}</span>
+        ${s.editedAfterSendAt ? `<span class="edited-note">${icon("edit")} ${esc(formatDateTimeLong(s.editedAfterSendAt))}に編集されました</span>` : ""}
       </div>
+      ${!s.isOwner && !s.ownerExists ? '<p class="small muted">送信者がこのシナリオを削除したか、退会しました。内容とチャットは引き続き閲覧できます。</p>' : ""}
       ${changedCount ? `<div class="update-banner">${icon("bell")} 前回確認したあとに <strong>${changedCount}項目</strong> が更新されました。変更箇所は黄色で表示しています。</div>` : ""}
       ${aiStatusHtml(ai, s.data)}
-      ${s.isOwner ? readPanel : ""}
-      ${sections}`;
+      ${sheetHtml(s.data, { changes, issues: byField })}
+      ${s.isOwner ? readPanel : ""}`;
     el.querySelector("#detail-actions").innerHTML = actionsHtml();
   }
 

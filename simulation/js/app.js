@@ -2,7 +2,7 @@
 import { icon } from "./icons.js";
 
 import * as store from "./store.js";
-import { esc, toast, modal, formatDateTime, setUnreadInTitle } from "./ui.js";
+import { esc, toast, modal, formatDateTime, setUnreadInTitle, closeAllModals } from "./ui.js";
 import { stopVoice } from "./voice.js";
 import { loginView, registerView, welcomeView } from "./views/auth.js";
 import { homeView } from "./views/home.js";
@@ -174,6 +174,7 @@ async function render() {
   }
   rendering = true;
   stopVoice();
+  closeAllModals(); // 前の画面のダイアログを残さない
   if (current && current.destroy) current.destroy();
   current = null;
   currentHash = hash;
@@ -287,6 +288,8 @@ function checkNewNotifications() {
 
 store.onChange(() => {
   if (!store.currentUser()) awayShownFor = null;
+  // 画面を見ている間に届いたものは「閉じている間」に数えない
+  else if (document.visibilityState === "visible" && awayShownFor) saveLastVisit();
   if (!store.currentUser() && !document.body.classList.contains("auth-mode")) {
     // 別タブでログアウト・退会した場合
     current = null;

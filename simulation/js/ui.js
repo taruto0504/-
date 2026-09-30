@@ -53,6 +53,12 @@ export function toast(message, type = "") {
 // ボタン付きモーダル。押されたボタンの value（閉じた場合は null）で解決する。
 // buttons: [{ label, value, variant: "primary" | "danger" | "" }]
 // setup(el, close) で本文に独自の動きを付けられる。
+// 開いているダイアログ（画面を移動するときにまとめて閉じる）
+const openModals = new Set();
+export function closeAllModals() {
+  for (const close of [...openModals]) close(null);
+}
+
 export function modal({ title, body = "", buttons = [{ label: "OK", value: true, variant: "primary" }], wide = false, setup }) {
   return new Promise((resolve) => {
     const backdrop = document.createElement("div");
@@ -70,6 +76,8 @@ export function modal({ title, body = "", buttons = [{ label: "OK", value: true,
       </div>`;
     const prevFocus = document.activeElement;
     function close(value) {
+      if (!openModals.has(close)) return;
+      openModals.delete(close);
       document.removeEventListener("keydown", onKey);
       backdrop.remove();
       if (prevFocus && prevFocus.focus) prevFocus.focus();
@@ -93,6 +101,7 @@ export function modal({ title, body = "", buttons = [{ label: "OK", value: true,
       });
     });
     document.addEventListener("keydown", onKey);
+    openModals.add(close);
     document.body.appendChild(backdrop);
     if (setup) setup(backdrop, close);
     const focusTarget = backdrop.querySelector("input:not([type=checkbox]), textarea") || backdrop.querySelector(".modal-actions .btn.primary");

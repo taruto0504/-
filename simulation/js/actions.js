@@ -1,9 +1,10 @@
 // 複数の画面から使う操作：送信、AI評価、PDF・印刷
 import { icon } from "./icons.js";
+import { sheetHtml } from "./sheet.js";
 import { PREVIEW } from "./env.js";
 
 import * as store from "./store.js";
-import { SECTIONS, formatValue, formatPair, scenarioTitle, gcsTotal, isVitalsEmpty, fieldLabel, normalizeData } from "./fields.js";
+import { scenarioTitle, fieldLabel, normalizeData } from "./fields.js";
 import { esc, modal, toast, formatId, formatDateTime, copyText } from "./ui.js";
 import { evaluateScenario, describeAiError, explanationToText, AI_DISCLAIMER } from "./ai.js";
 import { ruleChecks } from "./checks.js";
@@ -356,22 +357,8 @@ export async function runAiEvaluation(data, { scenarioId = null, canShare = fals
 
 // ---------- PDF・印刷 ----------
 
+// 印刷・PDFの中身：閲覧画面と同じシナリオシートに、必要ならAI解説とチャットを添える
 function printHtml(data, meta, { chat, ai }) {
-  const sections = SECTIONS.filter((s) => !(s.optional && isVitalsEmpty(data, "v2")))
-    .map((s) => {
-      const rows = [];
-      for (const f of s.fields) {
-        if (f.pairOf) continue;
-        const v = f.pair ? formatPair(f, data) : formatValue(f, data[f.key]);
-        if (v) rows.push(`<tr><th>${esc(f.pairLabel || f.label)}</th><td>${esc(v)}</td></tr>`);
-        if (f.base === "gcsM") {
-          const total = gcsTotal(data, s.id);
-          if (total) rows.push(`<tr><th>GCS 合計</th><td>${total}</td></tr>`);
-        }
-      }
-      return rows.length ? `<section><h2>${esc(s.title)}</h2><table>${rows.join("")}</table></section>` : "";
-    })
-    .join("");
   const metaLine = [
     meta.ownerName ? `作成者：${esc(meta.ownerName)}` : "",
     meta.updatedAt ? `最終更新：${esc(formatDateTime(meta.updatedAt))}` : "",
@@ -379,15 +366,20 @@ function printHtml(data, meta, { chat, ai }) {
   ]
     .filter(Boolean)
     .join("　");
-  const aiPart = ai && ai.result.explanation ? `<section class="print-ai"><h2>AI解説（${esc(formatDateTime(ai.at))}）</h2><p class="pre">${esc(explanationToText(ai.result))}</p><p class="print-note">※${AI_DISCLAIMER}</p></section>` : "";
+  const aiPart =
+    ai && ai.result.explanation
+      ? `<section class="print-extra"><h3>AI解説（${esc(formatDateTime(ai.at))}）</h3><p class="pre">${esc(explanationToText(ai.result))}</p><p class="print-note">※${AI_DISCLAIMER}</p></section>`
+      : "";
   const chatPart =
     chat && chat.length
-      ? `<section><h2>チャット</h2><table>${chat.map((m) => `<tr><th>${esc(m.name)}<br><small>${esc(formatDateTime(m.at))}</small></th><td>${esc(m.text)}</td></tr>`).join("")}</table></section>`
+      ? `<section class="print-extra"><h3>チャット</h3><table>${chat
+          .map((m) => `<tr><th>${esc(m.name)}<br><small>${esc(formatDateTime(m.at))}</small></th><td>${esc(m.text)}</td></tr>`)
+          .join("")}</table></section>`
       : "";
   return `
-    <h1>${esc(scenarioTitle(data))}</h1>
     <p class="print-meta">${metaLine}</p>
-    ${sections}${aiPart}${chatPart}
+    ${sheetHtml(data, { print: true })}
+    ${aiPart}${chatPart}
     <p class="print-foot">医療シミュレーションアプリ ─ 教育用シナリオ</p>`;
 }
 
