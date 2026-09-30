@@ -52,7 +52,7 @@ export function modal({ title, body = "", buttons = [{ label: "OK", value: true,
       <div class="modal ${wide ? "wide" : ""}" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-head">
           <h2 id="modal-title">${esc(title)}</h2>
-          <button type="button" class="icon-btn modal-close" aria-label="閉じる">✕</button>
+          <button type="button" class="btn small modal-close">閉じる</button>
         </div>
         <div class="modal-body">${body}</div>
         <div class="modal-actions">
@@ -86,8 +86,22 @@ export function modal({ title, body = "", buttons = [{ label: "OK", value: true,
     document.addEventListener("keydown", onKey);
     document.body.appendChild(backdrop);
     if (setup) setup(backdrop, close);
-    const focusTarget = backdrop.querySelector("input, textarea") || backdrop.querySelector(".modal-actions .btn.primary");
+    const focusTarget = backdrop.querySelector("input:not([type=checkbox]), textarea") || backdrop.querySelector(".modal-actions .btn.primary");
     if (focusTarget) focusTarget.focus();
+  });
+}
+
+// 画面下などに出す選択メニュー（「その他」ボタン用）
+export function menu(title, items) {
+  return modal({
+    title,
+    body: `<div class="menu-list">${items
+      .map((it, i) => `<button type="button" class="btn block ${it.variant || ""}" data-menu="${i}">${esc(it.label)}</button>`)
+      .join("")}</div>`,
+    buttons: [{ label: "キャンセル", value: null }],
+    setup(root, close) {
+      root.querySelectorAll("[data-menu]").forEach((b) => b.addEventListener("click", () => close(items[Number(b.dataset.menu)].value)));
+    },
   });
 }
 
@@ -100,32 +114,6 @@ export function confirmDialog(title, message, okLabel = "OK", variant = "primary
       { label: okLabel, value: true, variant },
     ],
   });
-}
-
-// AIの回答表示用のごく簡単なMarkdown変換（見出し・箇条書き・太字のみ）
-export function simpleMarkdown(text) {
-  const lines = esc(text).split("\n");
-  let html = "";
-  let inList = false;
-  for (const raw of lines) {
-    const line = raw.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    const bullet = line.match(/^\s*(?:[-*・]|\d+\.)\s+(.*)$/);
-    if (bullet) {
-      if (!inList) html += "<ul>";
-      inList = true;
-      html += `<li>${bullet[1]}</li>`;
-      continue;
-    }
-    if (inList) {
-      html += "</ul>";
-      inList = false;
-    }
-    const heading = line.match(/^#{1,6}\s+(.*)$/);
-    if (heading) html += `<h3>${heading[1]}</h3>`;
-    else if (line.trim()) html += `<p>${line}</p>`;
-  }
-  if (inList) html += "</ul>";
-  return html;
 }
 
 export async function copyText(text) {

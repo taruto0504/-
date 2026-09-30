@@ -3,7 +3,7 @@
 import * as store from "./store.js";
 import { esc, toast } from "./ui.js";
 import { stopVoice } from "./voice.js";
-import { loginView, registerView } from "./views/auth.js";
+import { loginView, registerView, welcomeView } from "./views/auth.js";
 import { homeView } from "./views/home.js";
 import { editorView } from "./views/editor.js";
 import { detailView } from "./views/detail.js";
@@ -12,12 +12,13 @@ import { notificationsView } from "./views/notifications.js";
 import { meView } from "./views/me.js";
 
 const routes = [
-  { pattern: /^#\/login$/, view: loginView, public: true },
+  { pattern: /^#\/login(?:\/(\d+))?$/, view: loginView, public: true },
   { pattern: /^#\/register$/, view: registerView, public: true },
+  { pattern: /^#\/welcome\/(\d+)$/, view: welcomeView, public: true },
   { pattern: /^#\/home$/, view: homeView, nav: "home" },
   { pattern: /^#\/new$/, view: editorView, nav: "new" },
   { pattern: /^#\/edit\/([\w-]+)$/, view: editorView, nav: "home" },
-  { pattern: /^#\/s\/([\w-]+)$/, view: detailView, nav: "home" },
+  { pattern: /^#\/s\/([\w-]+)(?:\/(chat|history))?$/, view: detailView, nav: "home" },
   { pattern: /^#\/contacts$/, view: contactsView, nav: "contacts" },
   { pattern: /^#\/notifications$/, view: notificationsView, nav: "notifications" },
   { pattern: /^#\/me$/, view: meView, nav: "me" },
@@ -53,7 +54,7 @@ function shell() {
     </aside>
     <div class="main-col">
       <header class="topbar">
-        <button type="button" class="icon-btn back-btn" id="back-btn" aria-label="戻る" hidden>‹</button>
+        <button type="button" class="back-btn" id="back-btn" hidden>‹ 戻る</button>
         <h1 id="page-title">医療シミュレーション</h1>
         <div class="topbar-actions" id="topbar-actions"></div>
       </header>
@@ -154,7 +155,7 @@ function checkNewNotifications() {
           const notice = new Notification("医療シミュレーション", { body: n.text, icon: "../icons/icon-192.png", tag: n.id });
           notice.onclick = () => {
             window.focus();
-            location.hash = `#/s/${n.scenarioId}`;
+            location.hash = `#/s/${n.scenarioId}${n.type === "reply" ? "/chat" : ""}`;
           };
         } catch {
           // 一部のスマホブラウザはページから直接通知を出せない

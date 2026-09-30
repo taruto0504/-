@@ -1,7 +1,7 @@
 // 音声入力（Web Speech API）。Chrome（PC / Android）と Safari（iPhone / Mac）で利用できる。
+// マイクボタンで開始、もう一度押すと終了。認識した内容はそのまま入力欄に入り、手で直せる。
 
-import { toast } from "./ui.js";
-import { SEX_OPTIONS } from "./fields.js";
+import { toast, esc } from "./ui.js";
 
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 let active = null;
@@ -16,7 +16,6 @@ const KANJI_DIGITS = { 〇: 0, 零: 0, 一: 1, 二: 2, 三: 3, 四: 4, 五: 5, �
 const KANJI_UNITS = { 十: 10, 百: 100, 千: 1000 };
 
 function kanjiToNumber(s) {
-  if (!/^[〇零一二三四五六七八九十百千]+$/.test(s)) return null;
   let total = 0;
   let current = 0;
   for (const ch of s) {
@@ -29,38 +28,75 @@ function kanjiToNumber(s) {
   return total + current;
 }
 
-// 「36.5度」「三十八度二分」「120」などから数値を取り出す
+// 「HR 110」「体温 38.5」「三十八度二分」「3リットル」などから数値を取り出す
 export function extractNumber(text) {
-  const t = toHalfWidth(text).replace(/\s/g, "");
+  const t = toHalfWidth(text)
+    .replace(/\s/g, "")
+    .replace(/[〇零一二三四五六七八九十百千]+/g, (m) => String(kanjiToNumber(m)))
+    .replace(/(\d)点(\d)/g, "$1.$2")
+    .replace(/SpO2|SPO2|spo2|O2/g, "");
   const doBu = t.match(/(\d+)度(\d)分?/);
   if (doBu) return `${doBu[1]}.${doBu[2]}`;
-  const num = t.match(/-?\d+(?:\.\d+)?/);
-  if (num) return num[0];
-  const kanji = t.match(/[〇零一二三四五六七八九十百千]+/);
-  if (kanji) {
-    const n = kanjiToNumber(kanji[0]);
-    if (n != null) return String(n);
+  const nums = t.match(/-?\d+(?:\.\d+)?/g);
+  return nums ? nums[nums.length - 1] : "";
+}
+
+// 選択肢の言い換え（話し言葉で出やすい表現）
+const ALIASES = {
+  男性: ["男"],
+  女性: ["女"],
+  なし: ["無し", "ない", "ルームエア", "RA"],
+  鼻カニューレ: ["カニューレ", "カニューラ", "鼻カヌラ"],
+  中濃度マスク: ["中濃度", "シンプルマスク", "普通のマスク"],
+  高濃度マスク: ["高濃度", "リザーバー"],
+  BVM: ["バッグバルブマスク", "バッグバルブ", "アンビュー"],
+  ジャクソンリース: ["ジャクソン"],
+};
+
+function matchOption(select, text) {
+  const options = [...select.options].map((o) => o.value).filter(Boolean);
+  const t = toHalfWidth(text).replace(/\s/g, "");
+  // 文字の選択肢：長いものから順に一致を探す（「中濃度マスク」を「マスク」より優先）
+  const textual = options.filter((o) => !/^\d+$/.test(o)).sort((a, b) => b.length - a.length);
+  for (const o of textual) {
+    if (t.toUpperCase().includes(o.toUpperCase())) return o;
+    if ((ALIASES[o] || []).some((a) => t.toUpperCase().includes(a.toUpperCase()))) return o;
   }
+  // 数字の選択肢（JCS・GCS・酸素投与量）
+  const n = extractNumber(text);
+  if (n && options.includes(String(Number(n)))) return String(Number(n));
   return "";
 }
 
 function applyResult(input, text) {
   if (input.tagName === "SELECT") {
-    const hit =
-      SEX_OPTIONS.find((o) => text.includes(o)) ||
-      (text.includes("男") ? "男性" : text.includes("女") ? "女性" : text.includes("不明") ? "不明" : "");
+    const hit = matchOption(input, text);
     if (hit) input.value = hit;
     else toast(`「${text}」を選択肢に当てはめられませんでした`);
-  } else if (input.type === "number") {
+  } else if (input.type === "number" || input.inputMode === "numeric") {
     const n = extractNumber(text);
     if (n) input.value = n;
     else toast(`「${text}」から数値を読み取れませんでした`);
   } else {
     const cur = input.value;
-    input.value = cur && !/[\s\n]$/.test(cur) ? `${cur} ${text}` : cur + text;
+    input.value = cur && !/\s$/.test(cur) ? `${cur}${input.tagName === "TEXTAREA" ? "\n" : " "}${text}` : cur + text;
   }
   input.dispatchEvent(new Event("input", { bubbles: true }));
   input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function banner(show, text = "") {
+  let el = document.getElementById("voice-banner");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "voice-banner";
+    el.setAttribute("role", "status");
+    document.body.appendChild(el);
+  }
+  el.hidden = !show;
+  el.innerHTML = `<span class="rec-dot" aria-hidden="true"></span><span>録音中… 話し終えたら「停止」を押してください</span>${
+    text ? `<span class="interim">${esc(text)}</span>` : ""
+  }`;
 }
 
 export function stopVoice() {
@@ -72,6 +108,7 @@ export function toggleVoice(button, input) {
     toast("このブラウザは音声入力に対応していません（Chrome または Safari をお使いください）");
     return;
   }
+  if (input.disabled) return;
   if (active) {
     const wasSame = active.button === button;
     active.stop();
@@ -79,8 +116,9 @@ export function toggleVoice(button, input) {
   }
   const rec = new Recognition();
   rec.lang = "ja-JP";
-  rec.interimResults = false;
+  rec.interimResults = true;
   rec.continuous = input.tagName === "TEXTAREA";
+  const label = button.querySelector(".mic-label");
   const session = {
     button,
     stop() {
@@ -93,27 +131,35 @@ export function toggleVoice(button, input) {
   function finish() {
     button.classList.remove("listening");
     button.setAttribute("aria-pressed", "false");
+    if (label) label.textContent = "音声";
+    banner(false);
     if (active === session) active = null;
   }
   rec.onresult = (e) => {
+    let interim = "";
     for (let i = e.resultIndex; i < e.results.length; i++) {
-      if (e.results[i].isFinal) applyResult(input, e.results[i][0].transcript.trim());
+      const t = e.results[i][0].transcript.trim();
+      if (e.results[i].isFinal) applyResult(input, t);
+      else interim += t;
     }
+    if (active === session) banner(true, interim);
   };
   rec.onerror = (e) => {
-    if (e.error === "not-allowed" || e.error === "service-not-allowed") toast("マイクの使用が許可されていません");
+    if (e.error === "not-allowed" || e.error === "service-not-allowed") toast("マイクの使用が許可されていません。ブラウザの設定を確認してください");
     else if (e.error !== "no-speech" && e.error !== "aborted") toast("音声を認識できませんでした");
   };
   rec.onend = finish;
   active = session;
   button.classList.add("listening");
   button.setAttribute("aria-pressed", "true");
+  if (label) label.textContent = "停止";
+  banner(true);
   input.focus({ preventScroll: true });
   rec.start();
 }
 
 export function micButton(targetId) {
-  return `<button type="button" class="mic-btn" data-mic="${targetId}" aria-label="音声で入力" aria-pressed="false" title="音声で入力">🎤</button>`;
+  return `<button type="button" class="mic-btn" data-mic="${targetId}" aria-pressed="false"><span aria-hidden="true">🎤</span><span class="mic-label">音声</span></button>`;
 }
 
 // root 内の [data-mic] ボタンに音声入力を結び付ける

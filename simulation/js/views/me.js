@@ -20,7 +20,7 @@ export function meView(el) {
         <h2>個人ID</h2>
         <p class="big-id">${formatId(me.id)}</p>
         <p class="muted small">ログインに使います。相手にこのIDを伝えると、シナリオを受け取れます。</p>
-        <button type="button" class="btn small" id="copy-id">IDをコピー</button>
+        <button type="button" class="btn small" id="copy-id">IDコピー</button>
       </section>
       <section class="card">
         <h2>AI評価の設定</h2>
@@ -30,7 +30,7 @@ export function meView(el) {
           <input id="api-key" type="password" autocomplete="off" placeholder="sk-ant-..." aria-label="Claude APIキー">
           <button type="button" class="btn primary" id="save-key">保存</button>
         </div>
-        ${hasKey ? '<button type="button" class="link-btn danger-text" id="clear-key">APIキーを削除</button>' : ""}
+        ${hasKey ? '<button type="button" class="btn small danger" id="clear-key">APIキーを削除</button>' : ""}
       </section>
       <section class="card">
         <h2>データの保存について</h2>
@@ -41,7 +41,7 @@ export function meView(el) {
       </section>
       <section class="card danger-zone">
         <h2>アカウント削除（退会）</h2>
-        <p class="small">アカウントを削除すると、作成したシナリオとチャットもすべて削除され、元に戻せません。</p>
+        <p class="small">作成したシナリオ・下書き・送信相手リストが削除されます。送信済みのシナリオは相手側に残ります。</p>
         <button type="button" class="btn danger" id="delete-account">アカウントを削除する</button>
       </section>`;
   }
@@ -56,45 +56,70 @@ export function meView(el) {
       toast("APIキーを保存しました", "success");
       render();
     } else if (id === "clear-key") {
-      if (await confirmDialog("APIキーの削除", "保存したAPIキーを削除しますか？", "削除する", "danger")) {
+      if (await confirmDialog("APIキーの削除", "保存したAPIキーを削除しますか？", "削除", "danger")) {
         setApiKey("");
         render();
       }
     } else if (id === "logout") {
       if (await confirmDialog("ログアウト", "ログアウトしますか？", "ログアウト")) store.logout();
     } else if (id === "delete-account") {
-      await modal({
-        title: "アカウントを削除",
-        body: `
-          <p>本当に削除しますか？作成したシナリオ・チャットはすべて削除されます。</p>
-          <div class="field">
-            <label for="del-pass">確認のためパスワードを入力</label>
-            <input id="del-pass" type="password" autocomplete="current-password">
-          </div>
-          <p class="error-text" id="del-error" hidden></p>`,
-        buttons: [
-          { label: "キャンセル", value: false },
-          {
-            label: "削除する",
-            value: true,
-            variant: "danger",
-            async onClick(root) {
-              try {
-                await store.deleteAccount(root.querySelector("#del-pass").value);
-                toast("アカウントを削除しました");
-                return true;
-              } catch (ex) {
-                const err = root.querySelector("#del-error");
-                err.textContent = ex.message;
-                err.hidden = false;
-                return false;
-              }
-            },
-          },
-        ],
-      });
+      await deleteAccountFlow();
     }
   });
 
   render();
+}
+
+// 退会：消えるデータの確認 → パスワード再入力 → 最終確認 → 削除
+async function deleteAccountFlow() {
+  const sum = store.deletionSummary();
+  const step1 = await modal({
+    title: "アカウント削除（退会）",
+    body: `
+      <p>アカウントを削除すると、次のデータが削除され、元に戻せません。</p>
+      <ul class="confirm-list">
+        <li>作成したシナリオ ${sum.scenarios}件（うち送信済み ${sum.shared}件）</li>
+        <li>下書き（端末に控えた入力内容）${sum.drafts}件</li>
+        <li>送信相手リスト ${sum.contacts}人</li>
+      </ul>
+      <p class="small">送信済みのシナリオは相手側に残ります。送信者名とチャットの投稿者名は「Unknown」と表示されます。</p>
+      <p class="small">他の人の送信相手リストからも外れます。削除したIDは再発行されません。</p>`,
+    buttons: [
+      { label: "キャンセル", value: false },
+      { label: "次へ", value: true, variant: "danger" },
+    ],
+  });
+  if (!step1) return;
+  let password = "";
+  const step2 = await modal({
+    title: "本人確認",
+    body: `
+      <div class="field">
+        <label for="del-pass">パスワードを入力してください</label>
+        <input id="del-pass" type="password" autocomplete="current-password">
+      </div>
+      <p class="error-text" id="del-error" hidden></p>`,
+    buttons: [
+      { label: "キャンセル", value: false },
+      {
+        label: "次へ",
+        value: true,
+        variant: "danger",
+        async onClick(root) {
+          password = root.querySelector("#del-pass").value;
+          if (await store.verifyPassword(password)) return true;
+          const err = root.querySelector("#del-error");
+          err.textContent = "パスワードが正しくありません";
+          err.hidden = false;
+          return false;
+        },
+      },
+    ],
+  });
+  if (!step2) return;
+  const final = await confirmDialog("最終確認", "本当に削除しますか？この操作は取り消せません。", "削除", "danger");
+  if (!final) return;
+  await store.deleteAccount(password);
+  toast("アカウントを削除しました");
+  location.hash = "#/login";
 }

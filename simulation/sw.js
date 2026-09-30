@@ -1,4 +1,4 @@
-const CACHE_NAME = "medsim-v1";
+const CACHE_NAME = "medsim-v2";
 const ASSETS = [
   "index.html",
   "manifest.json",
@@ -9,6 +9,7 @@ const ASSETS = [
   "js/ui.js",
   "js/voice.js",
   "js/ai.js",
+  "js/checks.js",
   "js/actions.js",
   "js/views/auth.js",
   "js/views/home.js",

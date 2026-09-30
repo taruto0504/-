@@ -3,17 +3,18 @@
 // 同じブラウザ内のアカウント同士であれば、送信・チャット・通知がそのまま動く。
 // サーバー版に置き換えるときは、このファイルと同じ関数を持つモジュールを用意すればよい。
 
-import { ALL_FIELDS, normalizeData } from "./fields.js";
+import { ALL_FIELDS, normalizeData, isComplete, scenarioTitle } from "./fields.js";
 
 const DB_KEY = "medsim:db";
 const SESSION_KEY = "medsim:session";
+const UNKNOWN = "Unknown";
 const channel = "BroadcastChannel" in window ? new BroadcastChannel("medsim") : null;
 const listeners = new Set();
 
 export const MODE = "local";
 
 function emptyDb() {
-  return { users: {}, scenarios: {}, messages: {}, notifications: [] };
+  return { users: {}, deletedIds: [], scenarios: {}, messages: {}, notifications: [], ai: {}, aiFeedback: [] };
 }
 
 function load() {
@@ -97,12 +98,28 @@ function publicUser(u) {
   return u ? { id: u.id, name: u.name, createdAt: u.createdAt } : null;
 }
 
-function notify(db, to, type, scenarioId, from, text) {
-  db.notifications.push({ id: uid("n"), to, type, scenarioId, from, text, at: Date.now(), read: false });
+function nameOf(db, id) {
+  return db.users[id] ? db.users[id].name : UNKNOWN;
+}
+
+function notify(db, to, type, scenarioId, from) {
+  db.notifications.push({ id: uid("n"), to, type, scenarioId, from, at: Date.now(), read: false });
 }
 
 function participants(s) {
   return [s.ownerId, ...s.recipients];
+}
+
+// 受信者が1人も見ていない、送信者が削除済みのシナリオは完全に消す
+function cleanup(db, s) {
+  const activeRecipients = s.recipients.filter((r) => db.users[r] && !s.hiddenFor.includes(r));
+  const ownerActive = db.users[s.ownerId] && !s.ownerDeleted;
+  if (!ownerActive && !activeRecipients.length) {
+    delete db.scenarios[s.id];
+    delete db.messages[s.id];
+    db.notifications = db.notifications.filter((n) => n.scenarioId !== s.id);
+    for (const key of Object.keys(db.ai)) if (key.startsWith(`${s.id}:`)) delete db.ai[key];
+  }
 }
 
 // ---------- アカウント ----------
@@ -119,6 +136,7 @@ export function currentUser() {
   return publicUser(id && db.users[id]);
 }
 
+// 登録してIDを発行する（ログインはまだしない。企画書の流れ：登録 → ID発行完了 → ログイン）
 export async function register(name, password) {
   name = String(name || "").trim();
   if (!name) throw new Error("名前を入力してください");
@@ -127,17 +145,9 @@ export async function register(name, password) {
   let id;
   do {
     id = String(10000000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000000));
-  } while (db.users[id]);
+  } while (db.users[id] || db.deletedIds.includes(id));
   const salt = uid("s");
-  db.users[id] = {
-    id,
-    name,
-    salt,
-    hash: await hashPassword(password, salt),
-    createdAt: Date.now(),
-    contacts: [],
-  };
-  setSession(id);
+  db.users[id] = { id, name, salt, hash: await hashPassword(password, salt), createdAt: Date.now(), contacts: [] };
   commit(db);
   return publicUser(db.users[id]);
 }
@@ -159,22 +169,46 @@ export function logout() {
   emit();
 }
 
-export async function deleteAccount(password) {
+// 退会で消えるデータの件数（確認画面用）
+export function deletionSummary() {
   const db = load();
   const me = requireUser(db);
-  if ((await hashPassword(password, me.salt)) !== me.hash) throw new Error("パスワードが正しくありません");
+  const mine = Object.values(db.scenarios).filter((s) => s.ownerId === me.id && !s.ownerDeleted);
+  const shared = mine.filter((s) => s.recipients.some((r) => db.users[r] && !s.hiddenFor.includes(r)));
+  let drafts = 0;
+  for (let i = 0; i < localStorage.length; i++) if (localStorage.key(i).startsWith(`medsim:draft:${me.id}:`)) drafts++;
+  return { scenarios: mine.length, shared: shared.length, contacts: me.contacts.length, drafts };
+}
+
+export async function verifyPassword(password) {
+  const db = load();
+  const me = requireUser(db);
+  return (await hashPassword(password, me.salt)) === me.hash;
+}
+
+export async function deleteAccount(password) {
+  if (!(await verifyPassword(password))) throw new Error("パスワードが正しくありません");
+  const db = load();
+  const me = requireUser(db);
+  delete db.users[me.id];
+  db.deletedIds.push(me.id);
+  for (const u of Object.values(db.users)) u.contacts = u.contacts.filter((c) => c.id !== me.id);
+  db.notifications = db.notifications.filter((n) => n.to !== me.id);
+  for (const key of Object.keys(db.ai)) if (key.endsWith(`:${me.id}`)) delete db.ai[key];
   for (const s of Object.values(db.scenarios)) {
-    if (s.ownerId === me.id) {
-      delete db.scenarios[s.id];
-      delete db.messages[s.id];
-    } else {
+    if (s.ownerId !== me.id) {
       s.recipients = s.recipients.filter((r) => r !== me.id);
       s.hiddenFor = s.hiddenFor.filter((r) => r !== me.id);
     }
+    // 送信済みで相手が見ているものは相手側に残す（送信者名は Unknown になる）
+    cleanup(db, s);
   }
-  db.notifications = db.notifications.filter((n) => n.to !== me.id && db.scenarios[n.scenarioId]);
-  for (const u of Object.values(db.users)) u.contacts = u.contacts.filter((c) => c.id !== me.id);
-  delete db.users[me.id];
+  const drafts = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k.startsWith(`medsim:draft:${me.id}:`)) drafts.push(k);
+  }
+  drafts.forEach((k) => localStorage.removeItem(k));
   setSession(null);
   commit(db);
 }
@@ -184,8 +218,7 @@ export function getUser(id) {
 }
 
 export function userName(id) {
-  const u = load().users[id];
-  return u ? u.name : "退会済みユーザー";
+  return nameOf(load(), id);
 }
 
 // ---------- 送信相手 ----------
@@ -194,11 +227,13 @@ export function listContacts() {
   const db = load();
   const me = requireUser(db);
   return me.contacts
-    .map((c) => ({ ...c, name: db.users[c.id] ? db.users[c.id].name : "退会済みユーザー", exists: !!db.users[c.id] }))
+    .filter((c) => db.users[c.id])
+    .map((c) => ({ ...c, name: db.users[c.id].name }))
     .sort((a, b) => Number(b.favorite) - Number(a.favorite) || a.name.localeCompare(b.name, "ja"));
 }
 
-export function addContact(rawId) {
+// 登録前の確認用：IDから相手を調べる（エラーなら理由を投げる）
+export function lookupContact(rawId) {
   const id = normalizeId(rawId);
   const db = load();
   const me = requireUser(db);
@@ -206,9 +241,16 @@ export function addContact(rawId) {
   if (id === me.id) throw new Error("自分のIDは登録できません");
   if (!db.users[id]) throw new Error(`ID ${id} のユーザーは見つかりません`);
   if (me.contacts.some((c) => c.id === id)) throw new Error(`${db.users[id].name}さんはすでに登録されています`);
-  me.contacts.push({ id, favorite: false, addedAt: Date.now() });
-  commit(db);
   return publicUser(db.users[id]);
+}
+
+export function addContact(rawId) {
+  const user = lookupContact(rawId);
+  const db = load();
+  const me = requireUser(db);
+  me.contacts.push({ id: user.id, favorite: false, addedAt: Date.now() });
+  commit(db);
+  return user;
 }
 
 export function removeContact(id) {
@@ -231,44 +273,42 @@ export function setFavorite(id, favorite) {
 function view(db, s, meId) {
   const msgs = db.messages[s.id] || [];
   const lastRead = (s.chatRead && s.chatRead[meId]) || 0;
+  const isOwner = s.ownerId === meId;
+  const lastEdit = s.sentAt ? [...s.history].reverse().find((h) => h.at > s.sentAt) : null;
   return {
     ...s,
     data: { ...s.data },
-    isOwner: s.ownerId === meId,
-    ownerName: db.users[s.ownerId] ? db.users[s.ownerId].name : "退会済みユーザー",
+    isOwner,
+    status: isOwner ? (s.recipients.length ? "sent" : isComplete(s.data) ? "done" : "draft") : "received",
+    ownerName: nameOf(db, s.ownerId),
+    ownerExists: !!db.users[s.ownerId] && !s.ownerDeleted,
+    activeRecipients: s.recipients.filter((r) => db.users[r]),
     messageCount: msgs.length,
     unreadMessages: msgs.filter((m) => m.from !== meId && m.at > lastRead).length,
-    hasUpdate: s.ownerId !== meId && s.version > ((s.seen && s.seen[meId]) || 0),
+    hasUpdate: !isOwner && s.version > ((s.seen && s.seen[meId]) || 0),
+    editedAfterSendAt: lastEdit ? lastEdit.at : null,
   };
 }
 
-export function listMine() {
+// ホーム画面用：自分が作成したもの（削除していないもの）と受信したもの
+export function listScenarios() {
   const db = load();
   const me = requireUser(db);
   return Object.values(db.scenarios)
-    .filter((s) => s.ownerId === me.id)
-    .map((s) => view(db, s, me.id))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
-}
-
-export function listReceived() {
-  const db = load();
-  const me = requireUser(db);
-  return Object.values(db.scenarios)
-    .filter((s) => s.recipients.includes(me.id) && !s.hiddenFor.includes(me.id))
-    .map((s) => view(db, s, me.id))
-    .sort((a, b) => b.updatedAt - a.updatedAt);
+    .filter((s) => (s.ownerId === me.id && !s.ownerDeleted) || (s.recipients.includes(me.id) && !s.hiddenFor.includes(me.id)))
+    .map((s) => view(db, s, me.id));
 }
 
 export function getScenario(id) {
   const db = load();
   const me = requireUser(db);
   const s = db.scenarios[id];
-  if (!s || !participants(s).includes(me.id)) return null;
+  if (!s) return null;
+  if (s.ownerId === me.id ? s.ownerDeleted : !s.recipients.includes(me.id) || s.hiddenFor.includes(me.id)) return null;
   return view(db, s, me.id);
 }
 
-// 作成・更新。送信済みの場合は変更点を履歴に残し、相手に通知する。
+// 作成・更新。変更点を履歴に残し、送信済みなら相手に通知する。
 export function saveScenario(id, rawData) {
   const db = load();
   const me = requireUser(db);
@@ -288,12 +328,14 @@ export function saveScenario(id, rawData) {
       seen: {},
       chatRead: {},
       history: [],
+      sentAt: null,
+      ownerDeleted: false,
     };
     commit(db);
     return view(db, db.scenarios[id], me.id);
   }
   const s = db.scenarios[id];
-  if (!s || s.ownerId !== me.id) throw new Error("このシナリオは編集できません");
+  if (!s || s.ownerId !== me.id || s.ownerDeleted) throw new Error("このシナリオは編集できません");
   const changes = {};
   for (const f of ALL_FIELDS) {
     if ((s.data[f.key] || "") !== data[f.key]) changes[f.key] = { from: s.data[f.key] || "", to: data[f.key] };
@@ -303,14 +345,12 @@ export function saveScenario(id, rawData) {
   s.data = data;
   s.updatedAt = now;
   s.history.push({ version: s.version, at: now, changes });
-  for (const r of s.recipients) {
-    notify(db, r, "updated", id, me.id, `${me.name}さんが「${data.disease || "無題のシナリオ"}」を更新しました`);
-  }
+  for (const r of s.recipients) if (db.users[r] && !s.hiddenFor.includes(r)) notify(db, r, "updated", id, me.id);
   commit(db);
   return view(db, s, me.id);
 }
 
-// 相手が最後に確認したバージョン以降の変更点をまとめる
+// 指定バージョン以降の変更点をまとめる（受信者の「更新」マーク用）
 export function changesSince(scenario, version) {
   const merged = {};
   for (const h of scenario.history || []) {
@@ -332,21 +372,18 @@ export function markSeen(id) {
   commit(db);
 }
 
+// 削除。送信済みのものは相手側に残し、自分の一覧からだけ消える。
 export function deleteScenarios(ids) {
   const db = load();
   const me = requireUser(db);
   for (const id of ids) {
     const s = db.scenarios[id];
     if (!s) continue;
-    if (s.ownerId === me.id) {
-      delete db.scenarios[id];
-      delete db.messages[id];
-      db.notifications = db.notifications.filter((n) => n.scenarioId !== id);
-    } else if (s.recipients.includes(me.id) && !s.hiddenFor.includes(me.id)) {
-      // 受信したシナリオは自分の一覧から外すだけ（送信者側のデータは残る）
-      s.hiddenFor.push(me.id);
-      db.notifications = db.notifications.filter((n) => !(n.scenarioId === id && n.to === me.id));
-    }
+    if (s.ownerId === me.id) s.ownerDeleted = true;
+    else if (s.recipients.includes(me.id) && !s.hiddenFor.includes(me.id)) s.hiddenFor.push(me.id);
+    db.notifications = db.notifications.filter((n) => !(n.scenarioId === id && n.to === me.id));
+    delete db.ai[`${id}:${me.id}`];
+    cleanup(db, s);
   }
   commit(db);
 }
@@ -361,19 +398,15 @@ export function sendScenario(id, rawIds) {
   const missing = ids.filter((x) => !db.users[x]);
   if (missing.length) throw new Error(`見つからないID：${missing.join("、")}`);
   if (ids.includes(me.id)) throw new Error("自分には送信できません");
-  const added = [];
   for (const r of ids) {
     s.hiddenFor = s.hiddenFor.filter((x) => x !== r);
-    if (!s.recipients.includes(r)) {
-      s.recipients.push(r);
-      added.push(r);
-    }
+    if (!s.recipients.includes(r)) s.recipients.push(r);
     s.seen[r] = s.version;
-    notify(db, r, "received", id, me.id, `${me.name}さんから「${s.data.disease || "無題のシナリオ"}」が届きました`);
+    notify(db, r, "received", id, me.id);
   }
-  s.sentAt = Date.now();
+  s.sentAt = s.sentAt || Date.now();
   commit(db);
-  return { sent: ids.length, added: added.length };
+  return { sent: ids.length };
 }
 
 // ---------- チャット ----------
@@ -383,10 +416,12 @@ export function listMessages(scenarioId) {
   const me = requireUser(db);
   const s = db.scenarios[scenarioId];
   if (!s || !participants(s).includes(me.id)) return [];
+  const others = (from) => participants(s).filter((p) => p !== from && db.users[p]);
   return (db.messages[scenarioId] || []).map((m) => ({
     ...m,
     mine: m.from === me.id,
-    name: db.users[m.from] ? db.users[m.from].name : "退会済みユーザー",
+    name: nameOf(db, m.from),
+    readCount: others(m.from).filter((p) => (s.chatRead[p] || 0) >= m.at).length,
   }));
 }
 
@@ -400,9 +435,9 @@ export function postMessage(scenarioId, text) {
   const now = Date.now();
   (db.messages[scenarioId] ||= []).push({ id: uid("m"), from: me.id, text, at: now });
   s.chatRead[me.id] = now;
-  const title = s.data.disease || "無題のシナリオ";
   for (const p of participants(s)) {
-    if (p !== me.id) notify(db, p, "reply", scenarioId, me.id, `${me.name}さん（${title}）：${text.slice(0, 60)}`);
+    const active = db.users[p] && !(p === s.ownerId ? s.ownerDeleted : s.hiddenFor.includes(p));
+    if (p !== me.id && active) notify(db, p, "reply", scenarioId, me.id);
   }
   commit(db);
 }
@@ -421,13 +456,23 @@ export function markChatRead(scenarioId) {
 
 // ---------- 通知 ----------
 
+const NOTICE_TEXT = {
+  received: (name) => `${name}さんからシナリオが届きました`,
+  reply: (name) => `${name}さんが返信しました`,
+  updated: (name) => `${name}さんがシナリオを更新しました`,
+};
+
 export function listNotifications() {
   const db = load();
   const me = requireUser(db);
   return db.notifications
     .filter((n) => n.to === me.id)
     .sort((a, b) => b.at - a.at)
-    .slice(0, 200);
+    .slice(0, 200)
+    .map((n) => {
+      const s = db.scenarios[n.scenarioId];
+      return { ...n, text: NOTICE_TEXT[n.type](nameOf(db, n.from)), title: s ? scenarioTitle(s.data) : "" };
+    });
 }
 
 export function unreadNotificationCount() {
@@ -457,11 +502,34 @@ export function markScenarioNotificationsRead(scenarioId) {
   if (ids.length) markNotificationsRead(ids);
 }
 
+// ---------- AI評価の保存（作成物ごと・利用者ごと） ----------
+
+export function saveAiResult(scenarioId, snapshot, result) {
+  const db = load();
+  const me = requireUser(db);
+  db.ai[`${scenarioId}:${me.id}`] = { at: Date.now(), snapshot, result };
+  commit(db);
+}
+
+export function getAiResult(scenarioId) {
+  if (!scenarioId) return null;
+  const db = load();
+  const me = requireUser(db);
+  return db.ai[`${scenarioId}:${me.id}`] || null;
+}
+
+// 「役に立った / 誤りがある」の評価。精度向上のために蓄積する
+export function addAiFeedback(scenarioId, verdict, reason) {
+  const db = load();
+  const me = requireUser(db);
+  db.aiFeedback.push({ id: uid("f"), scenarioId, from: me.id, verdict, reason: reason || "", at: Date.now() });
+  commit(db);
+}
+
 // ---------- 下書き（入力途中のデータを失わないための自動退避） ----------
 
 function draftKey(scenarioId) {
-  const id = sessionId();
-  return `medsim:draft:${id}:${scenarioId || "new"}`;
+  return `medsim:draft:${sessionId()}:${scenarioId || "new"}`;
 }
 
 export function saveDraft(scenarioId, data) {

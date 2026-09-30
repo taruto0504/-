@@ -1,29 +1,71 @@
 import * as store from "../store.js";
-import { SECTIONS, emptyData, normalizeData, isEmptyData, scenarioTitle } from "../fields.js";
-import { esc, setTitle, modal, toast, formatDateTime } from "../ui.js";
-import { micButton, bindMics, voiceSupported } from "../voice.js";
-import { openSendDialog, runAiEvaluation, printScenario } from "../actions.js";
+import {
+  SECTIONS,
+  VITAL_GROUPS,
+  emptyData,
+  normalizeData,
+  isEmptyData,
+  isVitalsEmpty,
+  scenarioTitle,
+  gcsTotal,
+  o2InUse,
+  copyVitals1To2,
+} from "../fields.js";
+import { esc, setTitle, modal, toast, formatDateTime, confirmDialog } from "../ui.js";
+import { micButton, bindMics, voiceSupported, stopVoice } from "../voice.js";
+import { openSendDialog, runAiEvaluation, issuesByField, issueHtml, aiStatusHtml } from "../actions.js";
+import { confirmDelete } from "./home.js";
+
+const fieldId = (key) => `f-${key.replace(".", "-")}`;
 
 function inputHtml(f, value) {
-  const id = `f-${f.key.replace(".", "-")}`;
+  const id = fieldId(f.key);
   const common = `id="${id}" name="${esc(f.key)}"`;
   let control;
   if (f.type === "textarea") {
     control = `<textarea ${common} rows="3" placeholder="${esc(f.placeholder || "")}">${esc(value)}</textarea>`;
   } else if (f.type === "select") {
-    control = `<select ${common}><option value="">選択してください</option>${f.options
-      .map((o) => `<option ${o === value ? "selected" : ""}>${esc(o)}</option>`)
+    control = `<select ${common}><option value="">選択</option>${f.options
+      .map((o) => `<option value="${esc(o)}" ${o === value ? "selected" : ""}>${esc(f.base === "jcs" ? o : o)}${f.unit && f.base === "o2Flow" ? " L/分" : ""}</option>`)
       .join("")}</select>`;
   } else if (f.type === "number") {
-    control = `<input ${common} type="number" inputmode="decimal" step="${f.step || "1"}" min="${f.min ?? ""}" max="${f.max ?? ""}" value="${esc(value)}">`;
+    const integer = !f.step;
+    control = `<input ${common} type="number" inputmode="${integer ? "numeric" : "decimal"}" step="${f.step || "1"}" min="${f.min ?? ""}" max="${f.max ?? ""}" value="${esc(value)}">`;
   } else {
     control = `<input ${common} type="text" placeholder="${esc(f.placeholder || "")}" value="${esc(value)}">`;
   }
+  const wide = f.type === "textarea" || f.wide;
   return `
-    <div class="field ${f.wide || f.type === "textarea" ? "wide" : ""}">
+    <div class="field ${wide ? "wide" : ""} ${f.needsO2 ? "needs-o2" : ""}" data-field="${esc(f.key)}">
       <label for="${id}">${esc(f.label)}${f.unit ? `<span class="unit">（${esc(f.unit)}）</span>` : ""}</label>
       <div class="input-row">${control}${micButton(id)}</div>
+      <div class="field-issues" data-issues-for="${esc(f.key)}"></div>
     </div>`;
+}
+
+function vitalsSectionHtml(section, data) {
+  const groups = VITAL_GROUPS.map((g) => {
+    const fields = section.fields.filter((f) => f.group === g);
+    const extra =
+      g === "意識"
+        ? `<div class="gcs-total" aria-live="polite">GCS 合計：<strong data-gcs="${section.id}">${gcsTotal(data, section.id) || "—"}</strong><span class="muted small">（E＋V＋M）</span></div>`
+        : "";
+    return `
+      <div class="vital-group">
+        <h3>${g}</h3>
+        <div class="form-grid group-${g}">${fields.map((f) => inputHtml(f, data[f.key])).join("")}</div>
+        ${extra}
+      </div>`;
+  }).join("");
+  return `
+    <section class="card form-section" data-section="${section.id}">
+      <div class="section-head">
+        <h2>${esc(section.title)}</h2>
+        ${section.id === "v2" ? '<button type="button" class="btn small" data-act="copy-v1">バイタル1をコピー</button>' : ""}
+      </div>
+      ${section.id === "v2" ? '<p class="small muted">急変シナリオで使います。使わない場合は空欄のまま保存でき、閲覧時は表示されません。</p>' : ""}
+      ${groups}
+    </section>`;
 }
 
 export function editorView(el, scenarioId) {
@@ -34,30 +76,29 @@ export function editorView(el, scenarioId) {
     return;
   }
   let saved = scenario ? normalizeData(scenario.data) : emptyData();
+  let aiSaved = scenario ? store.getAiResult(scenario.id) : null;
+  let pendingAi = null; // 新規作成でまだ保存していないときのAI評価結果
   const draft = store.loadDraft(scenario && scenario.id);
   setTitle(scenario ? "シナリオを編集" : "新規作成", { back: true });
 
   el.classList.add("with-actionbar");
   el.innerHTML = `
     <p class="notice">⚠️ 実在する患者の氏名など、個人を特定できる情報は入力しないでください。</p>
-    ${voiceSupported ? '<p class="muted small">🎤 を押すと、その項目に音声で入力できます。もう一度押すと止まります。</p>' : ""}
+    ${voiceSupported ? '<p class="muted small">各項目の「音声」ボタンを押すと、話した内容がその項目に入ります（例：「HR 110」「JCS 30」「鼻カニューレ」「3リットル」）。</p>' : ""}
+    <div id="ai-status"></div>
     <form id="scenario-form" autocomplete="off" novalidate>
-      ${SECTIONS.map(
-        (s) => `
-        <section class="card form-section">
-          <h2>${esc(s.title)}</h2>
-          <div class="form-grid ${s.id === "basic" ? "" : "vitals"}">
-            ${s.fields.map((f) => inputHtml(f, saved[f.key])).join("")}
-          </div>
-        </section>`
-      ).join("")}
+      <section class="card form-section" data-section="basic">
+        <h2>基本情報</h2>
+        <div class="form-grid">${SECTIONS[0].fields.map((f) => inputHtml(f, saved[f.key])).join("")}</div>
+      </section>
+      ${SECTIONS.slice(1).map((s) => vitalsSectionHtml(s, saved)).join("")}
     </form>
     <p class="save-status muted small" id="save-status" aria-live="polite"></p>
     <div class="actionbar">
-      <button type="button" class="action" data-act="save"><span aria-hidden="true">💾</span><span>一時保存</span></button>
-      <button type="button" class="action" data-act="send"><span aria-hidden="true">📤</span><span>送信</span></button>
-      <button type="button" class="action" data-act="ai"><span aria-hidden="true">🤖</span><span>AI評価</span></button>
-      <button type="button" class="action" data-act="print"><span aria-hidden="true">🖨️</span><span>PDF・印刷</span></button>
+      <button type="button" class="btn primary" data-act="save">一時保存</button>
+      <button type="button" class="btn primary" data-act="send">送信</button>
+      <button type="button" class="btn" data-act="ai">AI評価</button>
+      <button type="button" class="btn danger" data-act="delete">削除</button>
     </div>`;
 
   const form = el.querySelector("#scenario-form");
@@ -72,6 +113,32 @@ export function editorView(el, scenarioId) {
 
   function writeForm(data) {
     for (const s of SECTIONS) for (const f of s.fields) form.elements[f.key].value = data[f.key] || "";
+    refreshDerived();
+  }
+
+  // GCS合計と、酸素投与「なし」のときの入力不要項目を反映する
+  function refreshDerived() {
+    const raw = {};
+    for (const s of SECTIONS) for (const f of s.fields) raw[f.key] = form.elements[f.key].value;
+    for (const p of ["v1", "v2"]) {
+      el.querySelector(`[data-gcs="${p}"]`).textContent = gcsTotal(raw, p) || "—";
+      const inUse = o2InUse(raw, p);
+      for (const key of ["o2Flow", "spo2O2"]) {
+        const input = form.elements[`${p}.${key}`];
+        input.disabled = !inUse;
+        if (!inUse) input.value = "";
+        input.closest(".field").classList.toggle("disabled", !inUse);
+        const mic = input.closest(".field").querySelector(".mic-btn");
+        mic.disabled = !inUse;
+      }
+    }
+  }
+
+  function renderAi() {
+    const current = aiSaved || pendingAi;
+    el.querySelector("#ai-status").innerHTML = aiStatusHtml(current, readForm());
+    const byField = issuesByField(current);
+    el.querySelectorAll("[data-issues-for]").forEach((box) => (box.innerHTML = issueHtml(byField[box.dataset.issuesFor])));
   }
 
   function isDirty() {
@@ -79,9 +146,8 @@ export function editorView(el, scenarioId) {
     return Object.keys(now).some((k) => now[k] !== saved[k]);
   }
 
-  function refreshStatus(extra) {
-    if (extra) status.textContent = extra;
-    else if (isDirty()) status.textContent = "未保存の変更があります（入力内容はこの端末に自動で退避されています）";
+  function refreshStatus() {
+    if (isDirty()) status.textContent = "未保存の変更があります（入力内容はこの端末に自動で控えています）";
     else status.textContent = scenario ? `保存済み・最終更新 ${formatDateTime(scenario.updatedAt)}` : "";
   }
 
@@ -93,6 +159,9 @@ export function editorView(el, scenarioId) {
       else store.clearDraft(scenario && scenario.id);
       refreshStatus();
     }, 400);
+  });
+  form.addEventListener("change", (e) => {
+    if (e.target.name && /\.(gcs[EVM]|o2)$/.test(e.target.name)) refreshDerived();
   });
 
   function save({ quiet = false } = {}) {
@@ -108,33 +177,71 @@ export function editorView(el, scenarioId) {
     store.clearDraft(oldDraftKey);
     store.clearDraft(scenario.id);
     if (wasNew) {
-      // URLを編集画面に置き換える（戻る操作で新規作成画面に戻らないように）
+      if (pendingAi) {
+        store.saveAiResult(scenario.id, pendingAi.snapshot, pendingAi.result);
+        aiSaved = store.getAiResult(scenario.id);
+        pendingAi = null;
+      }
+      // URLを編集画面に置き換える（戻る操作で空の新規作成画面に戻らないように）
       history.replaceState(null, "", `#/edit/${scenario.id}`);
       setTitle("シナリオを編集", { back: true });
     }
-    if (!quiet) toast(scenario.recipients.length ? "保存しました（送信相手にも反映されます）" : "一時保存しました", "success");
+    if (!quiet) toast(scenario.recipients.length ? "保存しました（送信した相手にも反映されます）" : "一時保存しました", "success");
     refreshStatus();
     return true;
   }
 
-  el.querySelector(".actionbar").addEventListener("click", async (e) => {
+  el.addEventListener("click", async (e) => {
     const btn = e.target.closest("[data-act]");
     if (!btn) return;
     const act = btn.dataset.act;
     if (act === "save") save();
-    else if (act === "send") {
+    else if (act === "copy-v1") {
+      const data = readForm();
+      if (isVitalsEmpty(data, "v1")) return toast("バイタルサイン1が未入力です");
+      if (!isVitalsEmpty(data, "v2") && !(await confirmDialog("バイタル1をコピー", "バイタルサイン2の入力内容を、バイタルサイン1の内容で上書きしますか？", "上書きする"))) return;
+      writeForm(copyVitals1To2(data));
+      form.dispatchEvent(new Event("input"));
+      toast("バイタルサイン1をコピーしました。変わった項目だけ修正してください");
+    } else if (act === "send") {
       if ((isDirty() || !scenario) && !save({ quiet: true })) return;
+      stopVoice();
       await openSendDialog(scenario);
       scenario = store.getScenario(scenario.id);
       refreshStatus();
     } else if (act === "ai") {
       const data = readForm();
       if (isEmptyData(data)) return toast("評価する内容を入力してください");
-      runAiEvaluation(data);
-    } else if (act === "print") {
-      const data = readForm();
-      if (isEmptyData(data)) return toast("出力する内容を入力してください");
-      printScenario(data, { ownerName: store.currentUser().name, updatedAt: scenario && scenario.updatedAt });
+      stopVoice();
+      const result = await runAiEvaluation(data, {
+        scenarioId: scenario && !isDirty() ? scenario.id : null,
+        canShare: false,
+        onSaved(r) {
+          if (scenario && !isDirty()) aiSaved = r;
+          else if (scenario) {
+            // 未保存の変更を評価したときも、作成物に結果を残す
+            store.saveAiResult(scenario.id, r.snapshot, r.result);
+            aiSaved = store.getAiResult(scenario.id);
+          } else pendingAi = r;
+        },
+      });
+      if (result) renderAi();
+    } else if (act === "delete") {
+      if (!scenario) {
+        if (isEmptyData(readForm()) || (await confirmDialog("削除の確認", "作成中の内容を破棄しますか？", "削除", "danger"))) {
+          store.clearDraft(null);
+          writeForm(emptyData());
+          saved = emptyData();
+          location.hash = "#/home";
+        }
+        return;
+      }
+      if (!(await confirmDelete([scenario]))) return;
+      store.deleteScenarios([scenario.id]);
+      store.clearDraft(scenario.id);
+      saved = readForm(); // 移動時の保存確認を出さない
+      toast("削除しました", "success");
+      location.hash = "#/home";
     }
   });
 
@@ -153,22 +260,26 @@ export function editorView(el, scenarioId) {
         toast("入力内容を復元しました");
       } else store.clearDraft(scenario && scenario.id);
       refreshStatus();
+      renderAi();
     });
   }
+  refreshDerived();
   refreshStatus();
+  renderAi();
 
   return {
     isDirty,
     hash: () => (scenario ? `#/edit/${scenario.id}` : "#/new"),
     async canLeave() {
+      stopVoice();
       if (!isDirty()) return true;
       const choice = await modal({
         title: "一時保存しますか？",
         body: `<p>「${esc(scenarioTitle(readForm()))}」に保存していない変更があります。</p>`,
         buttons: [
           { label: "キャンセル", value: "cancel" },
-          { label: "保存しない", value: "discard" },
-          { label: "一時保存して移動", value: "save", variant: "primary" },
+          { label: "保存しない", value: "discard", variant: "danger" },
+          { label: "保存する", value: "save", variant: "primary" },
         ],
       });
       if (choice === "save") return save();
