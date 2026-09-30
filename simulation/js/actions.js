@@ -1,4 +1,5 @@
 // 複数の画面から使う操作：送信、AI評価、PDF・印刷
+import { icon } from "./icons.js";
 
 import * as store from "./store.js";
 import { SECTIONS, formatValue, formatPair, scenarioTitle, gcsTotal, isVitalsEmpty, fieldLabel, normalizeData } from "./fields.js";
@@ -176,7 +177,7 @@ export function issueHtml(issues) {
   return issues
     .map(
       (i) => `<div class="issue ${i.source === "rule" ? "rule" : ""}">
-        <strong>⚠ ${i.source === "rule" ? "入力チェック" : "AIの指摘"}：</strong>${esc(i.message)}
+        <strong>${icon("alert")} ${i.source === "rule" ? "入力チェック" : "AIの指摘"}：</strong>${esc(i.message)}
         <span class="issue-reason">理由：${esc(i.reason)}</span>
       </div>`
     )
@@ -189,7 +190,7 @@ export function aiStatusHtml(saved, data) {
   const stale = isAiStale(saved, data);
   const count = (saved.result.issues || []).length;
   return `<div class="ai-status ${stale ? "stale" : ""}">
-    <span>🤖 AI評価（${formatDateTime(saved.at)}）：${count ? `指摘 ${count}件（該当項目の下に表示）` : "指摘はありません"}</span>
+    <span>${icon("ai")} AI評価（${formatDateTime(saved.at)}）：${count ? `指摘 ${count}件（該当項目の下に表示）` : "指摘はありません"}</span>
     ${stale ? '<span class="small">内容が変更されています。「AI評価」をもう一度押すと、最新の内容で評価し直します。</span>' : ""}
   </div>`;
 }
@@ -200,7 +201,7 @@ function renderResult(saved, { canShare }) {
   const ex = r.explanation;
   const list = (items) => `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
   return `
-    <p class="ai-disclaimer">⚠️ ${AI_DISCLAIMER}</p>
+    <p class="ai-disclaimer">${icon("alert")} ${AI_DISCLAIMER}</p>
     <p class="small muted">評価日時：${formatDateTime(saved.at)}${saved.aiError ? `　<span class="error-text">AI：${esc(saved.aiError)}</span>` : ""}</p>
     <section class="ai-section">
       <h3>整合性チェック</h3>
@@ -313,7 +314,7 @@ export async function runAiEvaluation(data, { scenarioId = null, canShare = fals
     const share = box.querySelector("[data-share]");
     if (share) {
       share.addEventListener("click", () => {
-        store.postMessage(scenarioId, `🤖 AI解説を共有します\n\n${explanationToText(saved.result)}\n\n※${AI_DISCLAIMER}`);
+        store.postMessage(scenarioId, `【AI解説を共有します】\n\n${explanationToText(saved.result)}\n\n※${AI_DISCLAIMER}`);
         toast("チャットに共有しました", "success");
       });
     }

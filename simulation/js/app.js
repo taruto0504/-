@@ -1,4 +1,5 @@
 // 画面の切り替え（ハッシュルーター）とナビゲーション、通知の配信
+import { icon } from "./icons.js";
 
 import * as store from "./store.js";
 import { esc, toast } from "./ui.js";
@@ -25,11 +26,11 @@ const routes = [
 ];
 
 const NAV = [
-  { id: "home", href: "#/home", icon: "🏠", label: "ホーム" },
-  { id: "new", href: "#/new", icon: "✏️", label: "新規作成" },
-  { id: "contacts", href: "#/contacts", icon: "👥", label: "送信相手" },
-  { id: "notifications", href: "#/notifications", icon: "🔔", label: "通知" },
-  { id: "me", href: "#/me", icon: "👤", label: "マイページ" },
+  { id: "home", href: "#/home", icon: "home", label: "ホーム" },
+  { id: "new", href: "#/new", icon: "edit", label: "新規作成" },
+  { id: "contacts", href: "#/contacts", icon: "users", label: "送信相手" },
+  { id: "notifications", href: "#/notifications", icon: "bell", label: "通知" },
+  { id: "me", href: "#/me", icon: "user", label: "マイページ" },
 ];
 
 const app = document.getElementById("app");
@@ -41,14 +42,14 @@ function shell() {
   const navLinks = (cls) =>
     NAV.map(
       (n) => `<a href="${n.href}" class="${cls}" data-nav="${n.id}">
-        <span class="nav-icon" aria-hidden="true">${n.icon}</span>
+        <span class="nav-icon">${icon(n.icon)}</span>
         <span class="nav-label">${n.label}</span>
         ${n.id === "notifications" ? '<span class="nav-badge" hidden></span>' : ""}
       </a>`
     ).join("");
   app.innerHTML = `
     <aside class="sidenav" aria-label="メインメニュー">
-      <div class="brand"><span aria-hidden="true">🩺</span> 医療シミュレーション</div>
+      <div class="brand">${icon("cross", "brand-icon")} 医療シミュレーション</div>
       <nav>${navLinks("side-link")}</nav>
       <a href="../index.html" class="side-foot">← 医療サポートツールへ</a>
     </aside>

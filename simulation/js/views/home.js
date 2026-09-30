@@ -1,4 +1,5 @@
 import * as store from "../store.js";
+import { icon } from "../icons.js";
 import { scenarioTitle, scenarioSubtitle } from "../fields.js";
 import { esc, setTitle, formatDateTime, formatId, modal, toast, menu } from "../ui.js";
 
@@ -99,7 +100,7 @@ export function homeView(el) {
       : `<div class="empty">${
           all.length
             ? "<p>条件に合うシナリオはありません。</p>"
-            : `<p class="empty-icon" aria-hidden="true">📝</p><p>まだシナリオがありません。</p><a class="btn primary" href="#/new">最初のシナリオを作る</a>
+            : `<p class="empty-icon">${icon("doc")}</p><p>まだシナリオがありません。</p><a class="btn primary" href="#/new">最初のシナリオを作る</a>
                <p class="muted small">あなたのID（${formatId(me.id)}）を相手に伝えると、シナリオを受け取れます。</p>`
         }</div>`;
   }

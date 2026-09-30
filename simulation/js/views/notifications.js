@@ -1,7 +1,8 @@
 import * as store from "../store.js";
+import { icon } from "../icons.js";
 import { esc, setTitle, formatDateTime } from "../ui.js";
 
-const ICONS = { received: "📨", reply: "💬", updated: "✏️" };
+const ICONS = { received: "mail", reply: "chat", updated: "edit" };
 
 export function notificationsView(el) {
   setTitle("通知", { actions: '<button type="button" class="topbar-btn" id="read-all">すべて既読</button>' });
@@ -30,7 +31,7 @@ export function notificationsView(el) {
                   (n) => `
           <li>
             <a class="notice-row ${n.read ? "" : "unread"}" href="#/s/${n.scenarioId}${n.type === "reply" ? "/chat" : ""}" data-id="${n.id}">
-              <span class="notice-icon" aria-hidden="true">${ICONS[n.type] || "🔔"}</span>
+              <span class="notice-icon">${icon(ICONS[n.type] || "bell")}</span>
               <span class="notice-main">
                 <span>${esc(n.text)}</span>
                 ${n.title ? `<span class="small">「${esc(n.title)}」</span>` : ""}
@@ -41,7 +42,7 @@ export function notificationsView(el) {
           </li>`
                 )
                 .join("")
-            : '<li class="empty"><p class="empty-icon" aria-hidden="true">🔔</p><p>通知はありません。</p></li>'
+            : `<li class="empty"><p class="empty-icon">${icon("bell")}</p><p>通知はありません。</p></li>`
         }
       </ul>`;
     const allow = el.querySelector("#allow-notify");

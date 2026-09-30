@@ -62,9 +62,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
   min-width: 0;
   font-size: 17px;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .back-btn, .topbar-btn {
   flex-shrink: 0;
@@ -112,9 +114,8 @@ main#view.detail { max-width: 1240px; }
   text-decoration: none;
   font-size: 11px;
 }
-.tab-link .nav-icon { font-size: 21px; line-height: 1; filter: grayscale(1); opacity: 0.7; }
+.tab-link .nav-icon { line-height: 1; }
 .tab-link.active { color: var(--primary); font-weight: 700; }
-.tab-link.active .nav-icon { filter: none; opacity: 1; }
 .nav-badge {
   position: absolute;
   top: 6px;
@@ -189,7 +190,8 @@ body.auth-mode main#view { padding-bottom: 32px; }
   font-size: 15px;
   text-decoration: none;
   cursor: pointer;
-  white-space: nowrap;
+  text-align: center;
+  line-height: 1.25;
 }
 .btn:hover { background: var(--gray-dark); }
 .btn:disabled { opacity: 0.45; cursor: default; }
@@ -314,9 +316,10 @@ input[type="text"], input[type="password"], input[type="number"], input[type="se
   background: #fff;
   font-size: 16px; /* iPhoneで入力時に拡大されないように16px以上 */
 }
-select { padding-right: 6px; }
+select { padding-left: 10px; padding-right: 4px; text-overflow: ellipsis; }
 input:disabled, select:disabled, textarea:disabled { background: #eef2f4; color: #9aa7b0; }
-textarea { resize: vertical; min-height: 84px; line-height: 1.5; }
+textarea { resize: none; overflow: hidden; min-height: 84px; line-height: 1.5; }
+textarea.single-line { min-height: 46px; }
 input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(11, 110, 153, 0.15); }
 .input-row { display: flex; gap: 6px; align-items: flex-start; }
 .input-row > input, .input-row > select, .input-row > textarea { flex: 1; min-width: 0; }
@@ -381,6 +384,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 /* 意識・循環・呼吸・体温は2列（スマホ）。血圧は収縮期 / 拡張期を1行で */
 .form-grid.vital-grid-0, .form-grid.vital-grid-1, .form-grid.vital-grid-2 { grid-template-columns: 1fr 1fr; }
 .form-grid.vital-grid-1 .field:first-child { grid-column: 1 / -1; }
+/* 酸素投与（ジャクソンリースなど長い選択肢）が収まるよう右列を広めに */
+.form-grid.vital-grid-2 { grid-template-columns: 1fr 1.25fr; }
+/* 見出しが折り返しても、横に並ぶ入力欄の高さをそろえる */
+.form-grid[class*="vital-grid"] { align-items: end; }
 .bp-row { align-items: center; gap: 4px; }
 .bp-row input { padding: 10px 6px; text-align: center; -moz-appearance: textfield; }
 .bp-row input::-webkit-outer-spin-button, .bp-row input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
@@ -392,6 +399,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
   .form-grid.vital-grid-0 { grid-template-columns: repeat(4, 1fr); }
   .form-grid.vital-grid-1 { grid-template-columns: repeat(3, 1fr); }
   .form-grid.vital-grid-1 .field:first-child { grid-column: auto; }
+  .form-grid.vital-grid-2 { grid-template-columns: 1fr 1fr; }
 }
 .save-status { min-height: 20px; margin: 4px 2px 12px; }
 
@@ -421,7 +429,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
   border-top: 1px solid var(--border);
   backdrop-filter: blur(6px);
 }
-.actionbar .btn { flex: 1 1 0; min-width: 0; padding: 0 4px; font-size: 14px; white-space: normal; line-height: 1.2; text-align: center; }
+/* 画面幅に合わせて文字を少し小さくし、単語の途中では改行しない */
+.actionbar .btn { flex: 1 1 0; min-width: 0; padding: 0 2px; font-size: clamp(12px, 3.5vw, 15px); line-height: 1.2; word-break: keep-all; overflow-wrap: normal; }
 @media (min-width: 900px) {
   .actionbar { left: 232px; bottom: 0; justify-content: center; padding: 12px 32px; }
   .actionbar .btn { flex: 0 1 150px; font-size: 15px; }
@@ -572,7 +581,7 @@ body.sheet-open::before {
 .msg.mine .bubble { background: var(--primary); border-color: var(--primary); color: #fff; border-radius: 14px 14px 4px 14px; }
 .msg-time { font-size: 12px; color: var(--muted); margin: 2px 4px 0; }
 .chat-form { display: flex; gap: 6px; align-items: flex-end; border-top: 1px solid var(--border); padding-top: 10px; }
-.chat-form textarea { flex: 1; min-height: 46px; height: 46px; resize: none; }
+.chat-form textarea { flex: 1; min-height: 46px; max-height: 160px; overflow-y: auto; }
 .chat-form .btn { min-height: 46px; }
 
 @media (min-width: 900px) {
@@ -747,3 +756,13 @@ body.sheet-open::before {
   #print-root .print-note { font-size: 9pt; color: #555; }
   #print-root .print-foot { margin-top: 14pt; font-size: 8pt; color: #666; text-align: right; }
 }
+
+/* ---------- アイコン（SVG） ---------- */
+.icon { width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex-shrink: 0; }
+.nav-icon .icon { width: 22px; height: 22px; }
+.brand-icon { color: var(--primary); }
+.brand .brand-icon { width: 20px; height: 20px; }
+.auth-brand .brand-icon { width: 44px; height: 44px; }
+.empty-icon .icon { width: 44px; height: 44px; color: #9fb3bf; }
+.notice-icon .icon { width: 24px; height: 24px; color: var(--primary); }
+.mic-btn .icon { width: 18px; height: 18px; }

@@ -91,6 +91,57 @@ export function modal({ title, body = "", buttons = [{ label: "OK", value: true,
   });
 }
 
+// 入力欄の高さを文字量に合わせて自動で伸ばす（中でスクロールさせず、全文が見えるように）
+function fit(ta) {
+  ta.style.height = "auto";
+  ta.style.height = `${ta.scrollHeight + 2}px`;
+}
+
+export function autoGrow(root) {
+  root.querySelectorAll("textarea").forEach((ta) => {
+    if (ta.dataset.autogrow) return fit(ta);
+    ta.dataset.autogrow = "1";
+    // 1行だけの欄（疾患名など）は改行を入れず、長いときだけ折り返して表示する
+    if (ta.classList.contains("single-line")) {
+      ta.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.isComposing) e.preventDefault();
+      });
+    }
+    ta.addEventListener("input", () => {
+      if (ta.classList.contains("single-line") && /\n/.test(ta.value)) ta.value = ta.value.replace(/\n+/g, " ");
+      fit(ta);
+    });
+    fit(ta);
+  });
+}
+
+// 選択欄：選んだ文字が枠に収まらないときは、収まる大きさまで文字を小さくする（最小12px）
+let measureCtx;
+function fitSelect(sel) {
+  sel.style.fontSize = "";
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt) return;
+  const cs = getComputedStyle(sel);
+  measureCtx ||= document.createElement("canvas").getContext("2d");
+  measureCtx.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+  const textWidth = measureCtx.measureText(opt.text).width;
+  const available = sel.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 24; // 24 = ▼の幅
+  if (available > 0 && textWidth > available) {
+    sel.style.fontSize = `${Math.max(12, Math.floor(parseFloat(cs.fontSize) * (available / textWidth)))}px`;
+  }
+}
+
+export function autoFit(root) {
+  autoGrow(root);
+  root.querySelectorAll("select").forEach((sel) => {
+    if (!sel.dataset.autofit) {
+      sel.dataset.autofit = "1";
+      sel.addEventListener("change", () => fitSelect(sel));
+    }
+    fitSelect(sel);
+  });
+}
+
 // 画面下などに出す選択メニュー（「その他」ボタン用）
 export function menu(title, items) {
   return modal({

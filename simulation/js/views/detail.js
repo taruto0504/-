@@ -1,6 +1,7 @@
 import * as store from "../store.js";
+import { icon } from "../icons.js";
 import { SECTIONS, VITAL_GROUPS, formatValue, formatPair, scenarioTitle, scenarioSubtitle, gcsTotal, isVitalsEmpty, getField, fieldLabel } from "../fields.js";
-import { esc, setTitle, formatDateTime, formatId, toast, modal, menu } from "../ui.js";
+import { esc, setTitle, formatDateTime, formatId, toast, modal, menu, autoGrow } from "../ui.js";
 import { micButton, bindMics, stopVoice } from "../voice.js";
 import { openSendDialog, runAiEvaluation, openOutputDialog, issuesByField, issueHtml, aiStatusHtml } from "../actions.js";
 import { confirmDelete } from "./home.js";
@@ -68,13 +69,14 @@ export function detailView(el, scenarioId, openPanel) {
     </div>
     <div class="actionbar" id="detail-actions"></div>`;
   bindMics(el);
+  autoGrow(el);
 
   function actionsHtml() {
     const chatLabel = `チャット${scenario.unreadMessages ? `（${scenario.unreadMessages}）` : ""}`;
     const b = (act, label, variant = "") => `<button type="button" class="btn ${variant}" data-act="${act}">${label}</button>`;
     return scenario.isOwner
-      ? [b("edit", "編集", "primary"), b("send", "送信", "primary"), b("chat", chatLabel), b("ai", "AI評価"), b("output", "PDF・印刷"), b("more", "その他")].join("")
-      : [b("chat", chatLabel), b("ai", "AI評価"), b("history", "編集履歴"), b("output", "PDF・印刷"), b("delete", "削除", "danger")].join("");
+      ? [b("edit", "編集", "primary"), b("send", "送信", "primary"), b("chat", chatLabel), b("ai", "AI評価"), b("output", "PDF・<wbr>印刷"), b("more", "その他")].join("")
+      : [b("chat", chatLabel), b("ai", "AI評価"), b("history", "編集履歴"), b("output", "PDF・<wbr>印刷"), b("delete", "削除", "danger")].join("");
   }
 
   function renderContent() {
@@ -134,10 +136,10 @@ export function detailView(el, scenarioId, openPanel) {
           ${s.isOwner ? "あなたが作成" : `${esc(s.ownerName)}さん${s.ownerExists ? `（${formatId(s.ownerId)}）` : ""}から受信`}
           ・最終更新 ${formatDateTime(s.updatedAt)}
         </p>
-        ${s.editedAfterSendAt ? `<p class="edited-note">✏️ ${esc(formatDateTimeLong(s.editedAfterSendAt))}に編集されました</p>` : ""}
+        ${s.editedAfterSendAt ? `<p class="edited-note">${icon("edit")} ${esc(formatDateTimeLong(s.editedAfterSendAt))}に編集されました</p>` : ""}
         ${!s.isOwner && !s.ownerExists ? '<p class="small muted">送信者がこのシナリオを削除したか、退会しました。内容とチャットは引き続き閲覧できます。</p>' : ""}
       </div>
-      ${changedCount ? `<div class="update-banner">🔔 前回確認したあとに <strong>${changedCount}項目</strong> が更新されました。変更箇所は黄色で表示しています。</div>` : ""}
+      ${changedCount ? `<div class="update-banner">${icon("bell")} 前回確認したあとに <strong>${changedCount}項目</strong> が更新されました。変更箇所は黄色で表示しています。</div>` : ""}
       ${aiStatusHtml(ai, s.data)}
       ${s.isOwner && people ? `<div class="card"><h3 class="small-head">送信先</h3><div class="chips">${people}</div></div>` : ""}
       ${sections}`;
@@ -265,7 +267,7 @@ export function detailView(el, scenarioId, openPanel) {
     try {
       store.postMessage(scenario.id, text);
       input.value = "";
-      input.style.height = "";
+      autoGrow(el);
       const log = el.querySelector("#chat-log");
       log.scrollTop = log.scrollHeight;
     } catch (ex) {
@@ -282,10 +284,6 @@ export function detailView(el, scenarioId, openPanel) {
       e.preventDefault();
       sendMessage();
     }
-  });
-  input.addEventListener("input", () => {
-    input.style.height = "";
-    input.style.height = `${Math.min(input.scrollHeight, 140)}px`;
   });
 
   renderContent();

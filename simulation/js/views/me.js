@@ -25,7 +25,7 @@ export function meView(el) {
       <section class="card">
         <h2>AI評価の設定</h2>
         <p class="small">AI評価には Claude の APIキーが必要です。キーはこの端末のブラウザにだけ保存されます。</p>
-        <p class="small muted">状態：${hasKey ? "✅ 設定済み" : "未設定"}</p>
+        <p class="small muted">状態：${hasKey ? "設定済み" : "未設定"}</p>
         <div class="input-row">
           <input id="api-key" type="password" autocomplete="off" placeholder="sk-ant-..." aria-label="Claude APIキー">
           <button type="button" class="btn primary" id="save-key">保存</button>

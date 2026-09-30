@@ -1,4 +1,5 @@
 import * as store from "../store.js";
+import { icon } from "../icons.js";
 import {
   SECTIONS,
   getField,
@@ -12,7 +13,7 @@ import {
   o2InUse,
   copyVitals1To2,
 } from "../fields.js";
-import { esc, setTitle, modal, toast, formatDateTime, confirmDialog } from "../ui.js";
+import { esc, setTitle, modal, toast, formatDateTime, confirmDialog, autoFit } from "../ui.js";
 import { micButton, bindMics, voiceSupported, stopVoice } from "../voice.js";
 import { openSendDialog, runAiEvaluation, issuesByField, issueHtml, aiStatusHtml } from "../actions.js";
 import { confirmDelete } from "./home.js";
@@ -57,7 +58,8 @@ function inputHtml(f, data) {
   } else if (f.type === "number") {
     control = numberInput(f, value);
   } else {
-    control = `<input ${common} type="text" placeholder="${esc(f.placeholder || "")}" value="${esc(value)}">`;
+    // 1行の文字入力も、長くなったら折り返して全文が見えるようにする
+    control = `<textarea ${common} class="single-line" rows="1" placeholder="${esc(f.placeholder || "")}">${esc(value)}</textarea>`;
   }
   const wide = f.type === "textarea" || f.wide;
   return `
@@ -108,7 +110,7 @@ export function editorView(el, scenarioId) {
 
   el.classList.add("with-actionbar");
   el.innerHTML = `
-    <p class="notice">⚠️ 実在する患者の氏名など、個人を特定できる情報は入力しないでください。</p>
+    <p class="notice">${icon("alert")} 実在する患者の氏名など、個人を特定できる情報は入力しないでください。</p>
     ${voiceSupported ? '<p class="muted small">概要・主訴・既往歴・処置・備考は、「音声」ボタンを押して話すと入力できます。</p>' : ""}
     <div id="ai-status"></div>
     <form id="scenario-form" autocomplete="off" novalidate>
@@ -129,6 +131,10 @@ export function editorView(el, scenarioId) {
   const form = el.querySelector("#scenario-form");
   const status = el.querySelector("#save-status");
   bindMics(el);
+  autoFit(el);
+  // 画面の幅が変わったときも高さを合わせ直す
+  const onResize = () => autoFit(el);
+  window.addEventListener("resize", onResize);
 
   function readForm() {
     const data = {};
@@ -139,6 +145,7 @@ export function editorView(el, scenarioId) {
   function writeForm(data) {
     for (const s of SECTIONS) for (const f of s.fields) form.elements[f.key].value = data[f.key] || "";
     refreshDerived();
+    autoFit(el);
   }
 
   // GCS合計と、酸素投与「なし」のときの入力不要項目を反映する
@@ -314,6 +321,7 @@ export function editorView(el, scenarioId) {
     },
     destroy() {
       clearTimeout(draftTimer);
+      window.removeEventListener("resize", onResize);
     },
   };
 }

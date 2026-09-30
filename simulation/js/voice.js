@@ -1,4 +1,5 @@
 // 音声入力（Web Speech API）。Chrome（PC / Android）と Safari（iPhone / Mac）で利用できる。
+import { icon } from "./icons.js";
 // 文章を書く欄（概要・主訴・既往歴・処置・備考・チャット）で使う。
 // マイクボタンで開始、もう一度押すと終了。認識した内容はそのまま入力欄に入り、手で直せる。
 
@@ -91,7 +92,7 @@ export function toggleVoice(button, input) {
 }
 
 export function micButton(targetId) {
-  return `<button type="button" class="mic-btn" data-mic="${targetId}" aria-pressed="false"><span aria-hidden="true">🎤</span><span class="mic-label">音声</span></button>`;
+  return `<button type="button" class="mic-btn" data-mic="${targetId}" aria-pressed="false">${icon("mic")}<span class="mic-label">音声</span></button>`;
 }
 
 // root 内の [data-mic] ボタンに音声入力を結び付ける

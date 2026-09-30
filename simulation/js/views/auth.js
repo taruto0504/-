@@ -1,4 +1,5 @@
 import * as store from "../store.js";
+import { icon } from "../icons.js";
 import { esc, setTitle, formatId, copyText } from "../ui.js";
 
 const LOCAL_NOTE = `<p class="muted small auth-note">現在は「端末内モード」です。データはこのブラウザの中だけに保存され、送信やチャットは同じブラウザで登録したアカウント同士で行えます。</p>`;
@@ -31,7 +32,7 @@ export function loginView(el, presetId) {
   setTitle("ログイン");
   el.innerHTML = `
     <div class="auth-card">
-      <div class="auth-brand"><span aria-hidden="true">🩺</span><h2>医療シミュレーション</h2><p>症例シナリオを作って、共有して、話し合う</p></div>
+      <div class="auth-brand">${icon("cross", "brand-icon")}<h2>医療シミュレーション</h2><p>症例シナリオを作って、共有して、話し合う</p></div>
       <form id="login-form" novalidate>
         <div class="field">
           <label for="login-id">個人ID</label>
@@ -64,7 +65,7 @@ export function registerView(el) {
   setTitle("新規登録");
   el.innerHTML = `
     <div class="auth-card">
-      <div class="auth-brand"><span aria-hidden="true">🩺</span><h2>新規登録</h2><p>名前とパスワードだけで登録できます</p></div>
+      <div class="auth-brand">${icon("cross", "brand-icon")}<h2>新規登録</h2><p>名前とパスワードだけで登録できます</p></div>
       <form id="reg-form" novalidate>
         <div class="field">
           <label for="reg-name">名前</label>
@@ -109,7 +110,7 @@ export function welcomeView(el, id) {
   }
   el.innerHTML = `
     <div class="auth-card">
-      <div class="auth-brand"><span aria-hidden="true">🎉</span><h2>登録が完了しました</h2><p>${esc(user.name)}さんの個人IDを発行しました</p></div>
+      <div class="auth-brand">${icon("ok", "brand-icon")}<h2>登録が完了しました</h2><p>${esc(user.name)}さんの個人IDを発行しました</p></div>
       <p class="big-id" id="new-id">${formatId(user.id)}</p>
       <p class="small center">このIDは、ログインと、相手からシナリオを受け取るときに使います。<br>マイページでいつでも確認できます。</p>
       <div class="stack">
