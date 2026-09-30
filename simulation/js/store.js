@@ -218,6 +218,18 @@ export async function verifyPassword(password) {
   return (await hashPassword(password, me.salt)) === me.hash;
 }
 
+export async function changePassword(currentPassword, nextPassword) {
+  if (!(await verifyPassword(currentPassword))) throw new Error("現在のパスワードが正しくありません");
+  if (!nextPassword || nextPassword.length < 6) throw new Error("新しいパスワードは6文字以上にしてください");
+  if (nextPassword === currentPassword) throw new Error("新しいパスワードが現在のものと同じです");
+  const db = load();
+  const me = requireUser(db);
+  me.salt = uid("s");
+  me.hash = await hashPassword(nextPassword, me.salt);
+  me.passwordChangedAt = Date.now();
+  commit(db);
+}
+
 export async function deleteAccount(password) {
   if (!(await verifyPassword(password))) throw new Error("パスワードが正しくありません");
   const db = load();

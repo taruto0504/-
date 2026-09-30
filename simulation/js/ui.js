@@ -19,11 +19,20 @@ export function formatId(id) {
 }
 
 // 上部バーのタイトル・戻るボタン・右側のボタンを設定する
+let baseTitle = "医療シミュレーション";
+let unreadForTitle = 0;
 export function setTitle(title, { back = false, actions = "" } = {}) {
   document.getElementById("page-title").textContent = title;
   document.getElementById("back-btn").hidden = !back;
   document.getElementById("topbar-actions").innerHTML = actions;
-  document.title = `${title}｜医療シミュレーション`;
+  baseTitle = `${title}｜医療シミュレーション`;
+  setUnreadInTitle(unreadForTitle);
+}
+
+// ブラウザのタブ名の先頭に未読数を出す（別のタブを見ていても届いたことがわかる）
+export function setUnreadInTitle(count) {
+  unreadForTitle = count;
+  document.title = (count ? `(${count > 99 ? "99+" : count}) ` : "") + baseTitle;
 }
 
 let toastTimer;
@@ -139,6 +148,30 @@ export function autoFit(root) {
       sel.addEventListener("change", () => fitSelect(sel));
     }
     fitSelect(sel);
+  });
+}
+
+// パスワード欄＋表示/非表示の切替ボタン
+export function passwordField(id, label, autocomplete) {
+  return `
+    <div class="field">
+      <label for="${id}">${label}</label>
+      <div class="input-row">
+        <input id="${id}" type="password" autocomplete="${autocomplete}" required>
+        <button type="button" class="btn toggle-pass" data-target="${id}" aria-pressed="false">表示</button>
+      </div>
+    </div>`;
+}
+
+export function bindPasswordToggles(root) {
+  root.querySelectorAll(".toggle-pass").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const input = root.querySelector(`#${btn.dataset.target}`);
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      btn.textContent = show ? "隠す" : "表示";
+      btn.setAttribute("aria-pressed", String(show));
+    });
   });
 }
 

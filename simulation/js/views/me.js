@@ -1,5 +1,5 @@
 import * as store from "../store.js";
-import { esc, setTitle, formatId, formatDateTime, modal, confirmDialog, toast, copyText } from "../ui.js";
+import { esc, setTitle, formatId, formatDateTime, modal, confirmDialog, toast, copyText, passwordField, bindPasswordToggles } from "../ui.js";
 import { getApiKey, setApiKey } from "../ai.js";
 import { PREVIEW } from "../env.js";
 
@@ -49,6 +49,11 @@ export function meView(el) {
         }</p>
       </section>
       <section class="card">
+        <h2>パスワード</h2>
+        <p class="small muted">ログインに使うパスワードを変更できます。</p>
+        <button type="button" class="btn" id="change-password">パスワードを変更</button>
+      </section>
+      <section class="card">
         <button type="button" class="btn block" id="logout">ログアウト</button>
       </section>
       <section class="card danger-zone">
@@ -72,6 +77,8 @@ export function meView(el) {
         setApiKey("");
         render();
       }
+    } else if (id === "change-password") {
+      await changePasswordFlow();
     } else if (id === "logout") {
       if (await confirmDialog("ログアウト", "ログアウトしますか？", "ログアウト")) store.logout();
     } else if (id === "delete-account") {
@@ -80,6 +87,48 @@ export function meView(el) {
   });
 
   render();
+}
+
+async function changePasswordFlow() {
+  await modal({
+    title: "パスワードを変更",
+    body: `
+      <form id="pw-form" novalidate>
+        ${passwordField("pw-current", "現在のパスワード", "current-password")}
+        ${passwordField("pw-new", "新しいパスワード（6文字以上）", "new-password")}
+        ${passwordField("pw-new2", "新しいパスワード（確認のためもう一度）", "new-password")}
+      </form>
+      <p class="error-text" id="pw-error" hidden></p>`,
+    buttons: [
+      { label: "キャンセル", value: false },
+      {
+        label: "変更",
+        value: true,
+        variant: "primary",
+        async onClick(root) {
+          const err = root.querySelector("#pw-error");
+          const show = (msg) => {
+            err.textContent = msg;
+            err.hidden = false;
+            return false;
+          };
+          const next = root.querySelector("#pw-new").value;
+          if (next !== root.querySelector("#pw-new2").value) return show("確認用のパスワードが一致しません");
+          try {
+            await store.changePassword(root.querySelector("#pw-current").value, next);
+          } catch (ex) {
+            return show(ex.message);
+          }
+          toast("パスワードを変更しました。次回からは新しいパスワードでログインしてください", "success");
+          return true;
+        },
+      },
+    ],
+    setup(root) {
+      bindPasswordToggles(root);
+      root.querySelector("#pw-form").addEventListener("submit", (e) => e.preventDefault());
+    },
+  });
 }
 
 // 退会：消えるデータの確認 → パスワード再入力 → 最終確認 → 削除

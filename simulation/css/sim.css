@@ -471,8 +471,8 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--p
 .list-toolbar > input[type="search"] { flex: 1; }
 .sort-select select { min-height: 38px; padding: 4px 8px; font-size: 14px; width: auto; }
 .search-row { margin-bottom: 10px; }
-.scenario-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-@media (min-width: 1100px) { .scenario-list { grid-template-columns: 1fr 1fr; } }
+.scenario-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 1100px) { .scenario-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .scenario-item { position: relative; }
 .scenario-card {
   display: flex;
@@ -841,8 +841,8 @@ body.sheet-open::before {
 .inbox-summary { display: flex; align-items: flex-start; gap: 12px; }
 .inbox-summary-icon .icon { width: 30px; height: 30px; color: var(--primary); }
 .inbox-summary-title { font-weight: 600; margin-bottom: 2px; }
-.inbox-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-@media (min-width: 1100px) { .inbox-list { grid-template-columns: 1fr 1fr; } }
+.inbox-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 1100px) { .inbox-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .inbox-card {
   display: flex;
   flex-direction: column;
@@ -914,8 +914,28 @@ body.sheet-open::before {
 .new-msg-pill { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); box-shadow: 0 4px 12px rgba(10, 25, 35, 0.2); }
 
 /* ---------- 受信一覧：最後のメッセージ ---------- */
-.last-msg { display: flex; align-items: center; gap: 6px; margin-top: 2px; padding: 6px 10px; border-radius: 10px; background: var(--bg); font-size: 14px; color: var(--muted); }
+/* カードの中身は画面幅に合わせて縮み、長い文は「…」で省略する */
+.inbox-card > *, .scenario-card > * { min-width: 0; max-width: 100%; }
+.last-msg { min-width: 0; display: flex; align-items: center; gap: 6px; margin-top: 2px; padding: 6px 10px; border-radius: 10px; background: var(--bg); font-size: 14px; color: var(--muted); }
 .last-msg > span:first-of-type { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .last-msg .icon { color: var(--muted); }
 .last-msg.unread { color: var(--text); font-weight: 600; }
 .unread-count { min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--success); color: #fff; font-size: 12px; font-weight: 700; line-height: 22px; text-align: center; }
+
+/* ---------- 閉じている間に届いたお知らせ ---------- */
+.away-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.away-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+}
+.away-item:hover { background: var(--accent); }
+.away-item .icon { width: 22px; height: 22px; color: var(--primary); margin-top: 2px; }
+.away-item > span { display: flex; flex-direction: column; min-width: 0; }

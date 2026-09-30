@@ -2,7 +2,7 @@
 import { icon } from "./icons.js";
 
 import * as store from "./store.js";
-import { esc, toast } from "./ui.js";
+import { esc, toast, modal, formatDateTime, setUnreadInTitle } from "./ui.js";
 import { stopVoice } from "./voice.js";
 import { loginView, registerView, welcomeView } from "./views/auth.js";
 import { homeView } from "./views/home.js";
@@ -82,6 +82,78 @@ function updateBadge() {
     b.hidden = count === 0;
     b.textContent = count > 99 ? "99+" : String(count);
   });
+  // タブ名とアプリのアイコン（ホーム画面に追加した場合）に未読数を出す
+  setUnreadInTitle(counts.notifications);
+  try {
+    if (counts.notifications && navigator.setAppBadge) navigator.setAppBadge(counts.notifications).catch(() => {});
+    else if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+  } catch {}
+}
+
+// ---------- 閉じている間に届いたお知らせ ----------
+// アプリを閉じている間は画面に知らせを出せないため、次に開いたときにまとめて見せる
+const visitKey = (uid) => `medsim:lastvisit:${uid}`;
+function readLastVisit(uid) {
+  try {
+    return Number(localStorage.getItem(visitKey(uid))) || 0;
+  } catch {
+    return 0;
+  }
+}
+function saveLastVisit() {
+  const user = store.currentUser();
+  if (!user) return;
+  try {
+    localStorage.setItem(visitKey(user.id), String(Date.now()));
+  } catch {}
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") saveLastVisit();
+});
+window.addEventListener("pagehide", saveLastVisit);
+setInterval(() => {
+  if (document.visibilityState === "visible") saveLastVisit();
+}, 30000);
+
+let awayShownFor = null;
+async function showWhileAway() {
+  const user = store.currentUser();
+  if (!user || awayShownFor === user.id) return;
+  awayShownFor = user.id;
+  const last = readLastVisit(user.id);
+  saveLastVisit();
+  if (!last) return; // 初めて開いたとき
+  const missed = store.listNotifications().filter((n) => !n.read && n.at > last);
+  if (!missed.length) return;
+  const target = await modal({
+    title: "閉じている間に届いたお知らせ",
+    body: `<p class="small muted">前回ひらいた ${formatDateTime(last)} 以降に、${missed.length}件のお知らせが届いています。</p>
+      <ul class="away-list">
+        ${missed
+          .slice(0, 6)
+          .map(
+            (n) => `<li><button type="button" class="away-item" data-go="${n.id}">
+              ${icon(n.type === "reply" ? "chat" : n.type === "updated" ? "edit" : "mail")}
+              <span><strong>${esc(n.text)}</strong>${n.title ? `<span class="small muted">「${esc(n.title)}」・${formatDateTime(n.at)}</span>` : ""}</span>
+            </button></li>`
+          )
+          .join("")}
+      </ul>
+      ${missed.length > 6 ? `<p class="small muted">ほか${missed.length - 6}件は「通知」画面で確認できます。</p>` : ""}`,
+    buttons: [
+      { label: "あとで", value: null },
+      { label: "通知をすべて見る", value: "all", variant: "primary" },
+    ],
+    setup(root, close) {
+      root.querySelectorAll("[data-go]").forEach((b) => b.addEventListener("click", () => close(b.dataset.go)));
+    },
+  });
+  if (target === "all") location.hash = "#/notifications";
+  else if (target) {
+    const n = missed.find((x) => x.id === target);
+    store.markNotificationsRead([n.id]);
+    location.hash = `#/s/${n.scenarioId}${n.type === "reply" ? "/chat" : ""}`;
+  }
 }
 
 async function render() {
@@ -122,6 +194,7 @@ async function render() {
   }
   updateBadge();
   rendering = false;
+  if (!route.public) showWhileAway();
 }
 
 // 画面を離れる前に、編集中の画面に確認させる（一時保存の確認）
@@ -213,6 +286,7 @@ function checkNewNotifications() {
 }
 
 store.onChange(() => {
+  if (!store.currentUser()) awayShownFor = null;
   if (!store.currentUser() && !document.body.classList.contains("auth-mode")) {
     // 別タブでログアウト・退会した場合
     current = null;

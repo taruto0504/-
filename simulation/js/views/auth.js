@@ -1,36 +1,12 @@
 import * as store from "../store.js";
 import { icon } from "../icons.js";
-import { esc, setTitle, formatId, copyText } from "../ui.js";
+import { esc, setTitle, formatId, copyText, passwordField, bindPasswordToggles } from "../ui.js";
 
 // 保存場所の説明（共有モードでは、このページを開いている人同士でやりとりできる）
 const modeNote = () =>
   store.getMode() === "shared"
     ? `<p class="muted small auth-note">このページを開いている人同士で、シナリオの送信やチャットがリアルタイムにできます。</p>`
     : `<p class="muted small auth-note">現在は「端末内モード」です。データはこのブラウザの中だけに保存され、送信やチャットは同じブラウザで登録したアカウント同士で行えます。</p>`;
-
-// パスワード欄＋表示/非表示の切替ボタン
-function passwordField(id, label, autocomplete) {
-  return `
-    <div class="field">
-      <label for="${id}">${label}</label>
-      <div class="input-row">
-        <input id="${id}" type="password" autocomplete="${autocomplete}" required>
-        <button type="button" class="btn toggle-pass" data-target="${id}" aria-pressed="false">表示</button>
-      </div>
-    </div>`;
-}
-
-function bindPasswordToggles(root) {
-  root.querySelectorAll(".toggle-pass").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const input = root.querySelector(`#${btn.dataset.target}`);
-      const show = input.type === "password";
-      input.type = show ? "text" : "password";
-      btn.textContent = show ? "隠す" : "表示";
-      btn.setAttribute("aria-pressed", String(show));
-    });
-  });
-}
 
 export function loginView(el, presetId) {
   setTitle("ログイン");

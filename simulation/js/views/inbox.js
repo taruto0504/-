@@ -1,7 +1,7 @@
 import * as store from "../store.js";
 import { icon } from "../icons.js";
 import { scenarioTitle, scenarioSubtitle } from "../fields.js";
-import { esc, setTitle, formatDateTime, formatId, toast } from "../ui.js";
+import { esc, setTitle, formatDateTime, formatId } from "../ui.js";
 
 const FILTERS = [
   { id: "all", label: "すべて" },
@@ -96,7 +96,6 @@ export function inboxView(el) {
     }
     if (e.target.closest("#receive-sample")) {
       store.receiveSample();
-      toast("サンプル指導医さんからシナリオが届きました", "success");
     }
   });
 
