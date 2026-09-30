@@ -293,8 +293,29 @@ function view(db, s, meId) {
     messageCount: msgs.length,
     unreadMessages: msgs.filter((m) => m.from !== meId && m.at > lastRead).length,
     hasUpdate: !isOwner && s.version > ((s.seen && s.seen[meId]) || 0),
+    // 受信者がまだ一度も開いていない
+    isNew: !isOwner && !(s.opened && s.opened[meId]),
+    receivedAt: isOwner ? null : (s.receivedAt && s.receivedAt[meId]) || s.sentAt,
+    lastMessageAt: msgs.length ? msgs[msgs.length - 1].at : 0,
     editedAfterSendAt: lastEdit ? lastEdit.at : null,
   };
+}
+
+// 受信一覧：新しい動き（受信・更新・メッセージ）があった順
+export function listReceived() {
+  return listScenarios()
+    .filter((s) => !s.isOwner)
+    .sort((a, b) => activityAt(b) - activityAt(a));
+}
+
+function activityAt(s) {
+  return Math.max(s.receivedAt || 0, s.updatedAt || 0, s.lastMessageAt || 0);
+}
+
+// 受信で確認が必要な件数（未読・更新あり・新着メッセージ）
+export function inboxAlertCount() {
+  if (!sessionId() || !currentUser()) return 0;
+  return listReceived().filter((s) => s.isNew || s.hasUpdate || s.unreadMessages).length;
 }
 
 // ホーム画面用：自分が作成したもの（削除していないもの）と受信したもの
@@ -374,7 +395,11 @@ export function markSeen(id) {
   const db = load();
   const me = requireUser(db);
   const s = db.scenarios[id];
-  if (!s || s.ownerId === me.id || (s.seen[me.id] || 0) >= s.version) return;
+  if (!s || s.ownerId === me.id) return;
+  s.opened ||= {};
+  const firstOpen = !s.opened[me.id];
+  if (!firstOpen && (s.seen[me.id] || 0) >= s.version) return;
+  if (firstOpen) s.opened[me.id] = Date.now();
   s.seen[me.id] = s.version;
   commit(db);
 }
@@ -409,11 +434,51 @@ export function sendScenario(id, rawIds) {
     s.hiddenFor = s.hiddenFor.filter((x) => x !== r);
     if (!s.recipients.includes(r)) s.recipients.push(r);
     s.seen[r] = s.version;
+    // 再送したときも「未読」に戻し、受信日時を更新する
+    (s.receivedAt ||= {})[r] = Date.now();
+    if (s.opened) delete s.opened[r];
     notify(db, r, "received", id, me.id);
   }
   s.sentAt = s.sentAt || Date.now();
   commit(db);
   return { sent: ids.length };
+}
+
+// お試し用：サンプルの送信者から、サンプルのシナリオを自分あてに届ける
+// （端末内モードでは、受信を試すのに別アカウントが必要なため）
+export function receiveSample() {
+  const db = load();
+  const me = requireUser(db);
+  let senderId;
+  do {
+    senderId = String(10000000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000000));
+  } while (db.users[senderId] || db.deletedIds.includes(senderId));
+  const now = Date.now();
+  // ログインには使わない送信専用のアカウント（パスワードは誰にもわからない値）
+  db.users[senderId] = { id: senderId, name: "サンプル指導医", salt: uid("s"), hash: uid("x"), createdAt: now, contacts: [], sample: true };
+  const id = uid("sc");
+  const data = normalizeData({
+    disease: "急性心筋梗塞（下壁）",
+    age: "68",
+    sex: "男性",
+    summary: "自宅で朝食後に胸痛が出現し、30分改善しないため家族が救急要請。既往に高血圧・糖尿病。",
+    complaint: "胸が締め付けられるように痛い。冷や汗が出る。",
+    "v1.jcs": "1", "v1.gcsE": "4", "v1.gcsV": "5", "v1.gcsM": "6",
+    "v1.hr": "96", "v1.bpRSys": "152", "v1.bpRDia": "90", "v1.spo2": "94", "v1.o2": "鼻カニューレ", "v1.o2Flow": "2", "v1.spo2O2": "97", "v1.rr": "22", "v1.temp": "36.6",
+    "v1.history": "高血圧、2型糖尿病", "v1.treatment": "12誘導心電図、末梢ルート確保、アスピリン内服",
+    "v2.jcs": "10", "v2.gcsE": "3", "v2.gcsV": "4", "v2.gcsM": "6",
+    "v2.hr": "38", "v2.bpRSys": "78", "v2.bpRDia": "46", "v2.spo2": "88", "v2.o2": "高濃度マスク", "v2.o2Flow": "10", "v2.spo2O2": "93", "v2.rr": "28", "v2.temp": "36.4",
+    "v2.notes": "冷汗著明、顔面蒼白。モニター上で高度房室ブロック。",
+  });
+  db.scenarios[id] = {
+    id, ownerId: senderId, data, createdAt: now, updatedAt: now, version: 1,
+    recipients: [me.id], hiddenFor: [], seen: { [me.id]: 1 }, chatRead: { [senderId]: now }, history: [],
+    sentAt: now, receivedAt: { [me.id]: now }, opened: {}, ownerDeleted: false,
+  };
+  db.messages[id] = [{ id: uid("m"), from: senderId, text: "急変時の対応を一緒に考えましょう。まず何を優先しますか？", at: now }];
+  notify(db, me.id, "received", id, senderId);
+  commit(db);
+  return id;
 }
 
 // ---------- チャット ----------

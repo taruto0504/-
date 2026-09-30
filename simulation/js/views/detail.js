@@ -133,7 +133,7 @@ export function detailView(el, scenarioId, openPanel) {
         <h2 class="detail-title">${esc(scenarioTitle(s.data))}</h2>
         <p class="muted">${esc(scenarioSubtitle(s.data))}</p>
         <p class="muted small">
-          ${s.isOwner ? "あなたが作成" : `${esc(s.ownerName)}さん${s.ownerExists ? `（${formatId(s.ownerId)}）` : ""}から受信`}
+          ${s.isOwner ? "あなたが作成" : `<span class="received-label">受信</span>${esc(s.ownerName)}さん${s.ownerExists ? `（${formatId(s.ownerId)}）` : ""}から ${formatDateTime(s.receivedAt)}`}
           ・最終更新 ${formatDateTime(s.updatedAt)}
         </p>
         ${s.editedAfterSendAt ? `<p class="edited-note">${icon("edit")} ${esc(formatDateTimeLong(s.editedAfterSendAt))}に編集されました</p>` : ""}

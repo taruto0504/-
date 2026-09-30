@@ -13,6 +13,7 @@ const PATHS = {
   mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
   chat: '<path d="M4 5h16v11H9l-5 4z"/>',
   doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+  inbox: '<path d="M4 4h16l1 9v7H3v-7z"/><path d="M3 13h5l1.5 3h5L16 13h5"/>',
   ok: '<circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/>',
 };
 

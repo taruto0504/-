@@ -78,6 +78,7 @@ export function homeView(el) {
     const badges = [`<span class="badge status-${s.status}">${STATUS_LABEL[s.status]}</span>`];
     if (s.status === "sent") badges.push(`<span class="badge">${s.activeRecipients.length}人に送信</span>`);
     if (!s.isOwner) badges.push(`<span class="badge">${esc(s.ownerName)}さんから</span>`);
+    if (s.isNew) badges.push('<span class="badge new">未読</span>');
     if (s.hasUpdate) badges.push('<span class="badge warn">更新あり</span>');
     if (s.unreadMessages) badges.push(`<span class="badge accent">新着メッセージ ${s.unreadMessages}</span>`);
     const sub = scenarioSubtitle(s.data);
@@ -118,7 +119,8 @@ export function homeView(el) {
     const list = visibleList(all);
     for (const id of [...selected]) if (!list.some((s) => s.id === id)) selected.delete(id);
     const counts = Object.fromEntries(FILTERS.map((f) => [f.id, f.id === "all" ? all.length : all.filter((s) => s.status === f.id).length]));
-    const receivedAlert = all.some((s) => s.status === "received" && (s.hasUpdate || s.unreadMessages));
+    const receivedAlert = all.some((s) => s.status === "received" && (s.isNew || s.hasUpdate || s.unreadMessages));
+    const newCount = all.filter((s) => s.isNew).length;
     el.innerHTML = `
       <div class="home-head">
         <div>
@@ -127,6 +129,11 @@ export function homeView(el) {
         </div>
         <a href="#/new" class="btn primary">新規作成</a>
       </div>
+      ${
+        newCount
+          ? `<a class="inbox-banner" href="#/inbox">${icon("inbox")}<span><strong>新しく届いたシナリオが${newCount}件あります</strong><span class="small">受信画面で確認する</span></span><span class="chev" aria-hidden="true">›</span></a>`
+          : ""
+      }
       <div class="filter-tabs" role="tablist">
         ${FILTERS.map(
           (f) => `<button type="button" role="tab" data-filter="${f.id}" aria-selected="${prefs.filter === f.id}">

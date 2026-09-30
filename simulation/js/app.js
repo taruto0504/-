@@ -9,6 +9,7 @@ import { homeView } from "./views/home.js";
 import { editorView } from "./views/editor.js";
 import { detailView } from "./views/detail.js";
 import { contactsView } from "./views/contacts.js";
+import { inboxView } from "./views/inbox.js";
 import { notificationsView } from "./views/notifications.js";
 import { meView } from "./views/me.js";
 
@@ -20,6 +21,7 @@ const routes = [
   { pattern: /^#\/new$/, view: editorView, nav: "new" },
   { pattern: /^#\/edit\/([\w-]+)$/, view: editorView, nav: "home" },
   { pattern: /^#\/s\/([\w-]+)(?:\/(chat|history))?$/, view: detailView, nav: "home" },
+  { pattern: /^#\/inbox$/, view: inboxView, nav: "inbox" },
   { pattern: /^#\/contacts$/, view: contactsView, nav: "contacts" },
   { pattern: /^#\/notifications$/, view: notificationsView, nav: "notifications" },
   { pattern: /^#\/me$/, view: meView, nav: "me" },
@@ -28,6 +30,7 @@ const routes = [
 const NAV = [
   { id: "home", href: "#/home", icon: "home", label: "ホーム" },
   { id: "new", href: "#/new", icon: "edit", label: "新規作成" },
+  { id: "inbox", href: "#/inbox", icon: "inbox", label: "受信" },
   { id: "contacts", href: "#/contacts", icon: "users", label: "送信相手" },
   { id: "notifications", href: "#/notifications", icon: "bell", label: "通知" },
   { id: "me", href: "#/me", icon: "user", label: "マイページ" },
@@ -44,7 +47,7 @@ function shell() {
       (n) => `<a href="${n.href}" class="${cls}" data-nav="${n.id}">
         <span class="nav-icon">${icon(n.icon)}</span>
         <span class="nav-label">${n.label}</span>
-        ${n.id === "notifications" ? '<span class="nav-badge" hidden></span>' : ""}
+        ${n.id === "notifications" || n.id === "inbox" ? `<span class="nav-badge" data-badge="${n.id}" hidden></span>` : ""}
       </a>`
     ).join("");
   app.innerHTML = `
@@ -69,8 +72,13 @@ function shell() {
 }
 
 function updateBadge() {
-  const count = store.currentUser() ? store.unreadNotificationCount() : 0;
+  const loggedIn = !!store.currentUser();
+  const counts = {
+    notifications: loggedIn ? store.unreadNotificationCount() : 0,
+    inbox: loggedIn ? store.inboxAlertCount() : 0,
+  };
   document.querySelectorAll(".nav-badge").forEach((b) => {
+    const count = counts[b.dataset.badge] || 0;
     b.hidden = count === 0;
     b.textContent = count > 99 ? "99+" : String(count);
   });
