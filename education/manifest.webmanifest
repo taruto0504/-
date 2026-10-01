@@ -8,8 +8,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#F3F5F2",
-  "theme_color": "#2E6F6A",
+  "background_color": "#F3F6FA",
+  "theme_color": "#1565C0",
   "categories": ["education", "medical"],
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },

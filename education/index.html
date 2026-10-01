@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#2E6F6A">
+<meta name="theme-color" content="#1565C0">
 <meta name="description" content="医療従事者向けのレポート作成・共有・フィードバックアプリ">
 <!-- アプリ化(ホーム画面に追加 / インストール)用 -->
 <link rel="manifest" href="manifest.webmanifest">
@@ -16,24 +16,31 @@
 <title>医療教育アプリ プロトタイプ</title>
 <style>
   :root{
-    --ink:#16232B;
-    --ink-soft:#4B5A58;
-    --paper:#F3F5F2;
+    /* 医療系アプリらしい、清潔感のある青と白を基調にした配色 */
+    --ink:#102A43;
+    --ink-soft:#5B6B7F;
+    --paper:#F3F6FA;
     --panel:#FFFFFF;
-    --line:#DDE3DE;
-    --primary:#2E6F6A;
-    --primary-dark:#1E4E4A;
-    --primary-tint:#E4EFEC;
-    --amber:#C4842B;
-    --amber-tint:#FBF0DE;
-    --danger:#B14A3E;
+    --line:#DFE6EE;
+    --primary:#1565C0;
+    --primary-dark:#0D47A1;
+    --primary-tint:#E8F0FB;
+    --teal:#0E8C8C;
+    --teal-tint:#E3F4F3;
+    --success:#1E8E5A;
+    --success-tint:#E6F5EE;
+    --amber:#C77A12;
+    --amber-tint:#FDF2E1;
+    --danger:#C93C3C;
     --radius:14px;
-    --radius-sm:9px;
+    --radius-sm:10px;
+    --shadow:0 1px 2px rgba(16,42,67,.05), 0 4px 14px rgba(16,42,67,.05);
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif;
+    font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic UI","Meiryo","Segoe UI",sans-serif;
+    font-feature-settings:"palt";
     background:var(--paper);
     color:var(--ink);
     -webkit-font-smoothing:antialiased;
@@ -355,6 +362,90 @@
   .plan-table small{font-size:10.5px; font-weight:700; color:var(--primary-dark);}
   .sidebar-brand{display:none;}
 
+
+  /* ==== 医療系デザイン(青と白・線アイコン・十字と心電図のモチーフ) ==== */
+  .ic{width:20px; height:20px; flex-shrink:0; vertical-align:-4px;}
+  .btn{gap:6px;}
+  .btn .ic{width:17px; height:17px;}
+  .btn.icon-only{padding-left:12px; padding-right:12px;}
+  .topbar{background:var(--panel); border-bottom:1px solid var(--line);}
+  .topbar h1{font-size:19px;}
+  .back-btn{border:none; background:var(--paper); color:var(--primary-dark);}
+  .back-btn .ic{width:20px; height:20px;}
+
+  /* ホームの見出し(あいさつ+日付) */
+  .home-top{justify-content:space-between; background:var(--paper); border-bottom:none;}
+  .home-top h1{font-size:18px; line-height:1.4;}
+  .greet-date{font-size:12px; color:var(--ink-soft); font-weight:600; margin-bottom:2px;}
+  .avatar{width:38px; height:38px; border-radius:50%; background:var(--primary-tint); color:var(--primary-dark); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:15px; cursor:pointer; flex-shrink:0;}
+  .avatar.lg{width:52px; height:52px; font-size:21px; background:rgba(255,255,255,.16); color:#fff; border:2px solid rgba(255,255,255,.5); cursor:default;}
+
+  /* 職員証風のカード */
+  .id-card{background:linear-gradient(135deg,#0D47A1 0%,#1565C0 55%,#1E88E5 100%); padding:16px 18px 14px; border-radius:18px; box-shadow:0 8px 24px rgba(13,71,161,.25);}
+  .id-card::after{display:none;}
+  .id-head{display:flex; align-items:center; gap:8px; font-size:10.5px; letter-spacing:.14em; font-weight:700; opacity:.95; position:relative; z-index:1;}
+  .id-logo{width:22px; height:22px; border-radius:6px; background:#fff; color:var(--primary); display:flex; align-items:center; justify-content:center;}
+  .id-logo .cross{width:14px; height:14px;}
+  .id-head .id-plan{margin-left:auto; letter-spacing:0;}
+  .id-body{display:flex; align-items:center; gap:14px; margin:14px 0 12px; position:relative; z-index:1;}
+  .id-card .name{font-size:20px; margin:0 0 4px;}
+  .role-tag{display:inline-block; font-size:11.5px; font-weight:700; background:rgba(255,255,255,.18); padding:2px 10px; border-radius:999px; letter-spacing:.02em;}
+  .id-card .idrow{align-items:center; padding-top:4px; position:relative; z-index:1;}
+  .id-copy{display:inline-flex; align-items:center; gap:5px; border:1px solid rgba(255,255,255,.45); background:transparent; color:#fff; border-radius:999px; padding:5px 11px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit;}
+  .id-copy .ic{width:14px; height:14px;}
+  .id-ecg{display:block; width:100%; height:24px; margin:-2px 0 2px; color:rgba(255,255,255,.38); pointer-events:none;}
+
+  /* ホームの3つのボタン */
+  .action-btn{display:flex; flex-direction:column; align-items:center; gap:5px; padding:16px 6px 14px; border-color:transparent; box-shadow:var(--shadow);}
+  .act-ic{width:42px; height:42px; border-radius:12px; background:var(--primary-tint); color:var(--primary); display:flex; align-items:center; justify-content:center;}
+  .act-ic .ic{width:22px; height:22px;}
+  .action-btn .lbl{margin-top:3px;}
+  .action-btn .sub{font-size:10.5px; color:var(--ink-soft); font-weight:600;}
+  .action-btn.primary .act-ic{background:rgba(255,255,255,.18); color:#fff;}
+  .action-btn.primary .sub{color:rgba(255,255,255,.82);}
+
+  /* 見出し・カード */
+  .section-title{display:flex; align-items:center; gap:6px;}
+  .section-title .ic{width:16px; height:16px; color:var(--primary);}
+  .list-card{background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); padding:2px 14px;}
+  .empty-state .em-ic .ic{width:30px; height:30px; color:#9FB0C2;}
+  .report-card, .set-card, .welcome, .plan-current, .ai-panel, .plan-table-wrap, .search-bar, .tab-row{border-color:transparent; box-shadow:var(--shadow);}
+  .report-card{border-left:4px solid var(--line);}
+  .report-card.st-sent{border-left-color:var(--primary);}
+  .report-card.st-draft{border-left-color:#B8C4D2;}
+  .report-card.st-received{border-left-color:var(--teal);}
+  .badge.received{background:var(--teal-tint); color:var(--teal);}
+  .badge.draft, .badge.saved{background:#EEF2F6; color:var(--ink-soft);}
+  .badge.sent{background:var(--primary-tint); color:var(--primary-dark);}
+  .search-bar .ic{width:18px; height:18px; color:var(--ink-soft);}
+  .ai-tag.good{background:var(--success-tint); color:var(--success);}
+  .ai-h{display:flex; align-items:center; gap:6px;}
+  .ai-h .ic{width:17px; height:17px; color:var(--primary);}
+  .ai-panel-head span{display:inline-flex; align-items:center; gap:6px;}
+  .ai-panel-head .ic{width:18px; height:18px;}
+  .btn.ai-btn{border-color:#C9DAF2; color:var(--primary-dark); background:var(--primary-tint);}
+  .ai-run{background:var(--primary); border-color:var(--primary);}
+
+  /* 下のメニュー */
+  .bottomnav{box-shadow:0 -2px 10px rgba(16,42,67,.04);}
+  .navbtn{color:#8A9AAD;}
+  .navbtn .navic{display:flex; align-items:center; justify-content:center; padding:2px 16px; border-radius:999px;}
+  .navbtn .navic .ic{width:22px; height:22px;}
+  .navbtn.active{color:var(--primary);}
+  .navbtn.active .navic{background:var(--primary-tint);}
+  .nav-dot{right:8px;}
+
+  /* ログイン画面 */
+  .login-hero{position:relative; background:linear-gradient(160deg,#0D47A1,#1565C0 60%,#1E88E5); color:#fff; text-align:center; padding:calc(42px + env(safe-area-inset-top,0px)) 24px 104px; overflow:hidden;}
+  .login-ecg{position:absolute; left:0; right:0; bottom:44px; width:100%; height:46px;}
+  .login-hero .login-logo{background:#fff; color:var(--primary); box-shadow:0 6px 18px rgba(0,0,0,.18);}
+  .login-logo .cross{width:30px; height:30px;}
+  .login-hero h2{font-size:22px; margin:0 0 6px; letter-spacing:.02em;}
+  .login-hero p{font-size:13px; opacity:.92; margin:0;}
+  .login-wrap{position:relative; margin:-40px 16px 32px; padding:22px 20px 24px; background:var(--panel); border-radius:18px; box-shadow:0 10px 30px rgba(16,42,67,.10); text-align:left;}
+  .sidebar-brand .logo .cross{width:18px; height:18px;}
+  .sidebar-brand small{display:block; font-size:10px; font-weight:600; color:var(--ink-soft); letter-spacing:.06em;}
+
   /* ==== 端末に合わせた自動切り替え ==== */
 
   /* タッチ端末(スマホ・タブレット):iOSで入力欄をタップしたときに勝手に拡大されないよう16px以上にする */
@@ -409,7 +500,10 @@
     .create-actions{bottom:0; margin:18px -32px 0; padding:12px 32px;}
     .msg{max-width:65%;}
     .toast{bottom:32px;}
-    .login-wrap{max-width:440px; margin:56px auto; padding:44px 36px; background:var(--panel); border:1px solid var(--line); border-radius:20px; box-shadow:0 10px 30px rgba(22,35,43,.06);}
+    .login-hero{padding-top:60px; padding-bottom:112px; border-radius:0 0 28px 28px;}
+    .login-wrap{max-width:440px; margin:-48px auto 48px; padding:32px 34px;}
+    .navbtn .navic{padding:0; background:none !important;}
+    .home-top{padding-top:30px;}
   }
 </style>
 </head>
@@ -418,7 +512,7 @@
   <!-- JavaScriptが動かない環境(ファイルのプレビュー画面など)では、この案内がそのまま表示される。
        JavaScriptが動けば、すぐにログイン画面へ置き換わる -->
   <div id="boot-fallback" style="padding:48px 24px; text-align:center; line-height:1.8; color:#16232B;">
-    <div style="width:56px;height:56px;border-radius:16px;background:#2E6F6A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;margin:0 auto 18px;">医</div>
+    <div style="width:56px;height:56px;border-radius:16px;background:#1565C0;color:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;"><svg width="28" height="28" viewBox="0 0 24 24"><path fill="#fff" d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/></svg></div>
     <div style="font-size:18px; font-weight:800; margin-bottom:10px;">医療教育アプリ</div>
     <div style="font-size:14px; color:#4B5A58; text-align:left; max-width:360px; margin:0 auto; background:#fff; border:1px solid #DDE3DE; border-radius:12px; padding:16px;">
       この画面が表示されている場合、アプリが起動できていません。<br><br>
@@ -687,7 +781,7 @@ function screenPlan(){
   const row = (label, f)=>`<tr><th>${label}</th>${plans.map(pl=>`<td class="${pl.id===p.id?'cur':''}">${f(pl)}</td>`).join('')}</tr>`;
   return `
     <div class="topbar bordered">
-      <div class="back-btn" onclick="go('settings')">←</div>
+      <div class="back-btn" onclick="go('settings')" aria-label="戻る">${ic('back')}</div>
       <h1>プラン</h1>
     </div>
     <div class="content">
@@ -758,17 +852,17 @@ function wrap(inner, activeTab){
   return `
     ${inner}
     <div class="bottomnav">
-      <div class="sidebar-brand"><div class="logo">医</div>医療教育アプリ</div>
-      ${navBtn('home','🏠','ホーム',activeTab)}
-      ${navBtn('create','✏️','作成',activeTab)}
-      ${navBtn('saved','📁','レポート',activeTab, hasUnread)}
-      ${navBtn('settings','⚙️','設定',activeTab)}
+      <div class="sidebar-brand"><div class="logo">${crossLogo()}</div><div>医療教育アプリ<small>Medical Education</small></div></div>
+      ${navBtn('home','home','ホーム',activeTab)}
+      ${navBtn('create','edit','作成',activeTab)}
+      ${navBtn('saved','reports','レポート',activeTab, hasUnread)}
+      ${navBtn('settings','settings','設定',activeTab)}
     </div>
   `;
 }
 function navBtn(key,icon,label,active,showDot){
   return `<button class="navbtn ${active===key?'active':''}" onclick="go('${key}')" style="position:relative;">
-    <span class="navic">${icon}${showDot?'<span class="nav-dot"></span>':''}</span><span class="navlbl">${label}</span>
+    <span class="navic">${ic(icon)}${showDot?'<span class="nav-dot"></span>':''}</span><span class="navlbl">${label}</span>
   </button>`;
 }
 
@@ -796,10 +890,13 @@ async function loadFavorites(){
 function screenLogin(){
   const isLogin = S.authMode==='login';
   return `
-  <div class="login-wrap">
-    <div class="login-logo">医</div>
+  <div class="login-hero">
+    <svg class="login-ecg" viewBox="0 0 400 60" preserveAspectRatio="none" aria-hidden="true"><path d="M0 34h110l12-18 14 34 16-44 14 40 10-12h224" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <div class="login-logo">${crossLogo()}</div>
     <h2>医療教育アプリ</h2>
-    <p>レポート作成・共有・フィードバックをひとつに</p>
+    <p>学びを記録し、根拠を確かめ、仲間と共有する</p>
+  </div>
+  <div class="login-wrap">
     <div class="login-form">
       ${isLogin ? `
         <div class="field-label">メールアドレス</div>
@@ -843,7 +940,7 @@ function screenLegal(kind){
   const isTerms = kind==='terms';
   return `
     <div class="topbar bordered">
-      <div class="back-btn" onclick="S.screen = S._legalFrom||'login'; render();">←</div>
+      <div class="back-btn" onclick="S.screen = S._legalFrom||'login'; render();" aria-label="戻る">${ic('back')}</div>
       <h1 style="font-size:16px;">${isTerms?'利用規約':'プライバシーポリシー'}</h1>
     </div>
     <div class="content" style="font-size:13px; line-height:1.9;">
@@ -1143,14 +1240,30 @@ function screenHome(){
   const notifItems = reports.filter(r=>r.recipients.length || r.hasUnreadComment);
   const shown = notifItems.slice(0,4);
   return `
-    <div class="topbar"><h1>ホーム</h1></div>
+    <div class="topbar home-top">
+      <div>
+        <div class="greet-date">${escapeHtml(todayLabel())}</div>
+        <h1>${greeting()}</h1>
+      </div>
+      <div class="avatar" onclick="go('settings')" title="設定">${escapeHtml(initialOf(ME.name))}</div>
+    </div>
     <div class="content no-pad-top">
       <div class="id-card">
-        <div class="role">${escapeHtml(ME.occupation)}</div>
-        <div class="name">${escapeHtml(ME.name)} さん</div>
+        <div class="id-head">
+          <span class="id-logo">${crossLogo()}</span><span class="id-brand">MEDICAL EDUCATION</span>
+          <span class="id-plan" onclick="go('plan')">${escapeHtml(currentPlan().label)} ›</span>
+        </div>
+        <div class="id-body">
+          <div class="avatar lg">${escapeHtml(initialOf(ME.name))}</div>
+          <div style="min-width:0;">
+            <div class="name">${escapeHtml(ME.name)}</div>
+            <div class="role"><span class="role-tag">${escapeHtml(ME.occupation)}</span></div>
+          </div>
+        </div>
+        <svg class="id-ecg" viewBox="0 0 400 28" preserveAspectRatio="none" aria-hidden="true"><path d="M0 18h262l7-10 9 16 10-22 9 18 5-2h98" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>
         <div class="idrow">
           <div><div class="idlabel">個人ID</div><div class="idval">${escapeHtml(ME.id)}</div></div>
-          <div class="id-plan" onclick="go('plan')">${escapeHtml(currentPlan().label)} ›</div>
+          <button class="id-copy" onclick="copyMyId()" title="個人IDをコピー">${ic('copy')}コピー</button>
         </div>
       </div>
 
@@ -1163,17 +1276,20 @@ function screenHome(){
 
       <div class="actions-row">
         <div class="action-btn primary" onclick="go('create')">
-          <div class="ic">📝</div>
+          <span class="act-ic">${ic('edit')}</span>
           <span class="lbl">作成する</span>
+          <span class="sub">レポートを書く</span>
         </div>
         <div class="action-btn" onclick="goToReceived()">
           ${unreadReceived ? `<span class="action-count">${unreadReceived}</span>` : ''}
-          <div class="ic">📥</div>
+          <span class="act-ic">${ic('inbox')}</span>
           <span class="lbl">受信</span>
+          <span class="sub">届いたレポート</span>
         </div>
         <div class="action-btn" onclick="go('contacts')">
-          <div class="ic">👥</div>
+          <span class="act-ic">${ic('users')}</span>
           <span class="lbl">相手一覧</span>
+          <span class="sub">よく送る相手</span>
         </div>
       </div>
 
@@ -1186,7 +1302,8 @@ function screenHome(){
         </ol>
       </div>`}
 
-      <div class="section-title">最近の通知</div>
+      <div class="section-title">${ic('bell')}最近の通知</div>
+      <div class="list-card">
       ${shown.map(r=>{
         const mine = isMine(r);
         // 自分が送ったもの:誰かが未読か / 受け取ったもの:自分がまだ読んでいないか
@@ -1202,7 +1319,8 @@ function screenHome(){
           </div>
           <div class="activity-time">${escapeHtml(r.createdAt)}</div>
         </div>`;
-      }).join('') || `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🔔</div>まだ通知はありません</div>`}
+      }).join('') || `<div class="empty-state" style="padding:26px 10px;"><div class="em-ic">${ic('bell')}</div>まだ通知はありません</div>`}
+      </div>
       ${notifItems.length>4 ? `<div style="text-align:center; margin-top:6px;"><a style="font-size:12.5px; color:var(--primary-dark); font-weight:700; cursor:pointer;" onclick="go('saved')">すべて見る(${notifItems.length}件)</a></div>` : ''}
 
       ${adSlotHtml('margin-top:24px;')}
@@ -1210,6 +1328,17 @@ function screenHome(){
   `;
 }
 
+function greeting(){
+  const h = new Date().getHours();
+  const g = h < 5 ? 'おつかれさまです' : h < 11 ? 'おはようございます' : h < 18 ? 'こんにちは' : 'おつかれさまです';
+  return `${g}、${escapeHtml(ME.name)}さん`;
+}
+function todayLabel(){ return new Date().toLocaleDateString('ja-JP', { month:'long', day:'numeric', weekday:'short' }); }
+function initialOf(name){ return String(name||'?').trim().charAt(0) || '?'; }
+async function copyMyId(){
+  try{ await navigator.clipboard.writeText(ME.id); toast('個人ID「' + ME.id + '」をコピーしました'); }
+  catch(e){ toast('個人ID:' + ME.id); }
+}
 function goToReceived(){
   S.filterStatus = 'received';
   S.filterQuery = '';
@@ -1227,7 +1356,7 @@ function screenCreate(){
   const isEditing = !isReedit && !!d.id; // 保存済みの下書きを編集している
   return `
     <div class="topbar bordered">
-      <div class="back-btn" onclick="go('home')">←</div>
+      <div class="back-btn" onclick="go('home')" aria-label="戻る">${ic('back')}</div>
       <h1>${isReedit ? '再編集' : isEditing ? '編集' : '作成'}</h1>
       ${d.id ? `<button class="btn sm" style="margin-left:auto; border-color:transparent; color:var(--danger);" onclick="deleteCurrentDraft()">🗑 削除</button>` : ''}
     </div>
@@ -1273,11 +1402,11 @@ function screenCreate(){
       <div id="ai-draft-panel">${aiDraftPanelHtml()}</div>
 
       <div class="create-actions">
-        <button class="btn sm" onclick="saveDraft()">💾 保存</button>
+        <button class="btn sm" onclick="saveDraft()">${ic('save')}保存</button>
         ${aiLocked() ? `<button class="btn sm ai-btn" onclick="go('plan')">🔒 AI評価</button>`
-          : `<button class="btn sm ai-btn" onclick="aiEvaluateDraft()" ${S.aiDraft.loading?'disabled':''}>${S.aiDraft.loading ? '🤖 評価中…' : '🤖 AI評価'}</button>`}
-        <button class="btn sm" onclick="doPrint()" title="印刷・PDF" aria-label="印刷・PDF">🖨</button>
-        <button class="btn sm solid send" onclick="goToSend()">送信 →</button>
+          : `<button class="btn sm ai-btn" onclick="aiEvaluateDraft()" ${S.aiDraft.loading?'disabled':''}>${ic('ai')}${S.aiDraft.loading ? '評価中…' : 'AI評価'}</button>`}
+        <button class="btn sm icon-only" onclick="doPrint()" title="印刷・PDF" aria-label="印刷・PDF">${ic('print')}</button>
+        <button class="btn sm solid send" onclick="goToSend()">${ic('send')}送信</button>
       </div>
     </div>
   `;
@@ -1487,7 +1616,7 @@ function screenSaved(){
       ${reports.some(isMine) ? `<button class="btn sm" style="margin-left:auto;" onclick="toggleDeleteMode()">${S.deleteMode?'完了':'選択して削除'}</button>` : ''}
     </div>
     <div class="content no-pad-top">
-      <div class="search-bar">🔍 <input type="text" id="saved-search" placeholder="タイトルで検索" value="${escapeHtml(S.filterQuery)}" oninput="S.filterQuery=this.value;renderSavedList()"></div>
+      <div class="search-bar">${ic('search')}<input type="text" id="saved-search" placeholder="タイトルで検索" value="${escapeHtml(S.filterQuery)}" oninput="S.filterQuery=this.value;renderSavedList()"></div>
 
       <div class="filter-row">
         ${chip('all','すべて')}${chip('draft','下書き')}${chip('sent','送信済み')}${chip('received','受信' + (unreadReceivedCount() ? ' ('+unreadReceivedCount()+')' : ''))}
@@ -1537,7 +1666,7 @@ function reportCard(r){
   const status = ['draft','saved','sent'].includes(r.status) ? r.status : 'draft';
   const badgeLabel = {draft:'下書き',saved:'下書き',sent:'送信済み'}[status];
   return `
-    <div class="report-card" onclick="${S.deleteMode ? `toggleDeleteSelect(${jsArg(r.id)})` : `openDetail(${jsArg(r.id)})`}" style="${r.hasUnreadComment?'border-color:var(--amber);':''} ${S.deleteMode && checked ? 'border-color:var(--danger); background:#FBEAE7;' : ''} ${S.deleteMode && !mine ? 'opacity:.5;' : ''}">
+    <div class="report-card st-${mine ? (status==='sent'?'sent':'draft') : 'received'}" onclick="${S.deleteMode ? `toggleDeleteSelect(${jsArg(r.id)})` : `openDetail(${jsArg(r.id)})`}" style="${r.hasUnreadComment?'border-color:var(--amber);':''} ${S.deleteMode && checked ? 'border-color:var(--danger); background:#FBEAE7;' : ''} ${S.deleteMode && !mine ? 'opacity:.5;' : ''}">
       <div class="rc-top">
         <div class="rc-title">${S.deleteMode && mine ? `<span style="margin-right:8px;">${checked?'☑️':'⬜'}</span>` : ''}${r.hasUnreadComment?'🔴 ':''}${escapeHtml(r.title)}</div>
         <div class="badge ${mine ? (status==='sent'?'sent':'draft') : 'received'}">${mine ? badgeLabel : (r.recipients.some(x=>x.id===ME.id && !x.read) ? '受信・未読' : '受信')}</div>
@@ -1615,13 +1744,13 @@ function stopCommentsListener(){
 /* ---- Detail ---- */
 function screenDetail(){
   const r = findReport(S.currentId);
-  if(!r) return `<div class="topbar bordered"><div class="back-btn" onclick="go('saved')">←</div><h1 style="font-size:16px;">詳細</h1></div>
+  if(!r) return `<div class="topbar bordered"><div class="back-btn" onclick="go('saved')" aria-label="戻る">${ic('back')}</div><h1 style="font-size:16px;">詳細</h1></div>
     <div class="content"><div class="empty-state"><div class="em-ic">📭</div>このレポートは削除されたか、見られなくなりました</div></div>`;
   const showRead = isMine(r) && r.recipients.length > 0;
   if(S.detailTab==='read' && !showRead) S.detailTab='content';
   return `
     <div class="topbar bordered">
-      <div class="back-btn" onclick="go('saved')">←</div>
+      <div class="back-btn" onclick="go('saved')" aria-label="戻る">${ic('back')}</div>
       <h1 style="font-size:16px;">詳細</h1>
       ${isMine(r) ? `<div style="margin-left:auto; display:flex; gap:8px;">
         <button class="btn sm" style="border-color:transparent; color:var(--danger);" onclick="deleteReportFromDetail(${jsArg(r.id)})">🗑</button>
@@ -1631,7 +1760,7 @@ function screenDetail(){
     <div class="content">
       <div class="tab-row">
         <div class="tab-btn ${S.detailTab==='content'?'active':''}" onclick="S.detailTab='content';render()">内容</div>
-        <div class="tab-btn ${S.detailTab==='ai'?'active':''}" onclick="openAiTab()">🤖 AI評価</div>
+        <div class="tab-btn ${S.detailTab==='ai'?'active':''}" onclick="openAiTab()">AI評価</div>
         <div class="tab-btn ${S.detailTab==='chat'?'active':''}" onclick="openChatTab()">コメント${r.hasUnreadComment?' <span class="tab-dot"></span>':''}</div>
         ${showRead ? `<div class="tab-btn ${S.detailTab==='read'?'active':''}" onclick="S.detailTab='read';render()">既読</div>` : ''}
       </div>
@@ -1644,8 +1773,8 @@ function detailContent(r){
     <div class="detail-title">${escapeHtml(r.title)}</div>
     <div class="detail-meta">${escapeHtml(r.createdAt)} 作成 ${r.originalId?'・🔗 再編集版':''}</div>
     <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
-      ${aiLocked() ? `<button class="btn sm ai-btn" onclick="go('plan')">🔒 AIで評価</button>` : `<button class="btn sm ai-btn" onclick="openAiTabAndRun(${jsArg(r.id)})">🤖 AIで評価</button>`}
-      <button class="btn sm" onclick="printReport(${jsArg(r.id)})">🖨 印刷・PDF</button>
+      ${aiLocked() ? `<button class="btn sm ai-btn" onclick="go('plan')">🔒 AIで評価</button>` : `<button class="btn sm ai-btn" onclick="openAiTabAndRun(${jsArg(r.id)})">${ic('ai')}AIで評価</button>`}
+      <button class="btn sm" onclick="printReport(${jsArg(r.id)})">${ic('print')}印刷・PDF</button>
     </div>
     <div class="detail-body">${escapeHtml(r.body)}
     ${(r.attachments && r.attachments.length) ? `<div class="attach-row" style="margin-top:12px;">${r.attachments.filter(a=>safeUrl(a.url)).map(a=>`<a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" class="attach-thumb" style="padding:0; overflow:hidden;"><img src="${safeUrl(a.url)}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(a.name||'添付画像')}"></a>`).join('')}</div>` : ''}
@@ -1752,7 +1881,7 @@ function aiDraftPanelHtml(){
   if(!a.result) return '';
   const changed = S.draft && a.snapshot && draftSnapshot(S.draft)!==a.snapshot;
   return `<div class="ai-panel">
-    <div class="ai-panel-head"><span>🤖 AI評価の結果</span><a onclick="S.aiDraft={loading:false,result:null,error:''};render()">閉じる</a></div>
+    <div class="ai-panel-head"><span>${ic('ai')}AI評価の結果</span><a onclick="S.aiDraft={loading:false,result:null,error:''};render()">閉じる</a></div>
     ${changed ? `<div class="ai-note">評価したあとに内容が変わっています。必要なら、もう一度「AIで評価」を押してください。</div>` : ''}
     ${renderAiReview(a.result.review)}
   </div>`;
@@ -1822,14 +1951,14 @@ function detailAi(r){
     </div>
     ${aiLocked() ? aiLockedHtml() : `<div class="set-sub" style="margin:-4px 0 8px;">${aiRemainingText()}</div>`}
     <button class="btn solid block ai-run" onclick="${aiLocked() ? `go('plan')` : `aiEvaluateReport(${jsArg(r.id)})`}" ${S.aiBusy?'disabled':''}>
-      ${aiLocked() ? '🔒 プランを見る' : S.aiBusy===r.id ? '🤖 評価中…' : rv ? '🤖 もう一度評価する' : '🤖 AIで評価する'}
+      ${aiLocked() ? '🔒 プランを見る' : ic('ai') + (S.aiBusy===r.id ? '評価中…' : rv ? 'もう一度評価する' : 'AIで評価する')}
     </button>
     ${S.aiBusy===r.id ? aiLoadingHtml() : ''}
     ${S.aiError ? aiErrorHtml(S.aiError, S.aiErrorUpgrade) : ''}
     ${!S.aiReviewLoaded && !rv ? `<div class="ai-note" style="margin-top:14px;">読み込み中…</div>` : ''}
     ${S.aiReviewLoaded && !rv && S.aiBusy!==r.id ? `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🤖</div>まだAI評価はありません</div>` : ''}
     ${rv ? `<div class="ai-panel">
-      <div class="ai-panel-head"><span>🤖 最新のAI評価</span><small>${escapeHtml(when)}・${escapeHtml(rv.requestedByName||'')}さんが実行</small></div>
+      <div class="ai-panel-head"><span>${ic('ai')}最新のAI評価</span><small>${escapeHtml(when)}・${escapeHtml(rv.requestedByName||'')}さんが実行</small></div>
       ${renderAiReview(rv.review)}
     </div>` : ''}
   `;
@@ -1860,7 +1989,7 @@ function renderAiReview(rv){
       <div class="ai-text">${escapeHtml(overall.summary)}</div>
     </div>
     <div class="ai-sec">
-      <div class="ai-h">📋 根拠の正しさ</div>
+      <div class="ai-h">${ic('check')}根拠の正しさ</div>
       ${claims.length ? claims.map(c=>{ const v = VERDICT[c.verdict] || ['—','muted']; return `
         <div class="ai-claim">
           <div class="ai-claim-top"><span class="ai-tag ${v[1]}">${v[0]}</span><span class="ai-claim-st">${escapeHtml(c.statement)}</span></div>
@@ -1869,16 +1998,16 @@ function renderAiReview(rv){
         </div>`; }).join('') : `<div class="ai-text muted">判定できる医学的な記述は見つかりませんでした</div>`}
     </div>
     <div class="ai-sec">
-      <div class="ai-h">🔎 根拠・出典の示し方</div>
+      <div class="ai-h">${ic('shield')}根拠・出典の示し方</div>
       <div class="ai-text">${escapeHtml(ev.assessment)}</div>
       ${arr(ev.issues).length ? `<ul class="ai-list">${arr(ev.issues).map(i=>`<li>${escapeHtml(i)}</li>`).join('')}</ul>` : ''}
     </div>
     ${sugg.length ? `<div class="ai-sec">
-      <div class="ai-h">💡 提案</div>
+      <div class="ai-h">${ic('bulb')}提案</div>
       <ul class="ai-list">${sugg.map(x=>`<li><b>${escapeHtml(x.point)}</b><br>${escapeHtml(x.detail)}</li>`).join('')}</ul>
     </div>` : ''}
     ${refs.length ? `<div class="ai-sec">
-      <div class="ai-h">📚 参考資料</div>
+      <div class="ai-h">${ic('book')}参考資料</div>
       <ul class="ai-list">${refs.map(x=>{
         const cf = CONF[x.confidence] || ['','muted'];
         const link = x.verified ? safeLink(x.url) : '';
@@ -1889,14 +2018,14 @@ function renderAiReview(rv){
       }).join('')}</ul>
     </div>` : ''}
     <div class="ai-sec">
-      <div class="ai-h">🔍 関連ガイドラインを探す</div>
+      <div class="ai-h">${ic('search')}関連ガイドラインを探す</div>
       <div class="ai-search-links">
         ${arr(rv.search_keywords).map(k=>`<a class="chip" href="${mindsSearchUrl(k)}" target="_blank" rel="noopener noreferrer">${escapeHtml(k)}</a>`).join('')}
         <a class="chip" href="https://minds.jcqhc.or.jp/" target="_blank" rel="noopener noreferrer">Minds ガイドラインライブラリ ›</a>
       </div>
     </div>
     ${rv.question_answer ? `<div class="ai-sec">
-      <div class="ai-h">❓ 疑問・困りごとへの回答</div>
+      <div class="ai-h">${ic('help')}疑問・困りごとへの回答</div>
       <div class="ai-text">${escapeHtml(rv.question_answer)}</div>
     </div>` : ''}
     <div class="ai-disclaimer">※ AIによる参考評価です。誤りを含むことがあります。診療上の判断には使わず、必ずガイドラインの原典や指導者に確認してください。参考資料は、実在するか・最新版かを必ず確認してください。</div>
@@ -2015,7 +2144,7 @@ function screenSend(){
   const d = S.draft;
   return `
     <div class="topbar bordered">
-      <div class="back-btn" onclick="S.screen='create';render()">←</div>
+      <div class="back-btn" onclick="S.screen='create';render()" aria-label="戻る">${ic('back')}</div>
       <h1>送信</h1>
     </div>
     <div class="content">
@@ -2116,7 +2245,7 @@ function screenContacts(){
   const editing = S.contactEditMode;
   return `
     <div class="topbar bordered">
-      <div class="back-btn" onclick="leaveContacts()">←</div>
+      <div class="back-btn" onclick="leaveContacts()" aria-label="戻る">${ic('back')}</div>
       <h1>相手一覧</h1>
       ${S.myContacts.length ? `<button class="btn sm" style="margin-left:auto;" onclick="toggleContactEditMode()">${editing?'完了':'選択して削除'}</button>` : ''}
     </div>
@@ -2328,6 +2457,39 @@ async function toggleFavoriteFromSend(id){
   }
 }
 
+/* ---- アイコン(線画のSVG。色は文字色に合わせて変わる) ---- */
+const ICON_PATHS = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  reports:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h4"/>',
+  settings:'<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  inbox:'<path d="M3 13h5l1.5 3h5L16 13h5"/><path d="M5.5 5h13L21 13v6H3v-6Z"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.6 2.5 3 5.2"/>',
+  ai:'<path d="M12 3l1.8 4.7 4.7 1.8-4.7 1.8L12 16l-1.8-4.7-4.7-1.8 4.7-1.8Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/>',
+  print:'<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7Z"/>',
+  save:'<path d="M5 3h11l3 3v15H5Z"/><path d="M8 3v5h7V3"/><path d="M8 21v-7h8v7"/>',
+  send:'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  back:'<path d="M15 18l-6-6 6-6"/>',
+  chevron:'<path d="m9 6 6 6-6 6"/>',
+  bell:'<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',
+  pulse:'<path d="M2 12h4l2-5 4 10 2-5h8"/>',
+  check:'<path d="m5 12 4.5 4.5L19 7"/>',
+  shield:'<path d="M12 3 4 6v6c0 4.5 3.4 8.2 8 9 4.6-.8 8-4.5 8-9V6Z"/><path d="m9 12 2 2 4-4"/>',
+  bulb:'<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.3 1 2.1h5c0-.8.4-1.6 1-2.1A6 6 0 0 0 12 3Z"/>',
+  book:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v16H5.5A1.5 1.5 0 0 0 4 20.5Z"/><path d="M4 20.5A1.5 1.5 0 0 0 5.5 22H20"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5v.01"/>',
+  list:'<path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+};
+function ic(name, cls){
+  return `<svg class="ic ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]||''}</svg>`;
+}
+// 医療の十字マーク(ロゴ用、塗りつぶし)
+function crossLogo(){
+  return `<svg class="cross" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 3h6v6h6v6h-6v6H9v-6H3V9h6Z"/></svg>`;
+}
+
 /* ---- utils ---- */
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 // onclick="fn(${jsArg(x)})" のように、HTML属性内のJS引数として安全に埋め込む
@@ -2360,13 +2522,13 @@ function buildPrintDocumentHTML(d, mode){
   body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif; color:#16232B; margin:0;}
   .toolbar{
     position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:10px;
-    background:#1E4E4A; color:#fff; padding:12px 16px;
+    background:#0D47A1; color:#fff; padding:12px 16px;
   }
   .toolbar button{
     border:none; border-radius:999px; padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
   }
   .toolbar .back{background:rgba(255,255,255,.16); color:#fff;}
-  .toolbar .action{background:#fff; color:#1E4E4A; margin-left:auto;}
+  .toolbar .action{background:#fff; color:#0D47A1; margin-left:auto;}
   .toolbar .ttl{font-size:13.5px; font-weight:700; opacity:.9;}
   .hint{background:#FBF0DE; color:#7A5A16; font-size:12.5px; padding:10px 16px; line-height:1.6;}
   .page{padding:26px 30px; font-size:13px; line-height:1.9;}
@@ -2374,7 +2536,7 @@ function buildPrintDocumentHTML(d, mode){
   .meta{font-size:11px; color:#555; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #ccc;}
   .body{white-space:pre-wrap; font-size:12.5px;}
   .field{margin-top:14px; page-break-inside:avoid;}
-  .field .n{font-size:11px; font-weight:700; color:#2E6F6A;}
+  .field .n{font-size:11px; font-weight:700; color:#1565C0;}
   .field .v{font-size:12.5px; margin-top:2px; white-space:pre-wrap;}
   .imgs{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;}
   .imgs img{width:150px; height:150px; object-fit:cover; border-radius:6px; border:1px solid #ddd;}
