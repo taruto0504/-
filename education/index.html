@@ -61,7 +61,7 @@
     background:var(--panel); display:flex;align-items:center;justify-content:center;
     cursor:pointer; flex-shrink:0; color:var(--ink);
   }
-  .content{flex:1; padding:6px 18px 96px; overflow-y:auto;}
+  .content{flex:1; padding:6px 18px 96px; min-width:0;} /* overflow を指定しない:下部固定(sticky)のボタン・入力欄が画面基準で効くように */
   .content.no-pad-top{padding-top:0;}
 
   /* ---- Home ---- */
@@ -317,6 +317,25 @@
   .badge.received{background:#E8F0FA; color:#2B5C8A;}
   .tab-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--amber); vertical-align:middle;}
   .tab-btn{white-space:nowrap;}
+
+  /* ---- 作成画面の固定ボタン ---- */
+  .create-actions{
+    position:sticky; bottom:calc(72px + env(safe-area-inset-bottom,0px)); z-index:5;
+    display:flex; gap:8px; align-items:center; margin:18px -18px 0; padding:10px 18px;
+    background:rgba(243,245,242,.96); border-top:1px solid var(--line); backdrop-filter:blur(6px);
+  }
+  .create-actions .send{flex:1; min-width:96px;}
+  .create-actions .btn{white-space:nowrap; height:40px; padding-top:0; padding-bottom:0;}
+  .mic-btn{display:inline-flex; font-size:13px; padding:8px 14px;}
+  .welcome{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin-bottom:6px;}
+  .welcome-h{font-weight:800; font-size:14px; margin-bottom:6px;}
+  .welcome ol{margin:0; padding-left:20px; font-size:13px; line-height:1.9; color:var(--ink-soft);}
+  .ai-source{font-size:12.5px; color:var(--ink-soft); background:#EEF1EF; border-radius:8px; padding:8px 11px; margin-bottom:10px; line-height:1.6;}
+  .ai-source.ok{background:#E8F0FA; color:#2B5C8A;}
+  .ai-link{font-size:12.5px; font-weight:700; color:#2B5C8A; text-decoration:none; word-break:break-all;}
+  .ai-search-links{display:flex; flex-wrap:wrap; gap:8px;}
+  .ai-search-links .chip{text-decoration:none; font-size:12.5px;}
+  .ai-loading small{font-size:12px; color:var(--ink-soft);}
   .sidebar-brand{display:none;}
 
   /* ==== 端末に合わせた自動切り替え ==== */
@@ -370,6 +389,7 @@
     #saved-list .report-card{margin-bottom:0;}
     #saved-list .empty-state{grid-column:1 / -1;}
     .chat-input-row{bottom:16px;}
+    .create-actions{bottom:0; margin:18px -32px 0; padding:12px 32px;}
     .msg{max-width:65%;}
     .toast{bottom:32px;}
     .login-wrap{max-width:440px; margin:56px auto; padding:44px 36px; background:var(--panel); border:1px solid var(--line); border-radius:20px; box-shadow:0 10px 30px rgba(22,35,43,.06);}
@@ -757,7 +777,7 @@ const PRIVACY_TEXT = `
 ・不正利用の防止、お問い合わせへの対応のため</p>
 <h3 style="font-size:14px;">3. 第三者提供</h3>
 <p>法令に基づく場合を除き、利用者の同意なく、取得した情報を第三者に提供することはありません。</p>
-<p>ただし、利用者が「AIで評価」を実行した場合に限り、評価のためにレポートのタイトル・本文・追加項目・疑問欄の内容(添付画像・氏名・メールアドレスは含みません)を、AIサービスの提供事業者(Anthropic社)に送信します。</p>
+<p>ただし、利用者が「AIで評価」を実行した場合に限り、評価のためにレポートのタイトル・本文・追加項目・疑問欄の内容(添付画像・氏名・メールアドレスは含みません)を、AIサービスの提供事業者(Anthropic社)に送信します。評価の際には、AIがレポートのテーマをもとに、インターネット上の医療ガイドライン(Minds、厚生労働省、各学会など)を検索します。</p>
 <h3 style="font-size:14px;">4. データの保管</h3>
 <p>取得した情報は、Google Cloud(Firebase)のサーバー上で、通信・保存時ともに暗号化された状態で管理します。</p>
 <h3 style="font-size:14px;">5. 患者情報の取り扱いについて</h3>
@@ -1045,7 +1065,14 @@ function screenHome(){
         </div>
       </div>
 
-      <div class="ad-slot">広告スペース(準備中)</div>
+      ${reports.length ? '' : `<div class="welcome">
+        <div class="welcome-h">はじめての方へ</div>
+        <ol>
+          <li><b>📝 作成する</b>で、調べたことや学んだことを書きます</li>
+          <li><b>🤖 AI評価</b>で、ガイドラインをもとに根拠の正しさ・提案・参考資料をチェックできます</li>
+          <li><b>送信</b>すると、指導者や仲間からコメントをもらえます</li>
+        </ol>
+      </div>`}
 
       <div class="section-title">最近の通知</div>
       ${shown.map(r=>{
@@ -1065,6 +1092,8 @@ function screenHome(){
         </div>`;
       }).join('') || `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🔔</div>まだ通知はありません</div>`}
       ${notifItems.length>4 ? `<div style="text-align:center; margin-top:6px;"><a style="font-size:12.5px; color:var(--primary-dark); font-weight:700; cursor:pointer;" onclick="go('saved')">すべて見る(${notifItems.length}件)</a></div>` : ''}
+
+      <div class="ad-slot" style="margin-top:24px;">広告スペース(準備中)</div>
     </div>
   `;
 }
@@ -1096,11 +1125,11 @@ function screenCreate(){
       <div class="field-label">タイトル<span class="req">必須</span></div>
       <input type="text" id="f-title" placeholder="例:急性心筋梗塞の初期対応まとめ" value="${escapeHtml(d.title)}" oninput="d_.title=this.value">
 
-      <div class="field-label">自由欄(メイン)<span class="req">必須</span></div>
+      <div class="field-label">本文(調べたこと・学んだこと)<span class="req">必須</span></div>
       <textarea id="f-body" placeholder="調べたこと・レポート内容を自由に入力してください" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
 
       ${HAS_SPEECH ? `<div class="mic-btn ${S.recording?'recording':''}" onclick="toggleMic()">
-        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声入力で自由欄に文字起こし`}
+        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声で本文を入力`}
       </div>` : ''}
 
       <div class="field-label">疑問・困りごと<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></div>
@@ -1129,13 +1158,14 @@ function screenCreate(){
       `).join('')}
       <button class="btn sm" style="margin-top:10px;" onclick="addField()">＋ 項目を追加</button>
 
-      <div class="btn-row">
-        <button class="btn" onclick="saveDraft()">💾 保存</button>
-        <button class="btn ai-btn" onclick="aiEvaluateDraft()" ${S.aiDraft.loading?'disabled':''}>${S.aiDraft.loading ? '🤖 評価中…' : '🤖 AIで評価'}</button>
-        <button class="btn" onclick="doPrint()">🖨 印刷・PDF</button>
-      </div>
       <div id="ai-draft-panel">${aiDraftPanelHtml()}</div>
-      <button class="btn solid block" style="margin-top:16px;" onclick="goToSend()">この内容を送信する →</button>
+
+      <div class="create-actions">
+        <button class="btn sm" onclick="saveDraft()">💾 保存</button>
+        <button class="btn sm ai-btn" onclick="aiEvaluateDraft()" ${S.aiDraft.loading?'disabled':''}>${S.aiDraft.loading ? '🤖 評価中…' : '🤖 AI評価'}</button>
+        <button class="btn sm" onclick="doPrint()" title="印刷・PDF" aria-label="印刷・PDF">🖨</button>
+        <button class="btn sm solid send" onclick="goToSend()">送信 →</button>
+      </div>
     </div>
   `;
 }
@@ -1264,7 +1294,7 @@ function removeField(i){ S.draft.fields.splice(i,1); render(); }
 
 async function saveDraft(){
   const d = S.draft;
-  if(!d.title || !d.body){ toast('タイトルと自由欄は必須です'); return; }
+  if(!d.title || !d.body){ toast('タイトルと本文は必須です'); return; }
   d.status = 'saved';
   const ok = await persistDraft(d);
   if(!ok) return; // 保存に失敗した場合は、成功したかのような表示をしない
@@ -1308,7 +1338,7 @@ async function persistDraft(d){
 
 async function goToSend(){
   const d = S.draft;
-  if(!d.title || !d.body){ toast('タイトルと自由欄は必須です'); return; }
+  if(!d.title || !d.body){ toast('タイトルと本文は必須です'); return; }
   await loadDirectory();
   await loadFavorites();
   // prefill original recipients when this is a re-edit
@@ -1543,7 +1573,7 @@ function detailChat(r){
 // サーバー側(Cloud Functions の evaluateReport)が Claude を呼び出して評価する。APIキーはブラウザに置かない
 function callAiEvaluate(payload){
   if(!window.fb || !window.fb.functions) throw Object.assign(new Error('Firebaseの読み込み中です'), {code:'unavailable'});
-  const fn = window.fb.httpsCallable(window.fb.functions, 'evaluateReport', { timeout: 180000 });
+  const fn = window.fb.httpsCallable(window.fb.functions, 'evaluateReport', { timeout: 540000 });
   return fn(payload).then(r=>r.data);
 }
 function aiErrorMessage(e){
@@ -1570,7 +1600,7 @@ function draftSnapshot(d){
 // 作成画面:保存前の内容をそのまま評価する(結果は保存しない)
 async function aiEvaluateDraft(){
   const d = S.draft;
-  if(!d || !d.title || !d.body){ toast('タイトルと自由欄を入力してから評価してください'); return; }
+  if(!d || !d.title || !d.body){ toast('タイトルと本文を入力してから評価してください'); return; }
   if(S.aiDraft.loading) return;
   if(!aiConfirm()) return;
   const snapshot = draftSnapshot(d);
@@ -1599,7 +1629,7 @@ function aiDraftPanelHtml(){
   </div>`;
 }
 function aiLoadingHtml(){
-  return `<div class="ai-loading"><span class="ai-spinner"></span>AIが評価しています… 30秒〜1分ほどかかります</div>`;
+  return `<div class="ai-loading"><span class="ai-spinner"></span><span>AIがガイドラインを検索して評価しています…<br><small>1〜3分ほどかかります。この画面のままお待ちください</small></span></div>`;
 }
 
 // 詳細画面:保存済みのレポートを評価し、結果は作成者・受信者で共有する
@@ -1655,7 +1685,7 @@ function detailAi(r){
   const when = rv && rv.createdAt && rv.createdAt.toDate ? rv.createdAt.toDate().toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'たった今';
   return `
     <div class="ai-intro">
-      AIが、このレポートの<b>根拠の正しさ</b>・<b>提案</b>・<b>参考資料</b>を評価します。あくまで学習の参考です。<br>
+      AIが、Minds などのガイドラインを検索しながら、このレポートの<b>根拠の正しさ</b>・<b>提案</b>・<b>参考資料</b>を評価します。あくまで学習の参考です。<br>
       <span style="font-size:12px;">※評価のため、内容がAIサービス(Anthropic社)に送信されます。添付画像は評価に含まれません。</span>
       ${isMine(r) ? '' : '<br>評価結果は、作成者と受信者の全員が見られます。'}
     </div>
@@ -1674,6 +1704,10 @@ function detailAi(r){
 }
 
 // 評価結果(サーバーが返すJSON)を画面用のHTMLにする
+function safeLink(u){ const s = String(u||''); return /^https:\/\/[^\s"'<>]+$/.test(s) ? escapeHtml(s) : ''; }
+function shortUrl(u){ try{ const x = new URL(u); return x.hostname.replace(/^www\./,''); }catch(e){ return ''; } }
+// Minds のサイト内を検索する(Google のサイト内検索を使う)
+function mindsSearchUrl(k){ return 'https://www.google.com/search?q=' + encodeURIComponent('site:minds.jcqhc.or.jp ' + k); }
 function renderAiReview(rv){
   rv = rv || {};
   const arr = (v)=>Array.isArray(v) ? v : [];
@@ -1684,8 +1718,11 @@ function renderAiReview(rv){
   const lv = LEVEL[overall.level] || ['評価','muted'];
   const claims = arr(rv.claims), sugg = arr(rv.suggestions), refs = arr(rv.references);
   const ev = rv.evidence || {};
+  const gs = rv.guideline_search || {};
   return `
     ${rv.privacy_warning ? `<div class="ai-error">🔒 個人情報の注意:${escapeHtml(rv.privacy_warning)}</div>` : ''}
+    ${gs.status==='ok' ? `<div class="ai-source ok">🌐 Minds など信頼できる医療サイトのガイドラインを検索して評価しました${gs.found_count ? `(参照 ${Number(gs.found_count)||0} 件)` : ''}</div>`
+      : gs.status==='failed' ? `<div class="ai-source">📖 今回はネット検索ができなかったため、AIの知識だけで評価しています</div>` : ''}
     <div class="ai-sec">
       <div class="ai-overall"><span class="ai-tag ${lv[1]}">${lv[0]}</span></div>
       <div class="ai-text">${escapeHtml(overall.summary)}</div>
@@ -1710,8 +1747,22 @@ function renderAiReview(rv){
     </div>` : ''}
     ${refs.length ? `<div class="ai-sec">
       <div class="ai-h">📚 参考資料</div>
-      <ul class="ai-list">${refs.map(x=>{ const cf = CONF[x.confidence] || ['','muted']; return `<li><b>${escapeHtml(x.title)}</b>${x.publisher ? `(${escapeHtml(x.publisher)})` : ''} <span class="ai-tag sm ${cf[1]}">${cf[0]}</span><br>${escapeHtml(x.note)}</li>`; }).join('')}</ul>
+      <ul class="ai-list">${refs.map(x=>{
+        const cf = CONF[x.confidence] || ['','muted'];
+        const link = x.verified ? safeLink(x.url) : '';
+        return `<li><b>${escapeHtml(x.title)}</b>${x.publisher ? `(${escapeHtml(x.publisher)})` : ''}
+          ${link ? `<span class="ai-tag sm good">🌐 Webで確認</span>` : `<span class="ai-tag sm ${cf[1]}">${cf[0]}</span>`}
+          <br>${escapeHtml(x.note)}
+          ${link ? `<br><a class="ai-link" href="${link}" target="_blank" rel="noopener noreferrer">🔗 ${escapeHtml(shortUrl(x.url))} を開く</a>` : ''}</li>`;
+      }).join('')}</ul>
     </div>` : ''}
+    <div class="ai-sec">
+      <div class="ai-h">🔍 関連ガイドラインを探す</div>
+      <div class="ai-search-links">
+        ${arr(rv.search_keywords).map(k=>`<a class="chip" href="${mindsSearchUrl(k)}" target="_blank" rel="noopener noreferrer">${escapeHtml(k)}</a>`).join('')}
+        <a class="chip" href="https://minds.jcqhc.or.jp/" target="_blank" rel="noopener noreferrer">Minds ガイドラインライブラリ ›</a>
+      </div>
+    </div>
     ${rv.question_answer ? `<div class="ai-sec">
       <div class="ai-h">❓ 疑問・困りごとへの回答</div>
       <div class="ai-text">${escapeHtml(rv.question_answer)}</div>
@@ -2210,7 +2261,7 @@ function buildPrintDocumentHTML(d, mode){
 }
 
 function openPrintWindow(d, mode){
-  if(!d.title || !d.body){ toast('タイトルと自由欄は必須です'); return; }
+  if(!d.title || !d.body){ toast('タイトルと本文は必須です'); return; }
   const html = buildPrintDocumentHTML(d, mode);
   const win = window.open('', '_blank');
   if(!win){

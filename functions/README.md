@@ -31,6 +31,18 @@ firebase deploy --only functions,firestore:rules
 
 評価の観点や出力の形は `functions/evaluate.js` の `SYSTEM_PROMPT` と `REVIEW_SCHEMA` で変えられます。
 
+## ネットの医療ガイドラインの取り込み
+評価は2段階で行います。
+1. **ガイドライン調査**:Claude の Web 検索で、許可したサイトだけを検索します(`GUIDELINE_DOMAINS`)。
+   初期設定は Minds ガイドラインライブラリ、厚生労働省、PMDA、総務省消防庁、日本蘇生協議会、主要学会、J-STAGE、PubMed、WHO、CDC、AHA です。
+2. **評価**:調査結果を参考にして、根拠の正しさ・提案・参考資料を作ります。
+   参考資料のリンクは、**検索で実際に見つかったページだけ**を表示します(AIが作ったURLは表示しません)。
+
+- 検索サイトを増やす・減らすときは `GUIDELINE_DOMAINS` を編集してデプロイし直してください
+- Web 検索は検索1回ごとに追加料金がかかります(1回の評価で最大5回まで検索します)
+- Anthropic の Console で、組織の設定により Web 検索が無効になっていると調査が失敗します。
+  その場合も評価は止まらず、「AIの知識だけで評価しています」と表示されます
+
 ## テスト
 ```bash
 cd functions && npm test

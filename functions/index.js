@@ -55,7 +55,7 @@ exports.evaluateReport = onCall(
     secrets: [ANTHROPIC_API_KEY],
     // このアプリ以外からの呼び出しを拒否する(App Check)。ローカルのエミュレータでのテスト時だけ無効
     enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
-    timeoutSeconds: 300,
+    timeoutSeconds: 540, // ガイドラインのWeb検索を含めると1〜3分ほどかかるため長めに
     memory: "512MiB",
     maxInstances: 10,
   },
