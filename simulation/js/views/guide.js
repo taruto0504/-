@@ -2,7 +2,7 @@ import * as store from "../store.js";
 import { icon } from "../icons.js";
 import { esc, setTitle, formatDateTime, toast } from "../ui.js";
 import { isHowtoOn, setHowto } from "../howto.js";
-import { GUIDELINES, GUIDELINES_CHECKED } from "../guidelines.js";
+import { GUIDELINES, GUIDELINES_CHECKED, MINDS_URL } from "../guidelines.js";
 
 export const TERMS_HTML = `
   <h3>第1条（目的）</h3>
@@ -123,9 +123,15 @@ export function guideView(el) {
     <section class="card guideline-list" id="guideline-list" hidden>
       <h2>AIが参照する医療ガイドライン（${GUIDELINES_CHECKED}時点）</h2>
       <ul class="ref-list">
-        ${GUIDELINES.map((g) => `<li><a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.title)}</a><span class="small muted">　${esc(g.org)}</span></li>`).join("")}
+        ${GUIDELINES.map(
+          (g) =>
+            `<li><a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.title)}</a>${
+              g.minds && g.minds !== g.url ? ` <a class="minds-link" href="${esc(g.minds)}" target="_blank" rel="noopener noreferrer">Minds</a>` : g.minds ? ' <span class="minds-link">Minds掲載</span>' : ""
+            }<span class="small muted">　${esc(g.org)}</span></li>`
+        ).join("")}
       </ul>
-      <p class="small muted">アプリには各ガイドラインの要点（教育用の要約）を収録しています。APIキーを使う通常版では、評価のたびに学会・公的機関などの信頼できるサイトだけを検索して最新情報も確認します。詳しくは各ガイドラインの原文を確認してください。</p>
+      <p class="small">国内の診療ガイドラインは <a href="${MINDS_URL}" target="_blank" rel="noopener noreferrer">Mindsガイドラインライブラリ</a>（日本医療機能評価機構）でも探せます。「Minds」の印は、Minds に掲載されているものです。</p>
+      <p class="small muted">アプリには各ガイドラインの要点（教育用の要約）を収録しています。APIキーを使う通常版では、評価のたびに Minds・学会・公的機関などの信頼できるサイトだけを検索して最新情報も確認します。詳しくは各ガイドラインの原文を確認してください。</p>
     </section>
     <a class="btn primary block" href="#/home">ホームへ</a>`;
   el.querySelector("#howto-on").addEventListener("change", (e) => {

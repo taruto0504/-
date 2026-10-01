@@ -225,7 +225,12 @@ function renderResult(saved, { canShare }) {
   const list = (items) => `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
   const links = (items) =>
     `<ul class="ref-list">${items
-      .map((x) => `<li>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}</li>`)
+      .map(
+        (x) =>
+          `<li>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}${
+            x.minds && x.minds !== x.url ? ` <a class="minds-link" href="${esc(x.minds)}" target="_blank" rel="noopener noreferrer">Minds</a>` : x.minds ? ' <span class="minds-link">Minds掲載</span>' : ""
+          }</li>`
+      )
       .join("")}</ul>`;
   return `
     <p class="ai-disclaimer">${icon("alert")} ${AI_DISCLAIMER}</p>

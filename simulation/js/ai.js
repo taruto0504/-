@@ -118,7 +118,7 @@ export function normalizeResult(r, extra = {}) {
   const arr = (v) => (Array.isArray(v) ? v : []);
   const str = (v) => (typeof v === "string" ? v : "");
   const ex = (r && r.explanation) || {};
-  const link = (x) => (x && typeof x === "object" ? { title: str(x.title), url: safeUrl(x.url) } : linkReference(x));
+  const link = (x) => (x && typeof x === "object" ? { title: str(x.title), url: safeUrl(x.url), minds: safeUrl(x.minds) } : linkReference(x));
   return {
     guidelines: arr(extra.guidelines || (r && r.guidelines)).map(link).filter((x) => x.title),
     webSources: arr(extra.webSources || (r && r.webSources)).map(link).filter((x) => x.title && x.url),
@@ -155,7 +155,7 @@ function guidelineContext(data) {
   const list = selectGuidelines(data);
   return {
     text: guidelinesToPrompt(list),
-    refs: list.map((g) => ({ title: `${g.title}（${g.org}）`, url: g.url })),
+    refs: list.map((g) => ({ title: `${g.title}（${g.org}）`, url: g.url, minds: g.minds || "" })),
   };
 }
 
@@ -263,7 +263,7 @@ export async function evaluateScenario(data) {
         role: "user",
         content: `${scenario}
 
-必要に応じて web_search で、上のガイドラインの最新の改訂や、このシナリオに関係する国内ガイドラインの推奨を確認してください（検索は2回まで）。
+必要に応じて web_search で、上のガイドラインの最新の改訂や、このシナリオに関係する国内ガイドラインの推奨を確認してください（検索は2回まで）。国内ガイドラインは、まず Mindsガイドラインライブラリ（minds.jcqhc.or.jp：評価・選定された診療ガイドラインを公開）を優先して探してください。
 最後に、次のJSON形式の内容だけを出力してください（説明文やコードブロックの記号は付けない）。
 ${JSON.stringify(RESULT_SCHEMA)}`,
       },
@@ -326,7 +326,7 @@ export function explanationToText(raw) {
   if (ex.quiz.length) parts.push(`【確認問題】\n${ex.quiz.map((q, i) => `Q${i + 1}. ${q.question}\nA. ${q.answer}`).join("\n")}`);
   if (ex.nextTopics.length) parts.push(`【次に学ぶテーマ】${ex.nextTopics.join("、")}`);
   if (ex.references.length) parts.push(`【参考資料】${ex.references.map((r) => r.title).join("、")}`);
-  if (result.guidelines.length) parts.push(`【参照したガイドライン】\n${result.guidelines.map((g) => `・${g.title}${g.url ? ` ${g.url}` : ""}`).join("\n")}`);
+  if (result.guidelines.length) parts.push(`【参照したガイドライン】\n${result.guidelines.map((g) => `・${g.title}${g.url ? ` ${g.url}` : ""}${g.minds && g.minds !== g.url ? `（Minds：${g.minds}）` : ""}`).join("\n")}`);
   if (result.webSources.length) parts.push(`【検索で確認したページ】\n${result.webSources.map((g) => `・${g.title} ${g.url}`).join("\n")}`);
   return parts.join("\n\n");
 }

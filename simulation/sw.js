@@ -1,4 +1,4 @@
-const CACHE_NAME = "medsim-v16";
+const CACHE_NAME = "medsim-v17";
 const ASSETS = [
   "index.html",
   "manifest.json",

@@ -1,8 +1,12 @@
 // AI評価が参照する医療ガイドライン集（2026年10月時点で確認した最新版の要点）。
 // シナリオの疾患名・主訴・既往歴などから関係するものを選び、AIへの指示に添える。
 // 要点は教育用の要約であり、詳細や最新の改訂は各ガイドラインの原文を確認すること。
+// minds：Mindsガイドラインライブラリの掲載ページ（掲載が確認できたもの）
 
 const JCS_LIST = "https://www.j-circ.or.jp/guideline/form-kankoubutsu-guideline_current-htm/";
+
+// Mindsガイドラインライブラリ（日本医療機能評価機構）：評価・選定された国内の診療ガイドラインを公開している
+export const MINDS_URL = "https://minds.jcqhc.or.jp/";
 
 export const GUIDELINES_CHECKED = "2026年10月";
 
@@ -27,6 +31,7 @@ export const GUIDELINES = [
     org: "日本集中治療医学会・日本救急医学会",
     year: "2024",
     url: "https://www.jsicm.org/pdf/cq/J-SSCG2024/J-SSCG2024_Main.pdf",
+    minds: "https://minds.jcqhc.or.jp/summary/c00895/",
     keywords: ["敗血症", "セプシス", "sepsis", "敗血性", "感染", "発熱", "腎盂腎炎", "胆管炎", "蜂窩織炎"],
     points: [
       "感染症が疑われ、臓器障害（SOFAスコア2点以上の上昇）を伴えば敗血症。病院前・一般病棟ではqSOFA（呼吸数22回/分以上、意識変容、収縮期血圧100mmHg以下）を拾い上げに用いる",
@@ -81,6 +86,7 @@ export const GUIDELINES = [
     org: "日本循環器学会ほか",
     year: "2020",
     url: "https://minds.jcqhc.or.jp/summary/c00487/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00487/",
     keywords: ["大動脈解離", "解離", "大動脈瘤", "破裂", "背部痛", "移動する痛み"],
     points: [
       "突然発症の激しい胸背部痛、痛みの移動、血圧の左右差、脈の欠損、新たな大動脈弁逆流は大動脈解離を疑う所見",
@@ -95,6 +101,7 @@ export const GUIDELINES = [
     org: "日本脳卒中学会",
     year: "2025",
     url: "https://www.jsts.gr.jp/",
+    minds: "https://minds.jcqhc.or.jp/guidelines_kind/%E8%84%B3%E5%8D%92%E4%B8%AD/",
     keywords: ["脳卒中", "脳梗塞", "脳出血", "くも膜下", "SAH", "麻痺", "片麻痺", "構音障害", "失語", "TIA", "rt-PA", "血栓回収"],
     points: [
       "発症時刻（最終未発症確認時刻）を必ず確認する。片麻痺・構音障害・失語・顔のゆがみは脳卒中を疑うサイン",
@@ -136,6 +143,7 @@ export const GUIDELINES = [
     org: "日本呼吸器学会",
     year: "2022",
     url: "https://www.jrs.or.jp/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00722/",
     keywords: ["COPD", "慢性閉塞性肺疾患", "肺気腫", "CO2ナルコーシス", "在宅酸素"],
     points: [
       "増悪時の酸素投与は高二酸化炭素血症（CO2ナルコーシス）に注意し、SpO2 88〜92%程度を目安に少量から調整する",
@@ -149,6 +157,7 @@ export const GUIDELINES = [
     org: "日本呼吸器学会",
     year: "2024",
     url: "https://www.jrs.or.jp/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00846/",
     keywords: ["肺炎", "誤嚥", "呼吸器感染"],
     points: [
       "市中肺炎の重症度はA-DROP（年齢、脱水、SpO2 90%以下、意識障害、収縮期血圧90mmHg以下）で評価する",
@@ -162,6 +171,7 @@ export const GUIDELINES = [
     org: "日本救急医学会",
     year: "2024",
     url: "https://www.jaam.jp/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00897/",
     keywords: ["熱中症", "熱射病", "高体温", "日射病", "暑熱"],
     points: [
       "重症度はI〜IV度に分類する。IV度は深部体温40.0℃以上かつ中等度以上の意識障害（GCS 8以下）を伴う最重症",
@@ -188,6 +198,7 @@ export const GUIDELINES = [
     org: "日本糖尿病学会",
     year: "2024",
     url: "https://www.jds.or.jp/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00864/",
     keywords: ["低血糖", "高血糖", "糖尿病", "DKA", "ケトアシドーシス", "高浸透圧", "インスリン"],
     points: [
       "意識障害では必ず血糖を測定する。低血糖ではブドウ糖を投与し（経口不能なら静注）、再評価する",
@@ -219,6 +230,66 @@ export const GUIDELINES = [
       "熱傷面積（9の法則など）と深度を評価し、広範囲熱傷では初期輸液を行い尿量を指標に調整する",
       "顔面熱傷、鼻毛の焦げ、嗄声、すすを含む痰は気道熱傷を疑い、気道確保の準備をする",
       "低体温を防ぐ",
+    ],
+  },
+  {
+    id: "abdomen2025",
+    title: "急性腹症診療ガイドライン2025（第2版）",
+    org: "日本腹部救急医学会ほか",
+    year: "2025",
+    url: "https://minds.jcqhc.or.jp/category_a/digestiveorgan/",
+    minds: "https://minds.jcqhc.or.jp/category_a/digestiveorgan/",
+    keywords: ["急性腹症", "腹痛", "腹部痛", "イレウス", "腸閉塞", "穿孔", "腹膜炎", "虫垂炎", "腸管虚血", "異所性妊娠", "子宮外妊娠"],
+    points: [
+      "まずバイタルサインの異常（ショック、意識障害、呼吸不全）を評価し、気道・呼吸・循環を安定させながら診断を進める",
+      "緊急性の高い疾患（腹部大動脈瘤破裂、消化管穿孔、腸管虚血、絞扼性腸閉塞、異所性妊娠など）を優先して除外する",
+      "急性冠症候群など、腹部以外の疾患が腹痛として現れることがある。妊娠可能年齢の女性では妊娠の可能性を確認する",
+      "診断が付く前でも、痛みが強ければ鎮痛薬の投与を検討する（鎮痛で診断を誤らせることは少ない）",
+    ],
+  },
+  {
+    id: "pancreatitis2021",
+    title: "急性膵炎診療ガイドライン2021（第5版）",
+    org: "日本腹部救急医学会ほか",
+    year: "2021",
+    url: "https://minds.jcqhc.or.jp/summary/c00697/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00697/",
+    keywords: ["膵炎"],
+    points: [
+      "診断後は、厚生労働省の重症度判定基準（予後因子と造影CT Grade）で重症度を繰り返し評価する",
+      "発症早期から十分な輸液を行う。ただし過剰な輸液は避け、尿量・循環動態を指標に調整する",
+      "十分な鎮痛を行う。軽症例での予防的抗菌薬は推奨されない",
+      "胆石性で胆管炎や胆道通過障害を伴う場合は、早期のERCP・内視鏡的治療を考慮する",
+    ],
+  },
+  {
+    id: "headinjury4",
+    title: "頭部外傷治療・管理のガイドライン 第4版",
+    org: "日本脳神経外科学会・日本脳神経外傷学会",
+    year: "2019",
+    url: "https://minds.jcqhc.or.jp/summary/c00550/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00550/",
+    keywords: ["頭部外傷", "脳挫傷", "硬膜下血腫", "硬膜外血腫", "頭を打", "頭部打撲"],
+    points: [
+      "GCSで重症度を判定する（GCS 8以下は重症）。意識レベル・瞳孔・麻痺を経時的に評価する",
+      "低酸素血症と低血圧は二次性脳損傷を悪化させるため、気道確保・酸素化・循環の維持を最優先する",
+      "瞳孔不同、意識の急な低下、血圧上昇と徐脈（クッシング徴候）は脳ヘルニアの切迫を示し、緊急の対応が必要",
+      "抗血栓薬を内服している患者は、軽症に見えても遅れて出血が増えることがあり注意する",
+    ],
+  },
+  {
+    id: "pedsse2023",
+    title: "小児てんかん重積状態・けいれん重積状態治療ガイドライン2023",
+    org: "日本小児神経学会",
+    year: "2023",
+    url: "https://minds.jcqhc.or.jp/summary/c00759/",
+    minds: "https://minds.jcqhc.or.jp/summary/c00759/",
+    keywords: ["けいれん", "痙攣", "てんかん", "重積", "ひきつけ"],
+    points: [
+      "けいれんが5分以上続く場合は、自然には止まりにくいとして治療を始める",
+      "気道確保・酸素投与を行い、低血糖など治療可能な原因を確認する（血糖測定）",
+      "第一選択はベンゾジアゼピン系薬（静脈路があればミダゾラム・ジアゼパムの静注、なければミダゾラムの口腔粘膜投与など）",
+      "止まらなければ第二選択薬（ホスフェニトイン、レベチラセタムなど）へ進み、呼吸抑制に備える",
     ],
   },
 ];
@@ -287,9 +358,9 @@ export function selectGuidelines(data, max = 4) {
 
 export function guidelinesToPrompt(list) {
   const blocks = list.map(
-    (g) => `■ ${g.title}（${g.org}、${g.year}）\n${g.points.map((p) => `・${p}`).join("\n")}`
+    (g) => `■ ${g.title}（${g.org}、${g.year}${g.minds ? "、Minds掲載" : ""}）\n${g.points.map((p) => `・${p}`).join("\n")}`
   );
-  return `【参考ガイドラインの要点（${GUIDELINES_CHECKED}時点の最新版）】
+  return `【参考ガイドラインの要点（${GUIDELINES_CHECKED}時点の最新版。Mindsガイドラインライブラリ掲載のものを含む）】
 評価と解説は、次の要点と矛盾しないように書いてください。要点にない内容を書くときは、確かな根拠があるものだけにしてください。
 
 ■ 急変対応の基本
@@ -301,5 +372,5 @@ ${blocks.length ? "\n" + blocks.join("\n\n") : ""}`;
 export function linkReference(title) {
   const t = String(title || "");
   const g = GUIDELINES.find((x) => t.includes(x.title) || t.includes(x.title.replace(/（.*?）|〔.*?〕|\[.*?\]/g, "").trim()));
-  return g ? { title: t, url: g.url } : { title: t, url: "" };
+  return g ? { title: t, url: g.url, minds: g.minds || "" } : { title: t, url: "", minds: "" };
 }
