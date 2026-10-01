@@ -1,6 +1,7 @@
 import * as store from "../store.js";
 import { icon } from "../icons.js";
-import { esc, setTitle, formatId, copyText, passwordField, bindPasswordToggles } from "../ui.js";
+import { esc, setTitle, formatId, copyText, passwordField, bindPasswordToggles, modal } from "../ui.js";
+import { TERMS_HTML } from "./guide.js";
 
 // 保存場所の説明（共有モードでは、このページを開いている人同士でやりとりできる）
 const modeNote = () =>
@@ -53,6 +54,10 @@ export function registerView(el) {
         </div>
         ${passwordField("reg-pass", "パスワード（6文字以上）", "new-password")}
         ${passwordField("reg-pass2", "パスワード（確認のためもう一度）", "new-password")}
+        <div class="terms-check">
+          <label class="check-row"><input type="checkbox" id="reg-terms"> 利用規約に同意します</label>
+          <button type="button" class="btn small" id="show-terms">利用規約を読む</button>
+        </div>
         <p class="error-text" id="reg-error" hidden></p>
         <button class="btn primary block" type="submit">登録</button>
       </form>
@@ -60,6 +65,18 @@ export function registerView(el) {
       ${modeNote()}
     </div>`;
   bindPasswordToggles(el);
+  el.querySelector("#show-terms").addEventListener("click", async () => {
+    const ok = await modal({
+      title: "利用規約",
+      wide: true,
+      body: `<div class="terms-body">${TERMS_HTML}</div>`,
+      buttons: [
+        { label: "閉じる", value: false },
+        { label: "同意する", value: true, variant: "primary" },
+      ],
+    });
+    if (ok) el.querySelector("#reg-terms").checked = true;
+  });
   el.querySelector("#reg-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const err = el.querySelector("#reg-error");
@@ -71,7 +88,7 @@ export function registerView(el) {
       return;
     }
     try {
-      const user = await store.register(el.querySelector("#reg-name").value, pass);
+      const user = await store.register(el.querySelector("#reg-name").value, pass, el.querySelector("#reg-terms").checked);
       location.hash = `#/welcome/${user.id}`;
     } catch (ex) {
       err.textContent = ex.message;

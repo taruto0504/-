@@ -52,6 +52,15 @@ export function homeView(el) {
   let selecting = false;
   const selected = new Set();
 
+  const guideKey = `medsim:guide-hidden:${me.id}`;
+  function guideHidden() {
+    try {
+      return !!localStorage.getItem(guideKey);
+    } catch {
+      return false;
+    }
+  }
+
   function savePrefs() {
     try {
       sessionStorage.setItem(PREF_KEY, JSON.stringify(prefs));
@@ -76,6 +85,8 @@ export function homeView(el) {
 
   function card(s) {
     const badges = [`<span class="badge status-${s.status}">${STATUS_LABEL[s.status]}</span>`];
+    if (s.isSample) badges.push('<span class="badge sample">見本</span>');
+    if (s.quiz && s.quiz.enabled) badges.push(`<span class="badge quiz">${!s.isOwner && s.quizStep < 3 ? "出題・回答待ち" : "出題"}</span>`);
     if (s.status === "sent") {
       const rs = s.readStatus || [];
       const confirmed = rs.filter((r) => r.opened).length;
@@ -133,6 +144,14 @@ export function homeView(el) {
         </div>
         <a href="#/new" class="btn primary">新規作成</a>
       </div>
+      ${
+        guideHidden()
+          ? ""
+          : `<div class="card guide-card">
+              <div><strong>はじめての方へ</strong><p class="small">見本のシナリオを3つ用意しました（「見本」と表示）。使い方ガイドを見ながら、開いて試してみてください。</p></div>
+              <div class="btn-row"><a class="btn primary small" href="#/guide">使い方ガイドを見る</a><button type="button" class="btn small" data-act="hide-guide">閉じる</button></div>
+            </div>`
+      }
       ${
         newCount
           ? `<a class="inbox-banner" href="#/inbox">${icon("inbox")}<span><strong>新しく届いたシナリオが${newCount}件あります</strong><span class="small">受信画面で確認する</span></span><span class="chev" aria-hidden="true">›</span></a>`
@@ -229,6 +248,12 @@ export function homeView(el) {
     if (!act) return;
     const list = visibleList(store.listScenarios());
     switch (act.dataset.act) {
+      case "hide-guide":
+        try {
+          localStorage.setItem(guideKey, "1");
+        } catch {}
+        render();
+        break;
       case "search":
         showSearch = !showSearch;
         if (!showSearch) query = "";

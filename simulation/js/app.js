@@ -10,6 +10,8 @@ import { editorView } from "./views/editor.js";
 import { detailView } from "./views/detail.js";
 import { contactsView } from "./views/contacts.js";
 import { inboxView } from "./views/inbox.js";
+import { termsView, guideView } from "./views/guide.js";
+import { applyDisplay } from "./settings.js";
 import { notificationsView } from "./views/notifications.js";
 import { meView } from "./views/me.js";
 
@@ -25,6 +27,8 @@ const routes = [
   { pattern: /^#\/contacts$/, view: contactsView, nav: "contacts" },
   { pattern: /^#\/notifications$/, view: notificationsView, nav: "notifications" },
   { pattern: /^#\/me$/, view: meView, nav: "me" },
+  { pattern: /^#\/terms$/, view: termsView, nav: "me", terms: true },
+  { pattern: /^#\/guide$/, view: guideView, nav: "me" },
 ];
 
 const NAV = [
@@ -133,7 +137,7 @@ async function showWhileAway() {
           .slice(0, 6)
           .map(
             (n) => `<li><button type="button" class="away-item" data-go="${n.id}">
-              ${icon(n.type === "reply" ? "chat" : n.type === "updated" ? "edit" : "mail")}
+              ${icon(noticeIcon(n.type))}
               <span><strong>${esc(n.text)}</strong>${n.title ? `<span class="small muted">「${esc(n.title)}」・${formatDateTime(n.at)}</span>` : ""}</span>
             </button></li>`
           )
@@ -172,6 +176,13 @@ async function render() {
     location.replace("#/home");
     return;
   }
+  // 利用規約に同意していないアカウントは、先に同意画面へ
+  if (user && !user.termsAcceptedAt && !route.terms) {
+    location.replace("#/terms");
+    return;
+  }
+  // 初めて使うときは、使い方の参考になる見本シナリオを作っておく
+  if (user && user.termsAcceptedAt && !user.starterSeeded) store.seedStarterSamples();
   rendering = true;
   stopVoice();
   closeAllModals(); // 前の画面のダイアログを残さない
@@ -222,6 +233,8 @@ window.addEventListener("beforeunload", (e) => {
 
 // 新しい通知を検知して、画面内トーストとOSの通知で知らせる
 let knownNotificationIds = null;
+const noticeIcon = (type) => ({ reply: "chat", updated: "edit", answered: "ok" })[type] || "mail";
+
 // 届いたことを知らせる（LINEの通知のように画面上部に出し、押すとその画面を開く）
 function showLiveNotice(n, count) {
   const target = `#/s/${n.scenarioId}${n.type === "reply" ? "/chat" : ""}`;
@@ -237,7 +250,7 @@ function showLiveNotice(n, count) {
   box.className = "live-notice";
   box.setAttribute("role", "alert");
   box.innerHTML = `
-    <span class="live-icon">${icon(n.type === "reply" ? "chat" : n.type === "updated" ? "edit" : "mail")}</span>
+    <span class="live-icon">${icon(noticeIcon(n.type))}</span>
     <span class="live-main">
       <strong>${esc(n.text)}${count > 1 ? `<span class="muted small">（ほか${count - 1}件）</span>` : ""}</strong>
       ${preview ? `<span class="live-preview">${esc(preview)}</span>` : ""}
@@ -327,6 +340,8 @@ if (window.visualViewport) {
     if (el && el.tagName === "TEXTAREA") keepCaretVisible(el);
   });
 }
+
+applyDisplay(); // テーマと文字サイズ
 
 // 共有データの準備ができてから最初の画面を出す
 let started = false;

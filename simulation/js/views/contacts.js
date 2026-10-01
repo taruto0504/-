@@ -27,7 +27,74 @@ export function contactsView(el) {
       <button type="button" role="tab" data-filter="all" aria-selected="true">すべて</button>
       <button type="button" role="tab" data-filter="fav" aria-selected="false">お気に入り</button>
     </div>
-    <ul class="contact-list" id="contact-list"></ul>`;
+    <ul class="contact-list" id="contact-list"></ul>
+    <section class="card groups-card">
+      <div class="section-head">
+        <h2>グループ</h2>
+        <button type="button" class="btn small primary" id="new-group">グループを作成</button>
+      </div>
+      <p class="small muted">よく一緒に送る相手をまとめておくと、送信時にグループを選ぶだけで全員を選べます。</p>
+      <ul class="group-list" id="group-list"></ul>
+    </section>`;
+
+  function renderGroups() {
+    const groups = store.listGroups();
+    el.querySelector("#group-list").innerHTML = groups.length
+      ? groups
+          .map(
+            (g) => `<li class="group-row">
+          <span class="group-main"><strong>${esc(g.name)}</strong><span class="muted small">${g.members.length}人：${esc(g.members.map((m) => m.name).join("、") || "メンバーなし")}</span></span>
+          <button type="button" class="btn small" data-edit-group="${g.id}">編集</button>
+          <button type="button" class="btn small danger" data-del-group="${g.id}">削除</button>
+        </li>`
+          )
+          .join("")
+      : '<li class="muted small">グループはまだありません。</li>';
+  }
+
+  async function editGroup(group) {
+    const contacts = store.listContacts();
+    if (!contacts.length) return toast("先に送信相手を登録してください");
+    const current = new Set(group ? group.members.map((m) => m.id) : []);
+    await modal({
+      title: group ? "グループを編集" : "グループを作成",
+      wide: true,
+      body: `
+        <div class="field"><label for="group-name">グループ名</label><input id="group-name" maxlength="30" placeholder="例：研修A班" value="${esc(group ? group.name : "")}"></div>
+        <div class="send-list-head"><span>メンバー</span></div>
+        <div class="pick-list">${contacts
+          .map(
+            (c) => `<label class="pick-row"><input type="checkbox" value="${esc(c.id)}" ${current.has(c.id) ? "checked" : ""}>
+              <span class="pick-name">${esc(c.name)}</span><span class="pick-id">${formatId(c.id)}</span></label>`
+          )
+          .join("")}</div>
+        <p class="error-text" id="group-error" hidden></p>`,
+      buttons: [
+        { label: "キャンセル", value: false },
+        {
+          label: "保存",
+          value: true,
+          variant: "primary",
+          onClick(root) {
+            try {
+              store.saveGroup({
+                id: group && group.id,
+                name: root.querySelector("#group-name").value,
+                members: [...root.querySelectorAll(".pick-list input:checked")].map((i) => i.value),
+              });
+              toast("グループを保存しました", "success");
+              return true;
+            } catch (ex) {
+              const err = root.querySelector("#group-error");
+              err.textContent = ex.message;
+              err.hidden = false;
+              return false;
+            }
+          },
+        },
+      ],
+    });
+  }
 
   function render() {
     const q = query.trim().toLowerCase();
@@ -112,9 +179,27 @@ export function contactsView(el) {
     }
   });
 
+  el.querySelector("#new-group").addEventListener("click", () => editGroup(null));
+  el.querySelector("#group-list").addEventListener("click", async (e) => {
+    const editBtn = e.target.closest("[data-edit-group]");
+    const delBtn = e.target.closest("[data-del-group]");
+    if (editBtn) editGroup(store.listGroups().find((g) => g.id === editBtn.dataset.editGroup));
+    if (delBtn) {
+      const g = store.listGroups().find((x) => x.id === delBtn.dataset.delGroup);
+      if (await confirmDialog("グループの削除", `グループ「${g.name}」を削除しますか？（メンバーの送信相手登録はそのまま残ります）`, "削除", "danger")) {
+        store.deleteGroup(g.id);
+        toast("グループを削除しました", "success");
+      }
+    }
+  });
+
   render();
+  renderGroups();
   const off = store.onChange(() => {
-    if (store.currentUser()) render();
+    if (store.currentUser()) {
+      render();
+      renderGroups();
+    }
   });
   return { destroy: off };
 }

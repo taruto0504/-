@@ -43,6 +43,13 @@ export async function openSendDialog(scenario) {
 
 function pickRecipients(scenario, picked) {
   const contacts = store.listContacts();
+  const groups = store.listGroups().filter((g) => g.members.length);
+  const groupRows = groups.length
+    ? `<div class="send-list-head"><span>グループから選ぶ</span></div>
+       <div class="group-pick">${groups
+         .map((g) => `<button type="button" class="btn small" data-group="${g.id}">${esc(g.name)}（${g.members.length}人）</button>`)
+         .join("")}</div>`
+    : "";
   const already = new Set(scenario.recipients);
   const typed = () => [...picked].filter((id) => !contacts.some((c) => c.id === id));
 
@@ -70,6 +77,7 @@ function pickRecipients(scenario, picked) {
       <p class="error-text" id="send-error" hidden></p>
       <div class="chips" id="send-chips"></div>
     </div>
+    ${groupRows}
     <div class="send-list-head">
       <span>登録した相手から選ぶ（複数可）</span>
     </div>
@@ -141,6 +149,19 @@ function pickRecipients(scenario, picked) {
           addTyped(root, input.value);
         }
       });
+      // グループを押すと、そのメンバー全員を選ぶ
+      root.querySelectorAll("[data-group]").forEach((b) =>
+        b.addEventListener("click", () => {
+          const g = groups.find((x) => x.id === b.dataset.group);
+          for (const m of g.members) {
+            picked.add(m.id);
+            const box = root.querySelector(`#send-list input[value="${m.id}"]`);
+            if (box) box.checked = true;
+          }
+          renderChips(root);
+          toast(`「${g.name}」の${g.members.length}人を選びました`);
+        })
+      );
       root.querySelector("#send-list").addEventListener("change", (e) => {
         if (e.target.type !== "checkbox") return;
         e.target.checked ? picked.add(e.target.value) : picked.delete(e.target.value);

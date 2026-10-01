@@ -2,6 +2,7 @@ import * as store from "../store.js";
 import { esc, setTitle, formatId, formatDateTime, modal, confirmDialog, toast, copyText, passwordField, bindPasswordToggles } from "../ui.js";
 import { getApiKey, setApiKey } from "../ai.js";
 import { PREVIEW } from "../env.js";
+import { THEMES, FONT_SIZES, getDisplay, setDisplay } from "../settings.js";
 
 export function meView(el) {
   const me = store.currentUser();
@@ -9,6 +10,7 @@ export function meView(el) {
 
   function render() {
     const hasKey = !!getApiKey();
+    const display = getDisplay();
     el.innerHTML = `
       <section class="card profile">
         <div class="avatar" aria-hidden="true">${esc(me.name.slice(0, 1))}</div>
@@ -49,6 +51,29 @@ export function meView(el) {
         }</p>
       </section>
       <section class="card">
+        <h2>表示</h2>
+        <div class="field">
+          <span class="field-label">画面の色</span>
+          <div class="choice-row" role="radiogroup" aria-label="画面の色">
+            ${THEMES.map((t) => `<label class="choice"><input type="radio" name="theme" value="${t.id}" ${display.theme === t.id ? "checked" : ""}><span>${t.label}</span></label>`).join("")}
+          </div>
+        </div>
+        <div class="field">
+          <span class="field-label">文字の大きさ</span>
+          <div class="choice-row" role="radiogroup" aria-label="文字の大きさ">
+            ${FONT_SIZES.map((f) => `<label class="choice"><input type="radio" name="fontsize" value="${f.id}" ${display.fontSize === f.id ? "checked" : ""}><span>${f.label}</span></label>`).join("")}
+          </div>
+        </div>
+        <p class="small muted">この端末だけの設定です。</p>
+      </section>
+      <section class="card">
+        <h2>使い方・利用規約</h2>
+        <div class="btn-row">
+          <a class="btn" href="#/guide">使い方ガイド</a>
+          <a class="btn" href="#/terms">利用規約</a>
+        </div>
+      </section>
+      <section class="card">
         <h2>パスワード</h2>
         <p class="small muted">ログインに使うパスワードを変更できます。</p>
         <button type="button" class="btn" id="change-password">パスワードを変更</button>
@@ -62,6 +87,11 @@ export function meView(el) {
         <button type="button" class="btn danger" id="delete-account">アカウントを削除する</button>
       </section>`;
   }
+
+  el.addEventListener("change", (e) => {
+    if (e.target.name === "theme") setDisplay({ theme: e.target.value });
+    if (e.target.name === "fontsize") setDisplay({ fontSize: e.target.value });
+  });
 
   el.addEventListener("click", async (e) => {
     const id = e.target.id;

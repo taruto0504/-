@@ -3,7 +3,7 @@ import { icon } from "../icons.js";
 import { PREVIEW } from "../env.js";
 import { esc, setTitle, formatDateTime } from "../ui.js";
 
-const ICONS = { received: "mail", reply: "chat", updated: "edit" };
+const ICONS = { received: "mail", reply: "chat", updated: "edit", answered: "ok" };
 
 // プレビュー版：端末に届く通知のイメージを画面右上に出す
 function showDemoNotice(latest) {

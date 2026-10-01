@@ -7,6 +7,7 @@
 import { ALL_FIELDS, normalizeData, isComplete, scenarioTitle } from "./fields.js";
 import { PREVIEW } from "./env.js";
 import * as remote from "./remote.js";
+import { STARTER_SAMPLES, SAMPLE_SEPSIS, DEFAULT_Q1, DEFAULT_Q2 } from "./samples.js";
 
 const DB_KEY = "medsim:db";
 const SESSION_KEY = "medsim:session";
@@ -127,7 +128,7 @@ function requireUser(db) {
 }
 
 function publicUser(u) {
-  return u ? { id: u.id, name: u.name, createdAt: u.createdAt } : null;
+  return u ? { id: u.id, name: u.name, createdAt: u.createdAt, termsAcceptedAt: u.termsAcceptedAt || 0, starterSeeded: !!u.starterSeeded } : null;
 }
 
 function nameOf(db, id) {
@@ -169,17 +170,18 @@ export function currentUser() {
 }
 
 // 登録してIDを発行する（ログインはまだしない。企画書の流れ：登録 → ID発行完了 → ログイン）
-export async function register(name, password) {
+export async function register(name, password, acceptedTerms = false) {
   name = String(name || "").trim();
   if (!name) throw new Error("名前を入力してください");
   if (!password || password.length < 6) throw new Error("パスワードは6文字以上にしてください");
+  if (!acceptedTerms) throw new Error("利用規約に同意してください");
   const db = load();
   let id;
   do {
     id = String(10000000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000000));
   } while (db.users[id] || db.deletedIds.includes(id));
   const salt = uid("s");
-  db.users[id] = { id, name, salt, hash: await hashPassword(password, salt), createdAt: Date.now(), contacts: [] };
+  db.users[id] = { id, name, salt, hash: await hashPassword(password, salt), createdAt: Date.now(), contacts: [], groups: [], termsAcceptedAt: Date.now() };
   commit(db);
   return publicUser(db.users[id]);
 }
@@ -216,6 +218,13 @@ export async function verifyPassword(password) {
   const db = load();
   const me = requireUser(db);
   return (await hashPassword(password, me.salt)) === me.hash;
+}
+
+export function acceptTerms() {
+  const db = load();
+  const me = requireUser(db);
+  me.termsAcceptedAt = Date.now();
+  commit(db);
 }
 
 export async function changePassword(currentPassword, nextPassword) {
@@ -312,6 +321,38 @@ export function setFavorite(id, favorite) {
   commit(db);
 }
 
+// ---------- グループ（まとめて送信する相手） ----------
+
+export function listGroups() {
+  const db = load();
+  const me = requireUser(db);
+  return (me.groups || []).map((g) => ({
+    ...g,
+    members: g.members.filter((id) => db.users[id]).map((id) => ({ id, name: db.users[id].name })),
+  }));
+}
+
+export function saveGroup({ id, name, members }) {
+  name = String(name || "").trim();
+  if (!name) throw new Error("グループ名を入力してください");
+  const db = load();
+  const me = requireUser(db);
+  const valid = [...new Set(members)].filter((m) => db.users[m] && m !== me.id);
+  if (!valid.length) throw new Error("メンバーを1人以上選んでください");
+  me.groups ||= [];
+  const existing = id && me.groups.find((g) => g.id === id);
+  if (existing) Object.assign(existing, { name, members: valid });
+  else me.groups.push({ id: uid("g"), name, members: valid, createdAt: Date.now() });
+  commit(db);
+}
+
+export function deleteGroup(id) {
+  const db = load();
+  const me = requireUser(db);
+  me.groups = (me.groups || []).filter((g) => g.id !== id);
+  commit(db);
+}
+
 // ---------- シナリオ ----------
 
 function view(db, s, meId) {
@@ -335,6 +376,10 @@ function view(db, s, meId) {
     receivedAt: isOwner ? null : (s.receivedAt && s.receivedAt[meId]) || s.sentAt,
     lastMessageAt: msgs.length ? msgs[msgs.length - 1].at : 0,
     lastMessage: msgs.length ? { text: msgs[msgs.length - 1].text, from: msgs[msgs.length - 1].from, name: nameOf(db, msgs[msgs.length - 1].from) } : null,
+    isSample: !!s.sample,
+    quiz: normalizeQuiz(s.quiz),
+    myAnswer: (s.answers && s.answers[meId]) || null,
+    quizStep: quizStep(s, meId),
     // 送信者向け：相手ごとの確認状況（opened: 開いた日時、latest: 最新の内容まで確認済み）
     readStatus: isOwner
       ? s.recipients
@@ -345,6 +390,7 @@ function view(db, s, meId) {
             opened: (s.opened && s.opened[r]) || 0,
             latest: !!(s.opened && s.opened[r]) && (s.seen[r] || 0) >= s.version,
             hidden: s.hiddenFor.includes(r),
+            answer: (s.answers && s.answers[r]) || null,
           }))
       : [],
     editedAfterSendAt: lastEdit ? lastEdit.at : null,
@@ -387,11 +433,12 @@ export function getScenario(id) {
 }
 
 // 作成・更新。変更点を履歴に残し、送信済みなら相手に通知する。
-export function saveScenario(id, rawData) {
+export function saveScenario(id, rawData, rawQuiz) {
   const db = load();
   const me = requireUser(db);
   const data = normalizeData(rawData);
   const now = Date.now();
+  const quiz = rawQuiz === undefined ? undefined : normalizeQuiz(rawQuiz);
   if (!id) {
     id = uid("sc");
     db.scenarios[id] = {
@@ -408,6 +455,8 @@ export function saveScenario(id, rawData) {
       history: [],
       sentAt: null,
       ownerDeleted: false,
+      quiz: quiz || normalizeQuiz(null),
+      answers: {},
     };
     commit(db);
     return view(db, db.scenarios[id], me.id);
@@ -418,7 +467,12 @@ export function saveScenario(id, rawData) {
   for (const f of ALL_FIELDS) {
     if ((s.data[f.key] || "") !== data[f.key]) changes[f.key] = { from: s.data[f.key] || "", to: data[f.key] };
   }
-  if (!Object.keys(changes).length) return view(db, s, me.id);
+  const quizChanged = quiz !== undefined && JSON.stringify(quiz) !== JSON.stringify(normalizeQuiz(s.quiz));
+  if (quizChanged) s.quiz = quiz;
+  if (!Object.keys(changes).length) {
+    if (quizChanged) commit(db);
+    return view(db, s, me.id);
+  }
   s.version += 1;
   s.data = data;
   s.updatedAt = now;
@@ -494,6 +548,80 @@ export function sendScenario(id, rawIds) {
   return { sent: ids.length };
 }
 
+// 送信の取り消し：特定の相手だけ共有を解除する（相手の一覧から消え、以後は見られない）
+export function revokeRecipient(id, recipientId) {
+  const db = load();
+  const me = requireUser(db);
+  const s = db.scenarios[id];
+  if (!s || s.ownerId !== me.id) throw new Error("このシナリオの共有は変更できません");
+  s.recipients = s.recipients.filter((r) => r !== recipientId);
+  s.hiddenFor = s.hiddenFor.filter((r) => r !== recipientId);
+  db.notifications = db.notifications.filter((n) => !(n.scenarioId === id && n.to === recipientId));
+  delete db.ai[`${id}:${recipientId}`];
+  commit(db);
+}
+
+// ---------- 出題モード ----------
+
+export function normalizeQuiz(q) {
+  const str = (v, d = "") => (typeof v === "string" ? v.trim() : d);
+  return {
+    enabled: !!(q && q.enabled),
+    q1: str(q && q.q1) || DEFAULT_Q1,
+    q2: str(q && q.q2) || DEFAULT_Q2,
+    model: str(q && q.model),
+  };
+}
+
+// 受け取った人が今どの段階か（1：最初の回答 → 2：急変後の回答 → 3：答え合わせ）
+function quizStep(s, uid) {
+  const quiz = normalizeQuiz(s.quiz);
+  if (!quiz.enabled || s.ownerId === uid) return 3;
+  const a = (s.answers && s.answers[uid]) || {};
+  if (!a.a1) return 1;
+  const hasV2 = Object.keys(s.data).some((k) => k.startsWith("v2.") && s.data[k]);
+  if (hasV2 && !a.a2) return 2;
+  return 3;
+}
+
+export function submitAnswer(id, step, text) {
+  text = String(text || "").trim();
+  if (!text) throw new Error("回答を入力してください");
+  const db = load();
+  const me = requireUser(db);
+  const s = db.scenarios[id];
+  if (!s || !s.recipients.includes(me.id)) throw new Error("このシナリオには回答できません");
+  s.answers ||= {};
+  const a = { ...(s.answers[me.id] || {}) };
+  if (step === 1) Object.assign(a, { a1: text, at1: Date.now() });
+  else Object.assign(a, { a2: text, at2: Date.now() });
+  s.answers[me.id] = a;
+  if (db.users[s.ownerId] && !s.ownerDeleted) notify(db, s.ownerId, "answered", id, me.id);
+  commit(db);
+}
+
+function addScenario(db, ownerId, sample, extra = {}) {
+  const now = Date.now();
+  const id = uid("sc");
+  db.scenarios[id] = {
+    id, ownerId, data: normalizeData(sample.data), createdAt: now, updatedAt: now, version: 1,
+    recipients: [], hiddenFor: [], seen: {}, chatRead: {}, history: [], sentAt: null, ownerDeleted: false,
+    quiz: normalizeQuiz(sample.quiz), answers: {}, sample: true, ...extra,
+  };
+  return db.scenarios[id];
+}
+
+// 初めてログインしたときに、使い方の参考になる見本シナリオを自分の一覧に作る（1回だけ）
+export function seedStarterSamples() {
+  const db = load();
+  const me = requireUser(db);
+  if (me.starterSeeded) return false;
+  for (const sample of STARTER_SAMPLES) addScenario(db, me.id, sample);
+  me.starterSeeded = true;
+  commit(db);
+  return true;
+}
+
 // お試し用：サンプルの送信者から、サンプルのシナリオを自分あてに届ける
 // （端末内モードでは、受信を試すのに別アカウントが必要なため）
 export function receiveSample() {
@@ -506,26 +634,12 @@ export function receiveSample() {
   const now = Date.now();
   // ログインには使わない送信専用のアカウント（パスワードは誰にもわからない値）
   db.users[senderId] = { id: senderId, name: "サンプル指導医", salt: uid("s"), hash: uid("x"), createdAt: now, contacts: [], sample: true };
-  const id = uid("sc");
-  const data = normalizeData({
-    disease: "急性心筋梗塞（下壁）",
-    age: "68",
-    sex: "男性",
-    summary: "自宅で朝食後に胸痛が出現し、30分改善しないため家族が救急要請。既往に高血圧・糖尿病。",
-    complaint: "胸が締め付けられるように痛い。冷や汗が出る。",
-    "v1.jcs": "1", "v1.gcsE": "4", "v1.gcsV": "5", "v1.gcsM": "6",
-    "v1.hr": "96", "v1.bpRSys": "152", "v1.bpRDia": "90", "v1.spo2": "94", "v1.o2": "鼻カニューレ", "v1.o2Flow": "2", "v1.spo2O2": "97", "v1.rr": "22", "v1.temp": "36.6",
-    "v1.history": "高血圧、2型糖尿病", "v1.treatment": "12誘導心電図、末梢ルート確保、アスピリン内服",
-    "v2.jcs": "10", "v2.gcsE": "3", "v2.gcsV": "4", "v2.gcsM": "6",
-    "v2.hr": "38", "v2.bpRSys": "78", "v2.bpRDia": "46", "v2.spo2": "88", "v2.o2": "高濃度マスク", "v2.o2Flow": "10", "v2.spo2O2": "93", "v2.rr": "28", "v2.temp": "36.4",
-    "v2.notes": "冷汗著明、顔面蒼白。モニター上で高度房室ブロック。",
+  const s = addScenario(db, senderId, SAMPLE_SEPSIS, {
+    recipients: [me.id], seen: { [me.id]: 1 }, chatRead: { [senderId]: now },
+    sentAt: now, receivedAt: { [me.id]: now }, opened: {},
   });
-  db.scenarios[id] = {
-    id, ownerId: senderId, data, createdAt: now, updatedAt: now, version: 1,
-    recipients: [me.id], hiddenFor: [], seen: { [me.id]: 1 }, chatRead: { [senderId]: now }, history: [],
-    sentAt: now, receivedAt: { [me.id]: now }, opened: {}, ownerDeleted: false,
-  };
-  db.messages[id] = [{ id: uid("m"), from: senderId, text: "急変時の対応を一緒に考えましょう。まず何を優先しますか？", at: now }];
+  const id = s.id;
+  db.messages[id] = [{ id: uid("m"), from: senderId, text: "出題モードで送りました。まずはバイタル1を見て、対応を回答してみてください。", at: now }];
   notify(db, me.id, "received", id, senderId);
   commit(db);
   return id;
@@ -583,6 +697,7 @@ const NOTICE_TEXT = {
   received: (name) => `${name}さんからシナリオが届きました`,
   reply: (name) => `${name}さんが返信しました`,
   updated: (name) => `${name}さんがシナリオを更新しました`,
+  answered: (name) => `${name}さんが出題に回答しました`,
 };
 
 export function listNotifications() {
