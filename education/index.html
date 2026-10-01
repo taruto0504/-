@@ -278,6 +278,45 @@
   .switch-mode{margin-top:22px; text-align:center; font-size:13px; color:var(--ink-soft);}
   .switch-mode a{color:var(--primary-dark); font-weight:700; cursor:pointer; text-decoration:none;}
 
+
+  /* ---- AI評価 ---- */
+  .btn.ai-btn{border-color:#B9CFE8; color:#2B5C8A; background:#F1F6FC;}
+  .btn:disabled{opacity:.6; cursor:default;}
+  .ai-intro{font-size:13px; color:var(--ink-soft); background:#F1F6FC; border:1px solid #D6E3F2; border-radius:var(--radius-sm); padding:12px 14px; margin-bottom:12px; line-height:1.7;}
+  .ai-run{background:#2B5C8A; border-color:#2B5C8A;}
+  .ai-loading{display:flex; align-items:center; gap:10px; margin-top:14px; padding:14px; border-radius:var(--radius-sm); background:var(--panel); border:1px solid var(--line); font-size:13.5px; color:var(--ink-soft);}
+  .ai-spinner{width:18px; height:18px; border-radius:50%; border:3px solid #D6E3F2; border-top-color:#2B5C8A; animation:spin 1s linear infinite; flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .ai-error{margin-top:12px; padding:12px 14px; border-radius:var(--radius-sm); background:#FBEAE7; color:var(--danger); font-size:13px; line-height:1.7;}
+  .ai-note{font-size:12.5px; color:#7A5A16; background:var(--amber-tint); border-radius:var(--radius-sm); padding:9px 12px; margin-bottom:10px;}
+  .ai-panel{margin-top:14px; background:var(--panel); border:1px solid #D6E3F2; border-radius:var(--radius); padding:14px 16px;}
+  .ai-panel-head{display:flex; align-items:center; gap:8px; font-weight:800; font-size:14px; color:#2B5C8A; margin-bottom:10px; flex-wrap:wrap;}
+  .ai-panel-head a{margin-left:auto; font-size:12.5px; font-weight:700; color:var(--ink-soft); cursor:pointer;}
+  .ai-panel-head small{margin-left:auto; font-size:11.5px; font-weight:600; color:var(--ink-soft);}
+  .ai-sec{padding:10px 0; border-top:1px solid var(--line);}
+  .ai-sec:first-of-type{border-top:none; padding-top:0;}
+  .ai-h{font-size:13px; font-weight:800; margin-bottom:6px;}
+  .ai-text{font-size:13.5px; line-height:1.75; white-space:pre-wrap;}
+  .ai-text.muted{color:var(--ink-soft);}
+  .ai-overall{margin-bottom:6px;}
+  .ai-tag{display:inline-block; font-size:11.5px; font-weight:800; padding:2px 9px; border-radius:999px; white-space:nowrap;}
+  .ai-tag.sm{font-size:10.5px; padding:1px 7px; font-weight:700;}
+  .ai-tag.good{background:var(--primary-tint); color:var(--primary-dark);}
+  .ai-tag.fair{background:var(--amber-tint); color:#8A5B12;}
+  .ai-tag.bad{background:#FBEAE7; color:var(--danger);}
+  .ai-tag.muted{background:#EEF1EF; color:var(--ink-soft);}
+  .ai-claim{padding:8px 0;}
+  .ai-claim + .ai-claim{border-top:1px dashed var(--line);}
+  .ai-claim-top{display:flex; gap:8px; align-items:flex-start; margin-bottom:3px;}
+  .ai-claim-st{font-size:13.5px; font-weight:700; line-height:1.5;}
+  .ai-fix{font-size:13px; color:var(--primary-dark); background:var(--primary-tint); border-radius:8px; padding:6px 10px; margin-top:5px; line-height:1.6;}
+  .ai-list{margin:4px 0 0; padding-left:20px; font-size:13.5px; line-height:1.75;}
+  .ai-list li{margin-bottom:6px;}
+  .ai-disclaimer{font-size:11.5px; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:10px; margin-top:4px; line-height:1.7;}
+  .action-count{position:absolute; top:6px; right:8px; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:var(--amber); color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center;}
+  .badge.received{background:#E8F0FA; color:#2B5C8A;}
+  .tab-dot{display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--amber); vertical-align:middle;}
+  .tab-btn{white-space:nowrap;}
   .sidebar-brand{display:none;}
 
   /* ==== 端末に合わせた自動切り替え ==== */
@@ -371,9 +410,12 @@
     reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail, updatePassword, sendEmailVerification
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
   import {
-    getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy,
+    getFirestore, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit,
     onSnapshot, serverTimestamp, arrayUnion, arrayRemove, runTransaction
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+  import {
+    getFunctions, httpsCallable
+  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
   import {
     getStorage, ref, uploadBytes, getDownloadURL, deleteObject
   } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js";
@@ -402,14 +444,16 @@
   const auth = getAuth(fbApp);
   const db = getFirestore(fbApp);
   const storage = getStorage(fbApp);
+  const functions = getFunctions(fbApp, 'asia-northeast1'); // AI評価などのサーバー側処理(東京リージョン)
 
   // 下の通常スクリプト(画面側)から使えるように window に橋渡しする
   window.fb = {
     auth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, deleteUser, sendPasswordResetEmail,
     reauthenticateWithCredential, EmailAuthProvider, verifyBeforeUpdateEmail, updatePassword, sendEmailVerification,
-    db, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy,
+    db, doc, setDoc, getDoc, addDoc, updateDoc, deleteDoc, collection, query, where, getDocs, orderBy, limit,
     onSnapshot, serverTimestamp, arrayUnion, arrayRemove, runTransaction,
-    storage, ref, uploadBytes, getDownloadURL, deleteObject
+    storage, ref, uploadBytes, getDownloadURL, deleteObject,
+    functions, httpsCallable
   };
   window.dispatchEvent(new Event('fb-ready'));
 </script>
@@ -447,6 +491,11 @@ const S = {
   contactEditMode:false,
   contactSelected:[],
   notif:{ push:true, sound:true, quiet:false },
+  aiDraft:{ loading:false, result:null, error:'' }, // 作成画面のAI評価(保存しない)
+  aiBusy:false,       // 詳細画面でAI評価を実行中のレポートID(実行中でなければ false)
+  aiError:'',
+  aiReview:null,      // 詳細画面に表示する最新のAI評価
+  aiReviewLoaded:false,
 };
 
 /* ============ 端末の判定 ============ */
@@ -485,7 +534,8 @@ function startReportsListener(){
     window.fb.query(window.fb.collection(window.fb.db,'reports'), window.fb.where('authorUid','==',ME.uid)),
     (snap)=>{
       authoredMap = {};
-      snap.forEach(d=> authoredMap[d.id] = fromFirestoreReport(d.id, d.data()));
+      // serverTimestamps:'estimate' … 保存直後(サーバー時刻の確定前)も日時を表示し、並び順を正しくする
+      snap.forEach(d=> authoredMap[d.id] = fromFirestoreReport(d.id, d.data({serverTimestamps:'estimate'})));
       mergeAndRenderReports();
     },
     (err)=>{ console.error(err); }
@@ -494,7 +544,7 @@ function startReportsListener(){
     window.fb.query(window.fb.collection(window.fb.db,'reports'), window.fb.where('recipientIdList','array-contains',ME.id)),
     (snap)=>{
       receivedMap = {};
-      snap.forEach(d=> receivedMap[d.id] = fromFirestoreReport(d.id, d.data()));
+      snap.forEach(d=> receivedMap[d.id] = fromFirestoreReport(d.id, d.data({serverTimestamps:'estimate'})));
       mergeAndRenderReports();
     },
     (err)=>{ console.error(err); }
@@ -577,14 +627,14 @@ function render(){
 }
 
 function wrap(inner, activeTab){
-  const hasUnread = reports.some(r=>r.hasUnreadComment);
+  const hasUnread = reports.some(r=>r.hasUnreadComment) || unreadReceivedCount() > 0;
   return `
     ${inner}
     <div class="bottomnav">
       <div class="sidebar-brand"><div class="logo">医</div>医療教育アプリ</div>
       ${navBtn('home','🏠','ホーム',activeTab)}
       ${navBtn('create','✏️','作成',activeTab)}
-      ${navBtn('saved','📁','保存',activeTab, hasUnread)}
+      ${navBtn('saved','📁','レポート',activeTab, hasUnread)}
       ${navBtn('settings','⚙️','設定',activeTab)}
     </div>
   `;
@@ -596,9 +646,13 @@ function navBtn(key,icon,label,active,showDot){
 }
 
 async function go(screen){
-  if(screen!=='detail') stopCommentsListener();
+  if(screen!=='detail'){ stopCommentsListener(); stopAiReviewListener(); }
   S.screen = screen;
-  if(screen==='create'){ S.draft = S.draft && S.draft.id===S._editingId ? S.draft : newDraft(); S._editingId=null; }
+  if(screen==='create'){
+    const keep = S.draft && S.draft.id===S._editingId;
+    if(!keep){ S.draft = newDraft(); S.aiDraft = { loading:false, result:null, error:'' }; }
+    S._editingId=null;
+  }
   render();
   if(screen==='settings' || screen==='contacts'){ await loadDirectory(); await loadFavorites(); render(); }
 }
@@ -703,6 +757,7 @@ const PRIVACY_TEXT = `
 ・不正利用の防止、お問い合わせへの対応のため</p>
 <h3 style="font-size:14px;">3. 第三者提供</h3>
 <p>法令に基づく場合を除き、利用者の同意なく、取得した情報を第三者に提供することはありません。</p>
+<p>ただし、利用者が「AIで評価」を実行した場合に限り、評価のためにレポートのタイトル・本文・追加項目・疑問欄の内容(添付画像・氏名・メールアドレスは含みません)を、AIサービスの提供事業者(Anthropic社)に送信します。</p>
 <h3 style="font-size:14px;">4. データの保管</h3>
 <p>取得した情報は、Google Cloud(Firebase)のサーバー上で、通信・保存時ともに暗号化された状態で管理します。</p>
 <h3 style="font-size:14px;">5. 患者情報の取り扱いについて</h3>
@@ -841,6 +896,7 @@ let authInProgress = false;
 
 // Firestoreからプロフィール(氏名・職種・個人ID)を取得してMEに反映する
 async function loadProfileAndApply(user){
+  if(!user.emailVerified){ try{ await user.reload(); }catch(e){} } // メールのリンクで確認済みにした直後でも反映する
   try{
     const snap = await window.fb.getDoc(window.fb.doc(window.fb.db, 'users', user.uid));
     if(snap.exists()){
@@ -952,7 +1008,7 @@ async function changePassword(){
 
 /* ---- Home ---- */
 function screenHome(){
-  const unreadCommentAny = reports.some(r=>r.hasUnreadComment);
+  const unreadReceived = unreadReceivedCount();
   const notifItems = reports.filter(r=>r.recipients.length || r.hasUnreadComment);
   const shown = notifItems.slice(0,4);
   return `
@@ -978,14 +1034,10 @@ function screenHome(){
           <div class="ic">📝</div>
           <span class="lbl">作成する</span>
         </div>
-        <div class="action-btn" onclick="go('saved')">
-          <div class="ic">📁</div>
-          <span class="lbl">保存</span>
-        </div>
-        <div class="action-btn" onclick="goToExchanges()">
-          ${unreadCommentAny ? `<span class="action-dot"></span>` : ''}
-          <div class="ic">💬</div>
-          <span class="lbl">やりとり</span>
+        <div class="action-btn" onclick="goToReceived()">
+          ${unreadReceived ? `<span class="action-count">${unreadReceived}</span>` : ''}
+          <div class="ic">📥</div>
+          <span class="lbl">受信</span>
         </div>
         <div class="action-btn" onclick="go('contacts')">
           <div class="ic">👥</div>
@@ -1017,20 +1069,25 @@ function screenHome(){
   `;
 }
 
-function goToExchanges(){
-  S.filterStatus = 'sent';
+function goToReceived(){
+  S.filterStatus = 'received';
   S.filterQuery = '';
   go('saved');
+}
+// 受け取ったレポートのうち、まだ開いていないものの数
+function unreadReceivedCount(){
+  return reports.filter(r=>!isMine(r) && r.recipients.some(x=>x.id===ME.id && !x.read)).length;
 }
 
 /* ---- Create ---- */
 function screenCreate(){
   const d = S.draft || (S.draft = newDraft());
-  const isReedit = !!d.originalId || S._editingId;
+  const isReedit = !!d.originalId;   // 送信済みレポートをもとに作り直している
+  const isEditing = !isReedit && !!d.id; // 保存済みの下書きを編集している
   return `
     <div class="topbar bordered">
       <div class="back-btn" onclick="go('home')">←</div>
-      <h1>${isReedit ? '再編集' : '作成'}</h1>
+      <h1>${isReedit ? '再編集' : isEditing ? '編集' : '作成'}</h1>
       ${d.id ? `<button class="btn sm" style="margin-left:auto; border-color:transparent; color:var(--danger);" onclick="deleteCurrentDraft()">🗑 削除</button>` : ''}
     </div>
     <div class="content">
@@ -1073,11 +1130,11 @@ function screenCreate(){
       <button class="btn sm" style="margin-top:10px;" onclick="addField()">＋ 項目を追加</button>
 
       <div class="btn-row">
-        <button class="btn" onclick="saveDraft('temp')">一時保存</button>
-        <button class="btn" onclick="saveDraft('saved')">保存</button>
-        <button class="btn" onclick="doPrint()">🖨 印刷</button>
-        <button class="btn" onclick="doPdf()">📄 PDF化</button>
+        <button class="btn" onclick="saveDraft()">💾 保存</button>
+        <button class="btn ai-btn" onclick="aiEvaluateDraft()" ${S.aiDraft.loading?'disabled':''}>${S.aiDraft.loading ? '🤖 評価中…' : '🤖 AIで評価'}</button>
+        <button class="btn" onclick="doPrint()">🖨 印刷・PDF</button>
       </div>
+      <div id="ai-draft-panel">${aiDraftPanelHtml()}</div>
       <button class="btn solid block" style="margin-top:16px;" onclick="goToSend()">この内容を送信する →</button>
     </div>
   `;
@@ -1149,8 +1206,9 @@ function stopMic(){
 }
 
 function addAttachment(){
-  S.draft.attachments = S.draft.attachments||[];
-  if(S.draft.attachments.length>=6){ toast('添付は6件までです'); return; }
+  const d = S.draft; // アップロード中に画面を移動しても、この下書きに添付する
+  d.attachments = d.attachments||[];
+  if(d.attachments.length>=6){ toast('添付は6件までです'); return; }
   if(!window.fb || !ME.uid){ toast('ログイン状態を確認してください'); return; }
   const input = document.createElement('input');
   input.type = 'file';
@@ -1165,9 +1223,9 @@ function addAttachment(){
       const storageRef = window.fb.ref(window.fb.storage, path);
       await window.fb.uploadBytes(storageRef, file);
       const url = await window.fb.getDownloadURL(storageRef);
-      S.draft.attachments.push({ url, name:file.name, path });
+      d.attachments.push({ url, name:file.name, path });
       toast('画像を添付しました');
-      render();
+      if(S.screen==='create' && S.draft===d) render();
     }catch(e){
       console.error(e);
       toast('アップロードに失敗しました('+(e.code||e.message)+')');
@@ -1204,13 +1262,13 @@ function addField(){
 }
 function removeField(i){ S.draft.fields.splice(i,1); render(); }
 
-async function saveDraft(kind){
+async function saveDraft(){
   const d = S.draft;
   if(!d.title || !d.body){ toast('タイトルと自由欄は必須です'); return; }
-  d.status = kind==='temp' ? 'draft' : 'saved';
+  d.status = 'saved';
   const ok = await persistDraft(d);
   if(!ok) return; // 保存に失敗した場合は、成功したかのような表示をしない
-  toast(kind==='temp' ? '一時保存しました' : '保存しました');
+  toast('保存しました');
   render();
 }
 
@@ -1264,7 +1322,11 @@ async function goToSend(){
 function savedListHtml(){
   const q = S.filterQuery.toLowerCase();
   const list = reports.filter(r=>{
-    if(S.filterStatus!=='all' && r.status!==S.filterStatus) return false;
+    const mine = isMine(r);
+    // 下書き=自分の未送信 / 送信済み=自分が送った / 受信=人から届いた
+    if(S.filterStatus==='draft' && !(mine && r.status!=='sent')) return false;
+    if(S.filterStatus==='sent' && !(mine && r.status==='sent')) return false;
+    if(S.filterStatus==='received' && mine) return false;
     if(q && !r.title.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1277,19 +1339,19 @@ function renderSavedList(){
 }
 function screenSaved(){
   return `
-    <div class="topbar"><h1>保存</h1></div>
+    <div class="topbar"><h1>レポート</h1>
+      ${reports.some(isMine) ? `<button class="btn sm" style="margin-left:auto;" onclick="toggleDeleteMode()">${S.deleteMode?'完了':'選択して削除'}</button>` : ''}
+    </div>
     <div class="content no-pad-top">
       <div class="search-bar">🔍 <input type="text" id="saved-search" placeholder="タイトルで検索" value="${escapeHtml(S.filterQuery)}" oninput="S.filterQuery=this.value;renderSavedList()"></div>
 
       <div class="filter-row">
-        ${chip('all','すべて')}${chip('draft','下書き')}${chip('saved','保存済み')}${chip('sent','送信済み')}
-        <div class="chip" style="${S.deleteMode?'background:var(--danger);border-color:var(--danger);color:#fff;':'color:var(--danger);'}" onclick="toggleDeleteMode()">🗑 ${S.deleteMode?'選択中':'削除'}</div>
+        ${chip('all','すべて')}${chip('draft','下書き')}${chip('sent','送信済み')}${chip('received','受信' + (unreadReceivedCount() ? ' ('+unreadReceivedCount()+')' : ''))}
       </div>
 
       ${S.deleteMode ? `<div class="delete-actionbar">
         <span>${S.deleteSelected.length}件選択中</span>
         <div style="margin-left:auto; display:flex; gap:8px;">
-          <button class="btn sm" onclick="toggleDeleteMode()">キャンセル</button>
           <button class="btn sm solid" style="background:var(--danger); border-color:var(--danger);" onclick="bulkDeleteSelected()">削除する</button>
         </div>
       </div>` : ''}
@@ -1329,12 +1391,12 @@ function reportCard(r){
   const checked = S.deleteSelected.includes(r.id);
   const mine = isMine(r);
   const status = ['draft','saved','sent'].includes(r.status) ? r.status : 'draft';
-  const badgeLabel = {draft:'下書き',saved:'保存済み',sent:'送信済み'}[status];
+  const badgeLabel = {draft:'下書き',saved:'下書き',sent:'送信済み'}[status];
   return `
     <div class="report-card" onclick="${S.deleteMode ? `toggleDeleteSelect(${jsArg(r.id)})` : `openDetail(${jsArg(r.id)})`}" style="${r.hasUnreadComment?'border-color:var(--amber);':''} ${S.deleteMode && checked ? 'border-color:var(--danger); background:#FBEAE7;' : ''} ${S.deleteMode && !mine ? 'opacity:.5;' : ''}">
       <div class="rc-top">
         <div class="rc-title">${S.deleteMode && mine ? `<span style="margin-right:8px;">${checked?'☑️':'⬜'}</span>` : ''}${r.hasUnreadComment?'🔴 ':''}${escapeHtml(r.title)}</div>
-        <div class="badge ${status}">${mine ? badgeLabel : '受信'}</div>
+        <div class="badge ${mine ? (status==='sent'?'sent':'draft') : 'received'}">${mine ? badgeLabel : (r.recipients.some(x=>x.id===ME.id && !x.read) ? '受信・未読' : '受信')}</div>
       </div>
       <div class="rc-meta">
         <span>${escapeHtml(r.createdAt)}</span>
@@ -1348,6 +1410,8 @@ function reportCard(r){
 function findReport(id){ return reports.find(r=>r.id===id); }
 
 async function openDetail(id){
+  stopAiReviewListener();
+  S.aiError = '';
   S.currentId=id; S.detailTab='content'; S.screen='detail'; render();
   const r = findReport(id);
   if(r) await markReadIfNeeded(r);
@@ -1407,7 +1471,10 @@ function stopCommentsListener(){
 /* ---- Detail ---- */
 function screenDetail(){
   const r = findReport(S.currentId);
-  if(!r) return `<div class="content">見つかりませんでした</div>`;
+  if(!r) return `<div class="topbar bordered"><div class="back-btn" onclick="go('saved')">←</div><h1 style="font-size:16px;">詳細</h1></div>
+    <div class="content"><div class="empty-state"><div class="em-ic">📭</div>このレポートは削除されたか、見られなくなりました</div></div>`;
+  const showRead = isMine(r) && r.recipients.length > 0;
+  if(S.detailTab==='read' && !showRead) S.detailTab='content';
   return `
     <div class="topbar bordered">
       <div class="back-btn" onclick="go('saved')">←</div>
@@ -1420,10 +1487,11 @@ function screenDetail(){
     <div class="content">
       <div class="tab-row">
         <div class="tab-btn ${S.detailTab==='content'?'active':''}" onclick="S.detailTab='content';render()">内容</div>
-        <div class="tab-btn ${S.detailTab==='read'?'active':''}" onclick="S.detailTab='read';render()">既読状況</div>
-        <div class="tab-btn ${S.detailTab==='chat'?'active':''}" onclick="openChatTab()">コメント</div>
+        <div class="tab-btn ${S.detailTab==='ai'?'active':''}" onclick="openAiTab()">🤖 AI評価</div>
+        <div class="tab-btn ${S.detailTab==='chat'?'active':''}" onclick="openChatTab()">コメント${r.hasUnreadComment?' <span class="tab-dot"></span>':''}</div>
+        ${showRead ? `<div class="tab-btn ${S.detailTab==='read'?'active':''}" onclick="S.detailTab='read';render()">既読</div>` : ''}
       </div>
-      ${S.detailTab==='content' ? detailContent(r) : S.detailTab==='read' ? detailRead(r) : detailChat(r)}
+      ${S.detailTab==='content' ? detailContent(r) : S.detailTab==='read' ? detailRead(r) : S.detailTab==='ai' ? detailAi(r) : detailChat(r)}
     </div>
   `;
 }
@@ -1432,8 +1500,8 @@ function detailContent(r){
     <div class="detail-title">${escapeHtml(r.title)}</div>
     <div class="detail-meta">${escapeHtml(r.createdAt)} 作成 ${r.originalId?'・🔗 再編集版':''}</div>
     <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
-      <button class="btn sm" onclick="printReport(${jsArg(r.id)})">🖨 印刷</button>
-      <button class="btn sm" onclick="pdfReport(${jsArg(r.id)})">📄 PDF化</button>
+      <button class="btn sm ai-btn" onclick="openAiTabAndRun(${jsArg(r.id)})">🤖 AIで評価</button>
+      <button class="btn sm" onclick="printReport(${jsArg(r.id)})">🖨 印刷・PDF</button>
     </div>
     <div class="detail-body">${escapeHtml(r.body)}
     ${(r.attachments && r.attachments.length) ? `<div class="attach-row" style="margin-top:12px;">${r.attachments.filter(a=>safeUrl(a.url)).map(a=>`<a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" class="attach-thumb" style="padding:0; overflow:hidden;"><img src="${safeUrl(a.url)}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(a.name||'添付画像')}"></a>`).join('')}</div>` : ''}
@@ -1471,6 +1539,187 @@ function detailChat(r){
     </div>
   `;
 }
+/* ---- AI評価 ---- */
+// サーバー側(Cloud Functions の evaluateReport)が Claude を呼び出して評価する。APIキーはブラウザに置かない
+function callAiEvaluate(payload){
+  if(!window.fb || !window.fb.functions) throw Object.assign(new Error('Firebaseの読み込み中です'), {code:'unavailable'});
+  const fn = window.fb.httpsCallable(window.fb.functions, 'evaluateReport', { timeout: 180000 });
+  return fn(payload).then(r=>r.data);
+}
+function aiErrorMessage(e){
+  const code = String(e && e.code || '').replace('functions/','');
+  const msg = String(e && e.message || '');
+  if(/[ぁ-んァ-ヶ一-龠]/.test(msg)) return msg; // サーバーが日本語で理由を返している場合はそのまま表示
+  if(code==='not-found') return 'AI評価の機能がまだサーバーに設定されていません(管理者向け:Cloud Functions のデプロイが必要です)';
+  if(code==='unauthenticated') return 'AI評価を利用できませんでした。ログインし直してからお試しください(App Check の設定が必要な場合があります)';
+  if(code==='deadline-exceeded') return 'AIの応答に時間がかかりすぎました。少し時間をおいてお試しください';
+  if(code==='unavailable') return '通信に失敗しました。回線状況を確認してください';
+  return 'AI評価に失敗しました(' + (code || 'unknown') + ')';
+}
+// 初回だけ、内容が外部のAIサービスに送られることを確認する
+let aiConsented = false;
+function aiConfirm(){
+  if(aiConsented) return true;
+  aiConsented = window.confirm('AI評価のため、レポートのタイトル・本文・追加項目・疑問欄を、AIサービス(Anthropic社)に送信します。\n患者を特定できる情報が含まれていないことを確認してください。\n\n評価を始めますか?');
+  return aiConsented;
+}
+function draftSnapshot(d){
+  return JSON.stringify({ title:d.title||'', body:d.body||'', question:d.question||'', fields:(d.fields||[]).map(f=>({name:f.name||'', value:f.value||''})) });
+}
+
+// 作成画面:保存前の内容をそのまま評価する(結果は保存しない)
+async function aiEvaluateDraft(){
+  const d = S.draft;
+  if(!d || !d.title || !d.body){ toast('タイトルと自由欄を入力してから評価してください'); return; }
+  if(S.aiDraft.loading) return;
+  if(!aiConfirm()) return;
+  const snapshot = draftSnapshot(d);
+  S.aiDraft = { loading:true, result:null, error:'' };
+  render();
+  try{
+    const data = await callAiEvaluate({ draft: JSON.parse(snapshot) });
+    S.aiDraft = { loading:false, result:{ review:data.review, at:Date.now() }, error:'', snapshot };
+    if(typeof data.remaining==='number') toast('AI評価が完了しました(今日はあと' + data.remaining + '回)');
+  }catch(e){
+    console.error(e);
+    S.aiDraft = { loading:false, result:null, error: aiErrorMessage(e) };
+  }
+  if(S.screen==='create' && S.draft===d) render();
+}
+function aiDraftPanelHtml(){
+  const a = S.aiDraft;
+  if(a.loading) return aiLoadingHtml();
+  if(a.error) return `<div class="ai-error">⚠️ ${escapeHtml(a.error)}</div>`;
+  if(!a.result) return '';
+  const changed = S.draft && a.snapshot && draftSnapshot(S.draft)!==a.snapshot;
+  return `<div class="ai-panel">
+    <div class="ai-panel-head"><span>🤖 AI評価の結果</span><a onclick="S.aiDraft={loading:false,result:null,error:''};render()">閉じる</a></div>
+    ${changed ? `<div class="ai-note">評価したあとに内容が変わっています。必要なら、もう一度「AIで評価」を押してください。</div>` : ''}
+    ${renderAiReview(a.result.review)}
+  </div>`;
+}
+function aiLoadingHtml(){
+  return `<div class="ai-loading"><span class="ai-spinner"></span>AIが評価しています… 30秒〜1分ほどかかります</div>`;
+}
+
+// 詳細画面:保存済みのレポートを評価し、結果は作成者・受信者で共有する
+let unsubAiReview = null;
+function openAiTab(){
+  S.detailTab = 'ai';
+  render();
+  startAiReviewListener(S.currentId);
+}
+function startAiReviewListener(id){
+  stopAiReviewListener();
+  S.aiReview = null; S.aiReviewLoaded = false;
+  if(!window.fb) return;
+  unsubAiReview = window.fb.onSnapshot(
+    window.fb.query(window.fb.collection(window.fb.db,'reports',id,'aiReviews'), window.fb.orderBy('createdAt','desc'), window.fb.limit(1)),
+    (snap)=>{
+      const d = snap.docs[0];
+      S.aiReview = d ? Object.assign({ id:d.id }, d.data({serverTimestamps:'estimate'})) : null;
+      S.aiReviewLoaded = true;
+      if(S.screen==='detail' && S.detailTab==='ai' && S.currentId===id) render();
+    },
+    (err)=>{ console.error(err); S.aiReviewLoaded = true; if(S.screen==='detail' && S.detailTab==='ai') render(); }
+  );
+}
+function stopAiReviewListener(){
+  if(unsubAiReview){ unsubAiReview(); unsubAiReview=null; }
+}
+async function aiEvaluateReport(id){
+  if(S.aiBusy) return;
+  if(!aiConfirm()) return;
+  S.aiBusy = id; S.aiError = ''; // 評価中のレポートID
+
+  render();
+  try{
+    const data = await callAiEvaluate({ reportId:id });
+    // 保存された結果はリアルタイム監視でも届くが、待たずにすぐ表示する
+    if(S.currentId===id) S.aiReview = { id:data.reviewId, review:data.review, requestedByName:ME.name, createdAt:null };
+    if(typeof data.remaining==='number') toast('AI評価が完了しました(今日はあと' + data.remaining + '回)');
+  }catch(e){
+    console.error(e);
+    S.aiError = aiErrorMessage(e);
+  }
+  S.aiBusy = false;
+  if(S.screen==='detail') render();
+}
+// 「内容」タブのAIボタン:AI評価タブを開いて、すぐに評価を始める
+function openAiTabAndRun(id){
+  openAiTab();
+  aiEvaluateReport(id);
+}
+function detailAi(r){
+  const rv = S.aiReview;
+  const when = rv && rv.createdAt && rv.createdAt.toDate ? rv.createdAt.toDate().toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'たった今';
+  return `
+    <div class="ai-intro">
+      AIが、このレポートの<b>根拠の正しさ</b>・<b>提案</b>・<b>参考資料</b>を評価します。あくまで学習の参考です。<br>
+      <span style="font-size:12px;">※評価のため、内容がAIサービス(Anthropic社)に送信されます。添付画像は評価に含まれません。</span>
+      ${isMine(r) ? '' : '<br>評価結果は、作成者と受信者の全員が見られます。'}
+    </div>
+    <button class="btn solid block ai-run" onclick="aiEvaluateReport(${jsArg(r.id)})" ${S.aiBusy?'disabled':''}>
+      ${S.aiBusy===r.id ? '🤖 評価中…' : rv ? '🤖 もう一度評価する' : '🤖 AIで評価する'}
+    </button>
+    ${S.aiBusy===r.id ? aiLoadingHtml() : ''}
+    ${S.aiError ? `<div class="ai-error">⚠️ ${escapeHtml(S.aiError)}</div>` : ''}
+    ${!S.aiReviewLoaded && !rv ? `<div class="ai-note" style="margin-top:14px;">読み込み中…</div>` : ''}
+    ${S.aiReviewLoaded && !rv && S.aiBusy!==r.id ? `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🤖</div>まだAI評価はありません</div>` : ''}
+    ${rv ? `<div class="ai-panel">
+      <div class="ai-panel-head"><span>🤖 最新のAI評価</span><small>${escapeHtml(when)}・${escapeHtml(rv.requestedByName||'')}さんが実行</small></div>
+      ${renderAiReview(rv.review)}
+    </div>` : ''}
+  `;
+}
+
+// 評価結果(サーバーが返すJSON)を画面用のHTMLにする
+function renderAiReview(rv){
+  rv = rv || {};
+  const arr = (v)=>Array.isArray(v) ? v : [];
+  const LEVEL = { good:['✅ おおむね適切','good'], fair:['⚠️ 一部に確認が必要','fair'], needs_work:['❗ 修正が必要な点あり','bad'] };
+  const VERDICT = { correct:['正しい','good'], partly_correct:['一部不正確','fair'], incorrect:['誤りの可能性','bad'], unverifiable:['確認できず','muted'] };
+  const CONF = { high:['確信度:高','good'], medium:['確信度:中','fair'], low:['確信度:低(要確認)','muted'] };
+  const overall = rv.overall || {};
+  const lv = LEVEL[overall.level] || ['評価','muted'];
+  const claims = arr(rv.claims), sugg = arr(rv.suggestions), refs = arr(rv.references);
+  const ev = rv.evidence || {};
+  return `
+    ${rv.privacy_warning ? `<div class="ai-error">🔒 個人情報の注意:${escapeHtml(rv.privacy_warning)}</div>` : ''}
+    <div class="ai-sec">
+      <div class="ai-overall"><span class="ai-tag ${lv[1]}">${lv[0]}</span></div>
+      <div class="ai-text">${escapeHtml(overall.summary)}</div>
+    </div>
+    <div class="ai-sec">
+      <div class="ai-h">📋 根拠の正しさ</div>
+      ${claims.length ? claims.map(c=>{ const v = VERDICT[c.verdict] || ['—','muted']; return `
+        <div class="ai-claim">
+          <div class="ai-claim-top"><span class="ai-tag ${v[1]}">${v[0]}</span><span class="ai-claim-st">${escapeHtml(c.statement)}</span></div>
+          <div class="ai-text">${escapeHtml(c.explanation)}</div>
+          ${c.correction ? `<div class="ai-fix">➡ ${escapeHtml(c.correction)}</div>` : ''}
+        </div>`; }).join('') : `<div class="ai-text muted">判定できる医学的な記述は見つかりませんでした</div>`}
+    </div>
+    <div class="ai-sec">
+      <div class="ai-h">🔎 根拠・出典の示し方</div>
+      <div class="ai-text">${escapeHtml(ev.assessment)}</div>
+      ${arr(ev.issues).length ? `<ul class="ai-list">${arr(ev.issues).map(i=>`<li>${escapeHtml(i)}</li>`).join('')}</ul>` : ''}
+    </div>
+    ${sugg.length ? `<div class="ai-sec">
+      <div class="ai-h">💡 提案</div>
+      <ul class="ai-list">${sugg.map(x=>`<li><b>${escapeHtml(x.point)}</b><br>${escapeHtml(x.detail)}</li>`).join('')}</ul>
+    </div>` : ''}
+    ${refs.length ? `<div class="ai-sec">
+      <div class="ai-h">📚 参考資料</div>
+      <ul class="ai-list">${refs.map(x=>{ const cf = CONF[x.confidence] || ['','muted']; return `<li><b>${escapeHtml(x.title)}</b>${x.publisher ? `(${escapeHtml(x.publisher)})` : ''} <span class="ai-tag sm ${cf[1]}">${cf[0]}</span><br>${escapeHtml(x.note)}</li>`; }).join('')}</ul>
+    </div>` : ''}
+    ${rv.question_answer ? `<div class="ai-sec">
+      <div class="ai-h">❓ 疑問・困りごとへの回答</div>
+      <div class="ai-text">${escapeHtml(rv.question_answer)}</div>
+    </div>` : ''}
+    <div class="ai-disclaimer">※ AIによる参考評価です。誤りを含むことがあります。診療上の判断には使わず、必ずガイドラインの原典や指導者に確認してください。参考資料は、実在するか・最新版かを必ず確認してください。</div>
+  `;
+}
+
 async function sendComment(id){
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
@@ -1480,21 +1729,24 @@ async function sendComment(id){
     await window.fb.addDoc(window.fb.collection(window.fb.db,'reports',id,'comments'), {
       senderUid: ME.uid, senderName: ME.name, text, createdAt: window.fb.serverTimestamp()
     });
-    // 相手が「返信が来た」と気づけるように、レポート側に最終コメント日時を記録する
-    await window.fb.updateDoc(window.fb.doc(window.fb.db,'reports', id), {
-      lastCommentAt: window.fb.serverTimestamp(),
-      lastCommentByUid: ME.uid,
-      [`commentReads.${ME.uid}`]: window.fb.serverTimestamp()
-    });
-    // currentComments はリアルタイム監視で自動更新されるため、ここでの再取得は不要
-    toast('送信しました');
   }catch(e){
     console.error(e);
     // 失敗したら入力内容を戻して、打ち直さなくて済むようにする
     const again = document.getElementById('chatInput');
     if(again && !again.value) again.value = text;
     toast('送信に失敗しました');
+    return;
   }
+  // コメント自体は送れている。相手が「返信が来た」と気づけるように、レポート側に最終コメント日時を記録する
+  // (ここで失敗してもコメントは届いているので、入力欄には戻さない=二重送信を防ぐ)
+  try{
+    await window.fb.updateDoc(window.fb.doc(window.fb.db,'reports', id), {
+      lastCommentAt: window.fb.serverTimestamp(),
+      lastCommentByUid: ME.uid,
+      [`commentReads.${ME.uid}`]: window.fb.serverTimestamp()
+    });
+  }catch(e){ console.error(e); }
+  toast('送信しました');
 }
 // レポートをFirestoreから削除する(添付ファイルもあわせて削除)。成功時true
 async function deleteReportById(id){
@@ -1549,6 +1801,7 @@ function editReport(id){
     S.draft = {...r, fields:(r.fields||[]).map(f=>({...f})), recipients:[], comments:[]};
   }
   S._editingId = S.draft.id;
+  S.aiDraft = { loading:false, result:null, error:'' };
   S.screen='create';
   render();
 }
@@ -1647,6 +1900,8 @@ async function doSend(){
   }
   toast(d.originalId ? '新しいレポートとして送信しました' : '送信しました');
   S.draft = null;
+  S.aiDraft = { loading:false, result:null, error:'' };
+  S.filterStatus = 'all';
   await go('saved');
 }
 
@@ -1939,10 +2194,10 @@ function buildPrintDocumentHTML(d, mode){
 <body>
   <div class="toolbar">
     <button class="back" onclick="window.close()">← 戻る</button>
-    <span class="ttl">${isPdf ? 'PDF化プレビュー' : '印刷プレビュー'}</span>
-    <button class="action" onclick="window.print()">${isPdf ? '📄 PDFとして保存' : '🖨 印刷する'}</button>
+    <span class="ttl">印刷プレビュー</span>
+    <button class="action" onclick="window.print()">🖨 印刷・PDF保存</button>
   </div>
-  ${isPdf ? `<div class="hint">「${'📄 PDFとして保存'}」を押すと印刷ダイアログが開きます。送信先(プリンター)の欄で「PDFに保存」を選んでください。</div>` : ''}
+  ${isPdf ? `<div class="hint">「🖨 印刷・PDF保存」を押すと印刷ダイアログが開きます。PDFにしたい場合は、送信先(プリンター)で「PDFに保存」を選んでください。</div>` : ''}
   <div class="page">
     <h1>${escapeHtml(d.title||'(無題のレポート)')}</h1>
     <div class="meta">作成者:${authorLabel} ／ ${escapeHtml(d.createdAt||'本日')}</div>
@@ -1965,21 +2220,11 @@ function openPrintWindow(d, mode){
   win.document.open();
   win.document.write(html);
   win.document.close();
-  if(mode==='print'){
-    // 「印刷」はその場で印刷ダイアログまで自動で開く
-    const triggerPrint = ()=>{ try{ win.focus(); win.print(); }catch(e){} };
-    win.onload = triggerPrint;
-    setTimeout(triggerPrint, 400);
-    toast('別タブが開きます。上の「← 戻る」でこのアプリに戻れます');
-  } else {
-    // 「PDF化」はボタンを押すまで印刷ダイアログを開かず、案内を先に見せる
-    toast('別タブでプレビューを開きました');
-  }
+  // プレビューを開き、上の「印刷・PDF保存」ボタンで印刷ダイアログを開く(PDFもそこから保存できる)
+  toast('別タブでプレビューを開きました。上の「← 戻る」でこのアプリに戻れます');
 }
-function doPrint(){ openPrintWindow(S.draft, 'print'); }
-function doPdf(){ openPrintWindow(S.draft, 'pdf'); }
-function printReport(id){ openPrintWindow(findReport(id), 'print'); }
-function pdfReport(id){ openPrintWindow(findReport(id), 'pdf'); }
+function doPrint(){ openPrintWindow(S.draft, 'pdf'); }
+function printReport(id){ openPrintWindow(findReport(id), 'pdf'); }
 
 /* ---- アプリ化(PWA) ---- */
 let deferredInstallPrompt = null;

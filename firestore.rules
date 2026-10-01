@@ -138,6 +138,21 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time;
         allow update, delete: if false;
       }
+
+      // ---- AI評価の結果(サーバー側の Cloud Functions だけが書き込む) ----
+      match /aiReviews/{reviewId} {
+        function reviewParticipant() {
+          let p = get(/databases/$(database)/documents/reports/$(rid)).data;
+          return p.authorUid == request.auth.uid || myPid() in p.recipientIdList;
+        }
+        allow read: if signedIn() && reviewParticipant();
+        allow write: if false;
+      }
+    }
+
+    // AI評価の利用回数(サーバー側だけが読み書きする)
+    match /aiUsage/{uid} {
+      allow read, write: if false;
     }
   }
 }
