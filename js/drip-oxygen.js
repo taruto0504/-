@@ -20,12 +20,16 @@
   const dripSoundBtn = document.getElementById("drip-sound-btn");
   const dripModeTimeWrap = document.getElementById("drip-mode-time");
   const dripModeRateWrap = document.getElementById("drip-mode-rate");
+  const hintTimeFormula = document.getElementById("hint-time-formula");
+  const hintRateFormula = document.getElementById("hint-rate-formula");
 
   document.querySelectorAll('input[name="drip-mode"]').forEach((r) => {
     r.addEventListener("change", () => {
       const isRate = r.value === "rate" && r.checked;
       dripModeTimeWrap.style.display = isRate ? "none" : "block";
       dripModeRateWrap.style.display = isRate ? "block" : "none";
+      hintTimeFormula.style.display = isRate ? "none" : "inline";
+      hintRateFormula.style.display = isRate ? "inline" : "none";
     });
   });
 

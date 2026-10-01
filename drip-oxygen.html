@@ -23,7 +23,7 @@
   </div>
 
   <!-- 点滴滴下数計算 -->
-  <section id="tab-drip" class="tab-panel active">
+  <section id="tab-drip" class="tab-panel active drip-compact">
     <div class="card">
       <h2>点滴 滴下数計算</h2>
 
@@ -66,12 +66,14 @@
         <div class="result-sub" id="drip-result-sub"></div>
         <button class="sound-btn" id="drip-sound-btn" type="button">🔊 この速さの音を鳴らす</button>
       </div>
-      <div class="hint">投与時間で指定: 滴下数(滴/分) = 指示総量(mL) × 滴下係数(滴/mL) ÷ 投与時間(分)<br>速度(mL/h)で指定: 滴下数(滴/分) = 投与速度(mL/h) × 滴下係数(滴/mL) ÷ 60<br>「この速さの音を鳴らす」で、計算した滴下数と同じペースでビープ音を鳴らせます。実際の滴下を目で見ながら音に合わせて調整してください。</div>
+      <div class="hint">
+        <span id="hint-time-formula">滴下数(滴/分) = 指示総量(mL) × 滴下係数(滴/mL) ÷ 投与時間(分)</span><span id="hint-rate-formula" style="display:none;">滴下数(滴/分) = 投与速度(mL/h) × 滴下係数(滴/mL) ÷ 60</span><br>「この速さの音を鳴らす」でペースと同じビープ音を鳴らせます。
+      </div>
     </div>
   </section>
 
   <!-- 酸素ボンベ残量計算 -->
-  <section id="tab-oxygen" class="tab-panel">
+  <section id="tab-oxygen" class="tab-panel drip-compact">
     <div class="card">
       <h2>酸素ボンベ 残量・使用可能時間</h2>
 
