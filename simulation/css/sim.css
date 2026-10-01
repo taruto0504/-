@@ -1011,7 +1011,7 @@ body.sheet-open::before {
 }
 
 /* スマホで入力中：下のメニューを隠し、ボタン列を一番下へ（入力欄が隠れにくくなる） */
-@media (max-width: 899px) {
+@media (max-width: 899px) and (pointer: coarse) {
   body.typing .tabbar { display: none; }
   body.typing .actionbar { bottom: 0; padding-bottom: calc(8px + var(--safe-bottom)); }
   body.typing main#view.with-actionbar { padding-bottom: calc(var(--safe-bottom) + 90px); }

@@ -310,7 +310,7 @@ window.addEventListener("unhandledrejection", (e) => showUnexpected(e.reason));
 window.addEventListener("medsim:error", (e) => toast(e.detail));
 
 // スマホで文字を入力している間は、下のメニュー（タブ）を隠して入力する場所を広げる
-const narrow = window.matchMedia("(max-width: 899px)");
+const narrow = window.matchMedia("(max-width: 899px) and (pointer: coarse)"); // 指で操作するスマホ・タブレットだけ
 const isTypingTarget = (el) => el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit"].includes(el.type)));
 document.addEventListener("focusin", (e) => {
   if (narrow.matches && isTypingTarget(e.target)) document.body.classList.add("typing");
