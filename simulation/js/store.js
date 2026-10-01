@@ -7,7 +7,7 @@
 import { ALL_FIELDS, normalizeData, isComplete, scenarioTitle } from "./fields.js";
 import { PREVIEW } from "./env.js";
 import * as remote from "./remote.js";
-import { STARTER_SAMPLES, SAMPLE_SEPSIS, DEFAULT_Q1, DEFAULT_Q2 } from "./samples.js";
+import { STARTER_SAMPLES, SAMPLE_SEPSIS } from "./samples.js";
 
 const DB_KEY = "medsim:db";
 const SESSION_KEY = "medsim:session";
@@ -377,9 +377,6 @@ function view(db, s, meId) {
     lastMessageAt: msgs.length ? msgs[msgs.length - 1].at : 0,
     lastMessage: msgs.length ? { text: msgs[msgs.length - 1].text, from: msgs[msgs.length - 1].from, name: nameOf(db, msgs[msgs.length - 1].from) } : null,
     isSample: !!s.sample,
-    quiz: normalizeQuiz(s.quiz),
-    myAnswer: (s.answers && s.answers[meId]) || null,
-    quizStep: quizStep(s, meId),
     // 送信者向け：相手ごとの確認状況（opened: 開いた日時、latest: 最新の内容まで確認済み）
     readStatus: isOwner
       ? s.recipients
@@ -390,7 +387,6 @@ function view(db, s, meId) {
             opened: (s.opened && s.opened[r]) || 0,
             latest: !!(s.opened && s.opened[r]) && (s.seen[r] || 0) >= s.version,
             hidden: s.hiddenFor.includes(r),
-            answer: (s.answers && s.answers[r]) || null,
           }))
       : [],
     editedAfterSendAt: lastEdit ? lastEdit.at : null,
@@ -433,12 +429,11 @@ export function getScenario(id) {
 }
 
 // 作成・更新。変更点を履歴に残し、送信済みなら相手に通知する。
-export function saveScenario(id, rawData, rawQuiz) {
+export function saveScenario(id, rawData) {
   const db = load();
   const me = requireUser(db);
   const data = normalizeData(rawData);
   const now = Date.now();
-  const quiz = rawQuiz === undefined ? undefined : normalizeQuiz(rawQuiz);
   if (!id) {
     id = uid("sc");
     db.scenarios[id] = {
@@ -455,8 +450,6 @@ export function saveScenario(id, rawData, rawQuiz) {
       history: [],
       sentAt: null,
       ownerDeleted: false,
-      quiz: quiz || normalizeQuiz(null),
-      answers: {},
     };
     commit(db);
     return view(db, db.scenarios[id], me.id);
@@ -467,12 +460,7 @@ export function saveScenario(id, rawData, rawQuiz) {
   for (const f of ALL_FIELDS) {
     if ((s.data[f.key] || "") !== data[f.key]) changes[f.key] = { from: s.data[f.key] || "", to: data[f.key] };
   }
-  const quizChanged = quiz !== undefined && JSON.stringify(quiz) !== JSON.stringify(normalizeQuiz(s.quiz));
-  if (quizChanged) s.quiz = quiz;
-  if (!Object.keys(changes).length) {
-    if (quizChanged) commit(db);
-    return view(db, s, me.id);
-  }
+  if (!Object.keys(changes).length) return view(db, s, me.id);
   s.version += 1;
   s.data = data;
   s.updatedAt = now;
@@ -561,52 +549,13 @@ export function revokeRecipient(id, recipientId) {
   commit(db);
 }
 
-// ---------- 出題モード ----------
-
-export function normalizeQuiz(q) {
-  const str = (v, d = "") => (typeof v === "string" ? v.trim() : d);
-  return {
-    enabled: !!(q && q.enabled),
-    q1: str(q && q.q1) || DEFAULT_Q1,
-    q2: str(q && q.q2) || DEFAULT_Q2,
-    model: str(q && q.model),
-  };
-}
-
-// 受け取った人が今どの段階か（1：最初の回答 → 2：急変後の回答 → 3：答え合わせ）
-function quizStep(s, uid) {
-  const quiz = normalizeQuiz(s.quiz);
-  if (!quiz.enabled || s.ownerId === uid) return 3;
-  const a = (s.answers && s.answers[uid]) || {};
-  if (!a.a1) return 1;
-  const hasV2 = Object.keys(s.data).some((k) => k.startsWith("v2.") && s.data[k]);
-  if (hasV2 && !a.a2) return 2;
-  return 3;
-}
-
-export function submitAnswer(id, step, text) {
-  text = String(text || "").trim();
-  if (!text) throw new Error("回答を入力してください");
-  const db = load();
-  const me = requireUser(db);
-  const s = db.scenarios[id];
-  if (!s || !s.recipients.includes(me.id)) throw new Error("このシナリオには回答できません");
-  s.answers ||= {};
-  const a = { ...(s.answers[me.id] || {}) };
-  if (step === 1) Object.assign(a, { a1: text, at1: Date.now() });
-  else Object.assign(a, { a2: text, at2: Date.now() });
-  s.answers[me.id] = a;
-  if (db.users[s.ownerId] && !s.ownerDeleted) notify(db, s.ownerId, "answered", id, me.id);
-  commit(db);
-}
-
 function addScenario(db, ownerId, sample, extra = {}) {
   const now = Date.now();
   const id = uid("sc");
   db.scenarios[id] = {
     id, ownerId, data: normalizeData(sample.data), createdAt: now, updatedAt: now, version: 1,
     recipients: [], hiddenFor: [], seen: {}, chatRead: {}, history: [], sentAt: null, ownerDeleted: false,
-    quiz: normalizeQuiz(sample.quiz), answers: {}, sample: true, ...extra,
+    sample: true, ...extra,
   };
   return db.scenarios[id];
 }
@@ -639,7 +588,7 @@ export function receiveSample() {
     sentAt: now, receivedAt: { [me.id]: now }, opened: {},
   });
   const id = s.id;
-  db.messages[id] = [{ id: uid("m"), from: senderId, text: "出題モードで送りました。まずはバイタル1を見て、対応を回答してみてください。", at: now }];
+  db.messages[id] = [{ id: uid("m"), from: senderId, text: "受信の見本です。内容を確認したら、このチャットで返信してみてください。AI評価では、ガイドラインに照らした解説も見られます。", at: now }];
   notify(db, me.id, "received", id, senderId);
   commit(db);
   return id;
@@ -697,7 +646,7 @@ const NOTICE_TEXT = {
   received: (name) => `${name}さんからシナリオが届きました`,
   reply: (name) => `${name}さんが返信しました`,
   updated: (name) => `${name}さんがシナリオを更新しました`,
-  answered: (name) => `${name}さんが出題に回答しました`,
+  answered: (name) => `${name}さんが回答しました`, // 以前の出題モードの通知（表示用に残す）
 };
 
 export function listNotifications() {

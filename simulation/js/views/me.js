@@ -68,6 +68,7 @@ export function meView(el) {
       </section>
       <section class="card">
         <h2>使い方・利用規約</h2>
+        <label class="check-row howto-toggle"><input type="checkbox" name="howto" ${display.howto ? "checked" : ""}> 使い方モード（各画面に「この画面でできること」と番号付きの説明を表示）</label>
         <div class="btn-row">
           <a class="btn" href="#/guide">使い方ガイド</a>
           <a class="btn" href="#/terms">利用規約</a>
@@ -91,6 +92,7 @@ export function meView(el) {
   el.addEventListener("change", (e) => {
     if (e.target.name === "theme") setDisplay({ theme: e.target.value });
     if (e.target.name === "fontsize") setDisplay({ fontSize: e.target.value });
+    if (e.target.name === "howto") setDisplay({ howto: e.target.checked });
   });
 
   el.addEventListener("click", async (e) => {

@@ -1,4 +1,4 @@
-// 表示の設定（この端末だけに保存）：テーマと文字サイズ
+// 表示の設定（この端末だけに保存）：テーマ、文字サイズ、使い方モード
 
 const KEY = "medsim:display";
 
@@ -15,9 +15,9 @@ export const FONT_SIZES = [
 
 export function getDisplay() {
   try {
-    return { theme: "auto", fontSize: "normal", ...JSON.parse(localStorage.getItem(KEY) || "{}") };
+    return { theme: "auto", fontSize: "normal", howto: true, ...JSON.parse(localStorage.getItem(KEY) || "{}") };
   } catch {
-    return { theme: "auto", fontSize: "normal" };
+    return { theme: "auto", fontSize: "normal", howto: true };
   }
 }
 
@@ -27,6 +27,7 @@ export function setDisplay(next) {
     localStorage.setItem(KEY, JSON.stringify(value));
   } catch {}
   applyDisplay(value);
+  window.dispatchEvent(new CustomEvent("medsim:display", { detail: value }));
 }
 
 // 自動のときは何も指定しない（端末やclaude.aiの表示設定に任せる）

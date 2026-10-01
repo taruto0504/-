@@ -6,7 +6,7 @@ import { PREVIEW } from "./env.js";
 import * as store from "./store.js";
 import { scenarioTitle, fieldLabel, normalizeData } from "./fields.js";
 import { esc, modal, toast, formatId, formatDateTime, copyText } from "./ui.js";
-import { evaluateScenario, describeAiError, explanationToText, AI_DISCLAIMER } from "./ai.js";
+import { evaluateScenario, describeAiError, explanationToText, upgradeResult, AI_DISCLAIMER } from "./ai.js";
 import { ruleChecks } from "./checks.js";
 
 // ---------- 送信 ----------
@@ -219,10 +219,14 @@ export function aiStatusHtml(saved, data) {
 }
 
 function renderResult(saved, { canShare }) {
-  const r = saved.result;
+  const r = upgradeResult(saved.result);
   const issues = r.issues || [];
   const ex = r.explanation;
   const list = (items) => `<ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+  const links = (items) =>
+    `<ul class="ref-list">${items
+      .map((x) => `<li>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.title)}</a>` : esc(x.title)}</li>`)
+      .join("")}</ul>`;
   return `
     <p class="ai-disclaimer">${icon("alert")} ${AI_DISCLAIMER}</p>
     <p class="small muted">評価日時：${formatDateTime(saved.at)}${saved.aiError ? `　<span class="error-text">AI：${esc(saved.aiError)}</span>` : ""}</p>
@@ -251,6 +255,7 @@ function renderResult(saved, { canShare }) {
       ${ex.vitalsRationale ? `<h4>評価の根拠</h4><p>${esc(ex.vitalsRationale)}</p>` : ""}
       ${ex.actions.length ? `<h4>考えられる処置・対応（優先順）</h4><ol>${ex.actions.map((a) => `<li>${esc(a.action)}<span class="issue-reason">理由：${esc(a.reason)}</span></li>`).join("")}</ol>` : ""}
       ${ex.deterioration ? `<h4>急変の解説</h4><p>${esc(ex.deterioration)}</p>` : ""}
+      ${ex.guidelineBasis ? `<div class="guideline-basis"><h4>${icon("doc")} ガイドラインとの照合</h4><p>${esc(ex.guidelineBasis)}</p></div>` : ""}
       ${ex.learningPoints.length ? `<h4>学習ポイント</h4>${list(ex.learningPoints)}` : ""}
       ${
         ex.quiz.length
@@ -260,7 +265,9 @@ function renderResult(saved, { canShare }) {
           : ""
       }
       ${ex.nextTopics.length ? `<h4>次に学ぶとよいテーマ</h4>${list(ex.nextTopics)}` : ""}
-      ${ex.references.length ? `<h4>参考資料</h4>${list(ex.references)}` : ""}
+      ${ex.references.length ? `<h4>参考資料</h4>${links(ex.references)}` : ""}
+      ${r.guidelines.length ? `<h4>参照したガイドライン（アプリ内蔵の要点）</h4>${links(r.guidelines)}<p class="small muted">要点は教育用の要約です。詳しくは各ガイドラインの原文を確認してください。</p>` : ""}
+      ${r.webSources.length ? `<h4>検索で確認したページ</h4>${links(r.webSources)}` : ""}
     </section>
     <section class="ai-section feedback">
       <h3>この解説はどうでしたか？</h3>
@@ -317,6 +324,8 @@ export async function runAiEvaluation(data, { scenarioId = null, canShare = fals
       summary: ai ? ai.summary : "",
       issues: [...rules, ...(ai ? ai.issues.map((i) => ({ ...i, source: "ai" })) : [])],
       explanation: ai ? ai.explanation : null,
+      guidelines: ai ? ai.guidelines : [],
+      webSources: ai ? ai.webSources : [],
     };
     saved = { at: Date.now(), snapshot: snapshotOf(data), result, aiError: aiError === "NO_KEY" ? "APIキーが未設定のため、解説は表示できません（マイページで設定）" : aiError };
     if (scenarioId) store.saveAiResult(scenarioId, saved.snapshot, result);

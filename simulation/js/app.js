@@ -12,6 +12,7 @@ import { contactsView } from "./views/contacts.js";
 import { inboxView } from "./views/inbox.js";
 import { termsView, guideView } from "./views/guide.js";
 import { applyDisplay } from "./settings.js";
+import { showHowto } from "./howto.js";
 import { notificationsView } from "./views/notifications.js";
 import { meView } from "./views/me.js";
 
@@ -19,14 +20,14 @@ const routes = [
   { pattern: /^#\/login(?:\/(\d+))?$/, view: loginView, public: true },
   { pattern: /^#\/register$/, view: registerView, public: true },
   { pattern: /^#\/welcome\/(\d+)$/, view: welcomeView, public: true },
-  { pattern: /^#\/home$/, view: homeView, nav: "home" },
-  { pattern: /^#\/new$/, view: editorView, nav: "new" },
-  { pattern: /^#\/edit\/([\w-]+)$/, view: editorView, nav: "home" },
-  { pattern: /^#\/s\/([\w-]+)(?:\/(chat|history))?$/, view: detailView, nav: "home" },
-  { pattern: /^#\/inbox$/, view: inboxView, nav: "inbox" },
-  { pattern: /^#\/contacts$/, view: contactsView, nav: "contacts" },
-  { pattern: /^#\/notifications$/, view: notificationsView, nav: "notifications" },
-  { pattern: /^#\/me$/, view: meView, nav: "me" },
+  { pattern: /^#\/home$/, view: homeView, nav: "home", howto: "home" },
+  { pattern: /^#\/new$/, view: editorView, nav: "new", howto: "editor" },
+  { pattern: /^#\/edit\/([\w-]+)$/, view: editorView, nav: "home", howto: "editor" },
+  { pattern: /^#\/s\/([\w-]+)(?:\/(chat|history))?$/, view: detailView, nav: "home", howto: "detail" },
+  { pattern: /^#\/inbox$/, view: inboxView, nav: "inbox", howto: "inbox" },
+  { pattern: /^#\/contacts$/, view: contactsView, nav: "contacts", howto: "contacts" },
+  { pattern: /^#\/notifications$/, view: notificationsView, nav: "notifications", howto: "notifications" },
+  { pattern: /^#\/me$/, view: meView, nav: "me", howto: "me" },
   { pattern: /^#\/terms$/, view: termsView, nav: "me", terms: true },
   { pattern: /^#\/guide$/, view: guideView, nav: "me" },
 ];
@@ -204,6 +205,8 @@ async function render() {
     console.error(e);
     el.innerHTML = `<div class="empty"><p>${esc(e.message || "エラーが発生しました")}</p><a class="btn" href="#/home">ホームへ</a></div>`;
   }
+  // 使い方モード：チャットや履歴だけを開いた状態では出さない
+  showHowto(route.view === detailView && params[1] ? "" : route.howto);
   updateBadge();
   rendering = false;
   if (!route.public) showWhileAway();

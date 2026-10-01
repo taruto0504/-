@@ -2,7 +2,6 @@ import * as store from "../store.js";
 import { icon } from "../icons.js";
 import { formatValue, scenarioTitle, getField, fieldLabel } from "../fields.js";
 import { sheetHtml } from "../sheet.js";
-import { maskData, hiddenKeys, quizAskHtml, quizReviewHtml, quizOwnerHtml, answerStatus, showAnswers } from "../quiz.js";
 import { esc, setTitle, formatDateTime, formatId, toast, modal, menu, autoGrow } from "../ui.js";
 import { micButton, bindMics, stopVoice } from "../voice.js";
 import { openSendDialog, runAiEvaluation, openOutputDialog, issuesByField, aiStatusHtml } from "../actions.js";
@@ -74,25 +73,18 @@ export function detailView(el, scenarioId, openPanel) {
   bindMics(el);
   autoGrow(el);
 
-  // 出題モードで答え合わせ前の受信者は、答えにつながる情報（AI評価・編集履歴）を開けない
-  const inQuiz = () => !scenario.isOwner && scenario.quiz.enabled && scenario.quizStep < 3;
-  const visibleData = () => (inQuiz() ? maskData(scenario.data, scenario.quizStep) : scenario.data);
-
   function actionsHtml() {
     const chatLabel = `チャット${scenario.unreadMessages ? `（${scenario.unreadMessages}）` : ""}`;
     const b = (act, label, variant = "") => `<button type="button" class="btn ${variant}" data-act="${act}">${label}</button>`;
     if (scenario.isOwner) return [b("edit", "編集", "primary"), b("send", "送信", "primary"), b("chat", chatLabel), b("ai", "AI評価"), b("output", "PDF・<wbr>印刷"), b("more", "その他")].join("");
-    if (inQuiz()) return [b("chat", chatLabel), b("output", "PDF・<wbr>印刷"), b("delete", "削除", "danger")].join("");
     return [b("chat", chatLabel), b("ai", "AI評価"), b("history", "編集履歴"), b("output", "PDF・<wbr>印刷"), b("delete", "削除", "danger")].join("");
   }
 
   function renderContent() {
     const s = scenario;
-    const hidden = new Set(inQuiz() ? hiddenKeys(s.data, s.quizStep) : []);
     const changes = s.isOwner ? {} : store.changesSince(s, seenAtOpen);
-    for (const k of hidden) delete changes[k];
     const changedCount = Object.keys(changes).length;
-    const ai = inQuiz() ? null : store.getAiResult(s.id);
+    const ai = store.getAiResult(s.id);
     const byField = issuesByField(ai);
     // 送信者向け：何人が確認したか（LINEの既読のように）
     const rs = s.readStatus || [];
@@ -116,9 +108,7 @@ export function detailView(el, scenarioId, openPanel) {
                         ? `<span class="badge ok">確認済み</span><span class="muted small">${formatDateTime(r.opened)}</span>`
                         : '<span class="badge warn">更新後は未確認</span>'
                   }
-                  ${answerStatus(s, r.answer)}
                   <span class="read-actions">
-                    ${s.quiz.enabled ? `<button type="button" class="btn small" data-answer="${r.id}">回答を見る</button>` : ""}
                     <button type="button" class="btn small" data-revoke="${r.id}">共有を解除</button>
                   </span>
                 </li>`
@@ -128,11 +118,6 @@ export function detailView(el, scenarioId, openPanel) {
         </div>`
       : "";
 
-    // 書きかけの回答は、画面を描き直しても消さない（同じ設問のあいだだけ）
-    const typing = el.querySelector("#quiz-answer");
-    const typed = typing && typing.dataset.step === String(s.quizStep) ? typing.value : "";
-    const quizTop = s.isOwner ? quizOwnerHtml(s) : s.quiz.enabled && !inQuiz() ? quizReviewHtml(s) : "";
-    const quizBottom = inQuiz() ? quizAskHtml(s) : "";
     el.querySelector("#detail-content").innerHTML = `
       <div class="detail-meta">
         <span>${s.isOwner ? "あなたが作成" : `<span class="received-label">受信</span>${esc(s.ownerName)}さん${s.ownerExists ? `（${formatId(s.ownerId)}）` : ""}から ${formatDateTime(s.receivedAt)}`}</span>
@@ -142,17 +127,8 @@ export function detailView(el, scenarioId, openPanel) {
       ${!s.isOwner && !s.ownerExists ? '<p class="small muted">送信者がこのシナリオを削除したか、退会しました。内容とチャットは引き続き閲覧できます。</p>' : ""}
       ${changedCount ? `<div class="update-banner">${icon("bell")} 前回確認したあとに <strong>${changedCount}項目</strong> が更新されました。変更箇所は黄色で表示しています。</div>` : ""}
       ${ai ? aiStatusHtml(ai, s.data) : ""}
-      ${quizTop}
-      ${sheetHtml(visibleData(), { changes, issues: byField })}
-      ${quizBottom}
+      ${sheetHtml(s.data, { changes, issues: byField })}
       ${s.isOwner ? readPanel : ""}`;
-    const answerBox = el.querySelector("#quiz-answer");
-    if (answerBox) {
-      answerBox.dataset.step = String(s.quizStep);
-      answerBox.value = typed;
-      bindMics(el.querySelector(".quiz-card"));
-      autoGrow(el.querySelector(".quiz-card"));
-    }
     el.querySelector("#detail-actions").innerHTML = actionsHtml();
   }
 
@@ -259,12 +235,6 @@ export function detailView(el, scenarioId, openPanel) {
   });
 
   el.addEventListener("click", async (e) => {
-    const answerBtn = e.target.closest("[data-answer]");
-    if (answerBtn) {
-      const r = scenario.readStatus.find((x) => x.id === answerBtn.dataset.answer);
-      if (r) showAnswers(scenario, r);
-      return;
-    }
     const revokeBtn = e.target.closest("[data-revoke]");
     if (revokeBtn) {
       const name = store.userName(revokeBtn.dataset.revoke);
@@ -305,23 +275,8 @@ export function detailView(el, scenarioId, openPanel) {
         openHistory(scenario);
         break;
       case "output":
-        openOutputDialog(inQuiz() ? { ...scenario, data: visibleData() } : scenario);
+        openOutputDialog(scenario);
         break;
-      case "quiz-submit": {
-        const box = el.querySelector("#quiz-answer");
-        const err = el.querySelector("#quiz-error");
-        try {
-          const step = scenario.quizStep;
-          store.submitAnswer(scenario.id, step, box.value);
-          box.value = "";
-          toast(step === 1 && scenario.quizStep !== 3 ? "回答しました。状態の変化を確認してください" : "回答しました。答え合わせをしましょう", "success");
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } catch (ex) {
-          err.textContent = ex.message;
-          err.hidden = false;
-        }
-        break;
-      }
       case "delete":
         await doDelete();
         break;

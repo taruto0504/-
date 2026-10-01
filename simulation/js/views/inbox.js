@@ -19,7 +19,6 @@ export function inboxView(el) {
   function card(s) {
     const marks = [];
     if (s.isNew) marks.push('<span class="badge new">未読</span>');
-    if (s.quiz && s.quiz.enabled) marks.push(`<span class="badge quiz">${s.quizStep < 3 ? "出題・回答待ち" : "出題・回答済み"}</span>`);
     if (s.hasUpdate) marks.push('<span class="badge warn">更新あり</span>');
     if (s.unreadMessages) marks.push(`<span class="badge accent">新着メッセージ ${s.unreadMessages}</span>`);
     if (!s.ownerExists) marks.push('<span class="badge">送信者が削除・退会</span>');

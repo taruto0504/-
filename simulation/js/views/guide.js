@@ -1,6 +1,8 @@
 import * as store from "../store.js";
 import { icon } from "../icons.js";
 import { esc, setTitle, formatDateTime, toast } from "../ui.js";
+import { isHowtoOn, setHowto } from "../howto.js";
+import { GUIDELINES, GUIDELINES_CHECKED } from "../guidelines.js";
 
 export const TERMS_HTML = `
   <h3>第1条（目的）</h3>
@@ -80,9 +82,9 @@ export function guideView(el) {
     },
     {
       icon: "ai",
-      title: "出題モードで訓練する",
-      body: "作成画面の「出題設定」で出題モードをオンにして送ると、受け取った人はバイタル1を見て回答 → 急変（バイタル2）を見て回答 → 処置と模範解答で答え合わせ、の順に進みます。送った人は全員の回答を見られます。",
-      action: `${link(sepsis, "出題の見本を開く")}<a class="btn small" href="#/inbox">受け取る側を体験する</a>`,
+      title: "AI評価でガイドラインに照らして学ぶ",
+      body: `「AI評価」を押すと、入力の矛盾をチェックし、病態・処置の優先順位・急変の意味を解説します。疾患名や主訴から関係する国内の診療ガイドライン（${GUIDELINES_CHECKED}時点の最新版）を選び、その推奨に沿っているかも確認します。結果には参照したガイドラインへのリンクが付きます。`,
+      action: `${link(sepsis, "敗血症の見本で試す")}<button type="button" class="btn small" id="show-guidelines">収録ガイドライン一覧</button>`,
     },
     {
       icon: "chat",
@@ -98,6 +100,13 @@ export function guideView(el) {
     },
   ];
   el.innerHTML = `
+    <section class="card howto-switch">
+      <div>
+        <h2>使い方モード</h2>
+        <p class="small">オンにすると、各画面の上に「この画面でできること」が表示され、説明している場所に番号が付きます。</p>
+      </div>
+      <label class="check-row"><input type="checkbox" id="howto-on" ${isHowtoOn() ? "checked" : ""}> 使い方モードを使う</label>
+    </section>
     <p class="guide-lead">見本のシナリオを開きながら、使い方を確かめてみましょう。見本は「見本」と表示され、自由に編集・削除できます。</p>
     <ol class="guide-steps">
       ${steps
@@ -111,5 +120,21 @@ export function guideView(el) {
         )
         .join("")}
     </ol>
+    <section class="card guideline-list" id="guideline-list" hidden>
+      <h2>AIが参照する医療ガイドライン（${GUIDELINES_CHECKED}時点）</h2>
+      <ul class="ref-list">
+        ${GUIDELINES.map((g) => `<li><a href="${esc(g.url)}" target="_blank" rel="noopener noreferrer">${esc(g.title)}</a><span class="small muted">　${esc(g.org)}</span></li>`).join("")}
+      </ul>
+      <p class="small muted">アプリには各ガイドラインの要点（教育用の要約）を収録しています。APIキーを使う通常版では、評価のたびに学会・公的機関などの信頼できるサイトだけを検索して最新情報も確認します。詳しくは各ガイドラインの原文を確認してください。</p>
+    </section>
     <a class="btn primary block" href="#/home">ホームへ</a>`;
+  el.querySelector("#howto-on").addEventListener("change", (e) => {
+    setHowto(e.target.checked);
+    toast(e.target.checked ? "使い方モードをオンにしました。各画面で説明が表示されます" : "使い方モードをオフにしました", "success");
+  });
+  el.querySelector("#show-guidelines").addEventListener("click", () => {
+    const box = el.querySelector("#guideline-list");
+    box.hidden = false;
+    box.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }

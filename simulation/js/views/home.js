@@ -86,7 +86,6 @@ export function homeView(el) {
   function card(s) {
     const badges = [`<span class="badge status-${s.status}">${STATUS_LABEL[s.status]}</span>`];
     if (s.isSample) badges.push('<span class="badge sample">見本</span>');
-    if (s.quiz && s.quiz.enabled) badges.push(`<span class="badge quiz">${!s.isOwner && s.quizStep < 3 ? "出題・回答待ち" : "出題"}</span>`);
     if (s.status === "sent") {
       const rs = s.readStatus || [];
       const confirmed = rs.filter((r) => r.opened).length;

@@ -18,7 +18,6 @@ import { micButton, bindMics, voiceSupported, stopVoice } from "../voice.js";
 import { openSendDialog, runAiEvaluation, issuesByField, issueHtml, aiStatusHtml } from "../actions.js";
 import { confirmDelete } from "./home.js";
 import { findPersonalInfo } from "../privacy.js";
-import { DEFAULT_Q1, DEFAULT_Q2 } from "../samples.js";
 
 const fieldId = (key) => `f-${key.replace(".", "-")}`;
 
@@ -105,7 +104,6 @@ export function editorView(el, scenarioId) {
     return;
   }
   let saved = scenario ? normalizeData(scenario.data) : emptyData();
-  let savedQuiz = scenario ? scenario.quiz : store.normalizeQuiz({ q1: DEFAULT_Q1, q2: DEFAULT_Q2 });
   let privacyAck = ""; // 「このまま保存」を選んだ指摘（同じ内容では何度も聞かない）
   let aiSaved = scenario ? store.getAiResult(scenario.id) : null;
   let pendingAi = null; // 新規作成でまだ保存していないときのAI評価結果
@@ -123,19 +121,6 @@ export function editorView(el, scenarioId) {
         <div class="form-grid">${SECTIONS[0].fields.map((f) => inputHtml(f, saved)).join("")}</div>
       </section>
       ${SECTIONS.slice(1).map((s) => vitalsSectionHtml(s, saved)).join("")}
-      <section class="card form-section quiz-settings">
-        <h2>出題設定</h2>
-        <label class="check-row"><input type="checkbox" name="quiz.enabled" id="quiz-enabled" ${savedQuiz.enabled ? "checked" : ""}> 出題モードで送る</label>
-        <p class="small muted">受け取った人は「バイタル1を見て回答 → 急変（バイタル2）を見て回答 → 処置と模範解答で答え合わせ」の順に進みます。処置欄と模範解答は、答え合わせまで表示されません。</p>
-        <div id="quiz-fields" ${savedQuiz.enabled ? "" : "hidden"}>
-          <div class="field wide"><label for="quiz-q1">設問1（バイタル1を見て）</label>
-            <div class="input-row"><textarea id="quiz-q1" name="quiz.q1" rows="2">${esc(savedQuiz.q1)}</textarea>${micButton("quiz-q1")}</div></div>
-          <div class="field wide"><label for="quiz-q2">設問2（急変後。バイタル2がある場合）</label>
-            <div class="input-row"><textarea id="quiz-q2" name="quiz.q2" rows="2">${esc(savedQuiz.q2)}</textarea>${micButton("quiz-q2")}</div></div>
-          <div class="field wide"><label for="quiz-model">模範解答・解説</label>
-            <div class="input-row"><textarea id="quiz-model" name="quiz.model" rows="4" placeholder="答え合わせで表示する解答と、その理由">${esc(savedQuiz.model)}</textarea>${micButton("quiz-model")}</div></div>
-        </div>
-      </section>
     </form>
     <p class="save-status muted small" id="save-status" aria-live="polite"></p>
     <div class="actionbar">
@@ -159,27 +144,9 @@ export function editorView(el, scenarioId) {
     return normalizeData(data);
   }
 
-  function readQuiz() {
-    return store.normalizeQuiz({
-      enabled: form.elements["quiz.enabled"].checked,
-      q1: form.elements["quiz.q1"].value,
-      q2: form.elements["quiz.q2"].value,
-      model: form.elements["quiz.model"].value,
-    });
-  }
-
-  function writeQuiz(q) {
-    form.elements["quiz.enabled"].checked = q.enabled;
-    form.elements["quiz.q1"].value = q.q1;
-    form.elements["quiz.q2"].value = q.q2;
-    form.elements["quiz.model"].value = q.model;
-    el.querySelector("#quiz-fields").hidden = !q.enabled;
-  }
-
   // 保存・送信の前に、個人情報らしき入力がないか確認する
   async function confirmPrivacy() {
-    const q = readQuiz();
-    const found = findPersonalInfo(readForm(), q.enabled ? { "設問1": q.q1, "設問2": q.q2, "模範解答": q.model } : {});
+    const found = findPersonalInfo(readForm());
     if (!found.length) return true;
     const key = JSON.stringify(found);
     if (key === privacyAck) return true;
@@ -199,7 +166,7 @@ export function editorView(el, scenarioId) {
     if (ok) privacyAck = key;
     else {
       const first = found[0];
-      const target = form.elements[first.key] || el.querySelector(first.key === "設問1" ? "#quiz-q1" : first.key === "設問2" ? "#quiz-q2" : "#quiz-model");
+      const target = form.elements[first.key];
       if (target) target.focus();
     }
     return !!ok;
@@ -236,7 +203,7 @@ export function editorView(el, scenarioId) {
 
   function isDirty() {
     const now = readForm();
-    return Object.keys(now).some((k) => now[k] !== saved[k]) || JSON.stringify(readQuiz()) !== JSON.stringify(savedQuiz);
+    return Object.keys(now).some((k) => now[k] !== saved[k]);
   }
 
   function refreshStatus() {
@@ -248,16 +215,12 @@ export function editorView(el, scenarioId) {
   form.addEventListener("input", () => {
     clearTimeout(draftTimer);
     draftTimer = setTimeout(() => {
-      if (isDirty()) store.saveDraft(scenario && scenario.id, { ...readForm(), __quiz: readQuiz() });
+      if (isDirty()) store.saveDraft(scenario && scenario.id, readForm());
       else store.clearDraft(scenario && scenario.id);
       refreshStatus();
     }, 400);
   });
   form.addEventListener("change", (e) => {
-    if (e.target.name === "quiz.enabled") {
-      el.querySelector("#quiz-fields").hidden = !e.target.checked;
-      autoFit(el);
-    }
     if (e.target.name && /\.(gcs[EVM]|o2)$/.test(e.target.name)) refreshDerived();
   });
 
@@ -270,9 +233,8 @@ export function editorView(el, scenarioId) {
     if (!(await confirmPrivacy())) return false;
     const wasNew = !scenario;
     const oldDraftKey = scenario && scenario.id;
-    scenario = store.saveScenario(scenario && scenario.id, data, readQuiz());
+    scenario = store.saveScenario(scenario && scenario.id, data);
     saved = normalizeData(scenario.data);
-    savedQuiz = scenario.quiz;
     store.clearDraft(oldDraftKey);
     store.clearDraft(scenario.id);
     if (wasNew) {
@@ -342,19 +304,13 @@ export function editorView(el, scenarioId) {
       store.deleteScenarios([scenario.id]);
       store.clearDraft(scenario.id);
       saved = readForm(); // 移動時の保存確認を出さない
-      savedQuiz = readQuiz();
       toast("削除しました", "success");
       location.hash = "#/home";
     }
   });
 
   // 前回保存しなかった入力が残っていれば、復元するか確認する
-  const draftQuiz = draft && draft.data.__quiz ? store.normalizeQuiz(draft.data.__quiz) : null;
-  if (
-    draft &&
-    (Object.keys(draft.data).some((k) => k !== "__quiz" && (draft.data[k] || "") !== (saved[k] || "")) ||
-      (draftQuiz && JSON.stringify(draftQuiz) !== JSON.stringify(savedQuiz)))
-  ) {
+  if (draft && Object.keys(draft.data).some((k) => k !== "__quiz" && (draft.data[k] || "") !== (saved[k] || ""))) {
     modal({
       title: "保存していない入力があります",
       body: `<p>${formatDateTime(draft.at)} に入力していた、保存されていない内容が残っています。復元しますか？</p>`,
@@ -365,7 +321,6 @@ export function editorView(el, scenarioId) {
     }).then((restore) => {
       if (restore) {
         writeForm(normalizeData(draft.data));
-        if (draftQuiz) writeQuiz(draftQuiz);
         toast("入力内容を復元しました");
       } else store.clearDraft(scenario && scenario.id);
       refreshStatus();
