@@ -2,7 +2,7 @@
 import { icon } from "./icons.js";
 
 import * as store from "./store.js";
-import { esc, toast, modal, formatDateTime, setUnreadInTitle, closeAllModals } from "./ui.js";
+import { esc, toast, modal, formatDateTime, setUnreadInTitle, closeAllModals, keepCaretVisible } from "./ui.js";
 import { stopVoice } from "./voice.js";
 import { loginView, registerView, welcomeView } from "./views/auth.js";
 import { homeView } from "./views/home.js";
@@ -308,6 +308,25 @@ window.addEventListener("error", (e) => showUnexpected(e.error || e));
 window.addEventListener("unhandledrejection", (e) => showUnexpected(e.reason));
 
 window.addEventListener("medsim:error", (e) => toast(e.detail));
+
+// スマホで文字を入力している間は、下のメニュー（タブ）を隠して入力する場所を広げる
+const narrow = window.matchMedia("(max-width: 899px)");
+const isTypingTarget = (el) => el && (el.tagName === "TEXTAREA" || (el.tagName === "INPUT" && !["checkbox", "radio", "button", "submit"].includes(el.type)));
+document.addEventListener("focusin", (e) => {
+  if (narrow.matches && isTypingTarget(e.target)) document.body.classList.add("typing");
+});
+document.addEventListener("focusout", () => {
+  setTimeout(() => {
+    if (!isTypingTarget(document.activeElement)) document.body.classList.remove("typing");
+  }, 0);
+});
+// キーボードの表示などで見える範囲が変わったら、入力中の行が隠れないようにする
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", () => {
+    const el = document.activeElement;
+    if (el && el.tagName === "TEXTAREA") keepCaretVisible(el);
+  });
+}
 
 // 共有データの準備ができてから最初の画面を出す
 let started = false;

@@ -115,6 +115,52 @@ function fit(ta) {
   ta.style.height = `${ta.scrollHeight + 2}px`;
 }
 
+// 入力中の行（カーソルの位置）が、画面上部のバーや下のボタン列に隠れないようにスクロールする
+let mirror;
+function caretOffset(ta) {
+  // 入力欄と同じ書式の見えない箱にカーソルまでの文字を入れ、カーソルの高さを測る
+  mirror ||= document.createElement("div");
+  const cs = getComputedStyle(ta);
+  for (const prop of ["fontFamily", "fontSize", "fontWeight", "lineHeight", "letterSpacing", "paddingTop", "paddingRight", "paddingBottom", "paddingLeft", "borderTopWidth", "borderRightWidth", "borderBottomWidth", "borderLeftWidth", "boxSizing", "wordBreak", "overflowWrap"]) {
+    mirror.style[prop] = cs[prop];
+  }
+  Object.assign(mirror.style, { position: "absolute", visibility: "hidden", top: "0", left: "-9999px", whiteSpace: "pre-wrap", width: `${ta.clientWidth}px` });
+  mirror.textContent = ta.value.slice(0, ta.selectionEnd);
+  const marker = document.createElement("span");
+  marker.textContent = "\u200b";
+  mirror.appendChild(marker);
+  document.body.appendChild(mirror);
+  const top = marker.offsetTop;
+  const lineHeight = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+  mirror.remove();
+  return { top, bottom: top + lineHeight };
+}
+
+function visibleArea() {
+  const vv = window.visualViewport;
+  let top = vv ? vv.offsetTop : 0;
+  let bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+  const topbar = document.querySelector(".topbar");
+  if (topbar && getComputedStyle(topbar).display !== "none") top = Math.max(top, topbar.getBoundingClientRect().bottom);
+  for (const el of document.querySelectorAll(".actionbar, .tabbar")) {
+    const r = el.getBoundingClientRect();
+    if (getComputedStyle(el).display !== "none" && r.height && r.top < bottom) bottom = Math.min(bottom, r.top);
+  }
+  return { top, bottom };
+}
+
+export function keepCaretVisible(ta) {
+  if (document.activeElement !== ta || ta.closest(".chat-panel, .modal")) return;
+  const r = ta.getBoundingClientRect();
+  const c = caretOffset(ta);
+  const caretTop = r.top + c.top - ta.scrollTop;
+  const caretBottom = r.top + c.bottom - ta.scrollTop;
+  const area = visibleArea();
+  const margin = 12;
+  if (caretBottom > area.bottom - margin) window.scrollBy(0, caretBottom - area.bottom + margin);
+  else if (caretTop < area.top + margin) window.scrollBy(0, caretTop - area.top - margin);
+}
+
 export function autoGrow(root) {
   root.querySelectorAll("textarea").forEach((ta) => {
     if (ta.dataset.autogrow) return fit(ta);
@@ -128,6 +174,12 @@ export function autoGrow(root) {
     ta.addEventListener("input", () => {
       if (ta.classList.contains("single-line") && /\n/.test(ta.value)) ta.value = ta.value.replace(/\n+/g, " ");
       fit(ta);
+      requestAnimationFrame(() => keepCaretVisible(ta));
+    });
+    // カーソルを動かしたときや、キーボードが出て画面が狭くなったときも合わせる
+    ta.addEventListener("click", () => requestAnimationFrame(() => keepCaretVisible(ta)));
+    ta.addEventListener("keyup", (e) => {
+      if (e.key.startsWith("Arrow")) keepCaretVisible(ta);
     });
     fit(ta);
   });
