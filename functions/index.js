@@ -1,12 +1,15 @@
 // 医療教育アプリのサーバー側処理
-// AI評価(evaluateReport):ログイン中の利用者からの依頼で、レポートを Claude に評価させる。
-// API キーはブラウザに置けないため、必ずこのサーバー側(Cloud Functions)から呼び出す。
+// - evaluateReport:ログイン中の利用者からの依頼で、レポートを Claude に評価させる(AI評価)
+// - getMyPlan     :自分の料金プランと、今日の利用状況を返す
+// API キーはブラウザに置けないため、AI の呼び出しは必ずこのサーバー側(Cloud Functions)で行う。
+// 費用がかかる機能(AI評価)の回数制限は、改ざんされないようサーバー側で判定する。
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const Anthropic = require("@anthropic-ai/sdk");
 const { EvaluationError, normalizeReport, evaluateReport } = require("./evaluate");
+const { PLANS, resolvePlan } = require("./plans");
 
 initializeApp();
 const db = getFirestore();
@@ -14,26 +17,46 @@ const db = getFirestore();
 // firebase functions:secrets:set ANTHROPIC_API_KEY で登録する
 const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
 
-// 1人あたり1日に評価できる回数(費用の使いすぎ防止)。必要に応じて変更する
-const DAILY_LIMIT = 20;
+const COMMON_OPTIONS = {
+  region: "asia-northeast1",
+  // このアプリ以外からの呼び出しを拒否する(App Check)。ローカルのエミュレータでのテスト時だけ無効
+  enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
+};
 
 function todayJst() {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
 }
 
-// 回数を1つ使う。上限に達していればエラー
-async function consumeQuota(uid) {
+// entitlements/{uid}(サーバーや管理者だけが書き込める)から、いま有効なプランを取得する
+async function getUserPlan(uid) {
+  const snap = await db.collection("entitlements").doc(uid).get();
+  return resolvePlan(snap.exists ? snap.data() : null);
+}
+
+async function getAiUsedToday(uid) {
+  const snap = await db.collection("aiUsage").doc(uid).get();
+  const data = snap.exists ? snap.data() : {};
+  return data.day === todayJst() ? (data.count || 0) : 0;
+}
+
+// AI評価の回数を1つ使う。プランの上限に達していればエラー
+async function consumeQuota(uid, plan) {
+  if (plan.aiDailyLimit <= 0) {
+    throw new HttpsError("permission-denied", `AI評価は${PLANS.pro.label}の機能です`, { reason: "upgrade_required", plan: plan.id });
+  }
   const ref = db.collection("aiUsage").doc(uid);
   const day = todayJst();
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.exists ? snap.data() : {};
     const count = data.day === day ? (data.count || 0) : 0;
-    if (count >= DAILY_LIMIT) {
-      throw new HttpsError("resource-exhausted", `AI評価は1日${DAILY_LIMIT}回までです。明日またお試しください`);
+    if (count >= plan.aiDailyLimit) {
+      const upgradeHint = plan.id === "free" ? `(${PLANS.pro.label}なら1日${PLANS.pro.aiDailyLimit}回まで使えます)` : "";
+      throw new HttpsError("resource-exhausted", `AI評価は${plan.label}では1日${plan.aiDailyLimit}回までです。明日またお試しください${upgradeHint}`,
+        { reason: "daily_limit", plan: plan.id, limit: plan.aiDailyLimit });
     }
     tx.set(ref, { day, count: count + 1, updatedAt: FieldValue.serverTimestamp() });
-    return DAILY_LIMIT - count - 1;
+    return plan.aiDailyLimit - count - 1;
   });
 }
 
@@ -49,12 +72,26 @@ async function refundQuota(uid) {
   }).catch((e) => console.error("refundQuota", e));
 }
 
+// アプリ側で表示に使うプラン情報(ブラウザに渡してよい項目だけ)
+function publicPlan(p) {
+  return { id: p.id, label: p.label, price: p.price, aiDailyLimit: p.aiDailyLimit, maxAttachments: p.maxAttachments, maxRecipients: p.maxRecipients, showAds: p.showAds };
+}
+
+exports.getMyPlan = onCall(COMMON_OPTIONS, async (request) => {
+  if (!request.auth) throw new HttpsError("unauthenticated", "ログインしてください");
+  const uid = request.auth.uid;
+  const [plan, aiUsed] = await Promise.all([getUserPlan(uid), getAiUsedToday(uid)]);
+  return {
+    plan: { ...publicPlan(plan), expiresAt: plan.expiresAt, expired: plan.expired },
+    usage: { aiUsedToday: aiUsed, aiRemainingToday: Math.max(0, plan.aiDailyLimit - aiUsed) },
+    plans: Object.values(PLANS).map(publicPlan), // プランの比較表に使う
+  };
+});
+
 exports.evaluateReport = onCall(
   {
-    region: "asia-northeast1",
+    ...COMMON_OPTIONS,
     secrets: [ANTHROPIC_API_KEY],
-    // このアプリ以外からの呼び出しを拒否する(App Check)。ローカルのエミュレータでのテスト時だけ無効
-    enforceAppCheck: process.env.FUNCTIONS_EMULATOR !== "true",
     timeoutSeconds: 540, // ガイドラインのWeb検索を含めると1〜3分ほどかかるため長めに
     memory: "512MiB",
     maxInstances: 10,
@@ -94,7 +131,8 @@ exports.evaluateReport = onCall(
       throw e;
     }
 
-    const remaining = await consumeQuota(uid);
+    const plan = await getUserPlan(uid);
+    const remaining = await consumeQuota(uid, plan);
     let result;
     try {
       const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
@@ -119,7 +157,7 @@ exports.evaluateReport = onCall(
       });
       reviewId = saved.id;
     }
-    console.log("evaluateReport ok", { uid, reportId: data.reportId || null, usage: result.usage });
-    return { review: result.review, model: result.model, reviewId, remaining };
+    console.log("evaluateReport ok", { uid, plan: plan.id, reportId: data.reportId || null, usage: result.usage });
+    return { review: result.review, model: result.model, reviewId, remaining, plan: plan.id };
   }
 );

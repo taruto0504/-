@@ -336,6 +336,23 @@
   .ai-search-links{display:flex; flex-wrap:wrap; gap:8px;}
   .ai-search-links .chip{text-decoration:none; font-size:12.5px;}
   .ai-loading small{font-size:12px; color:var(--ink-soft);}
+
+  /* ---- 料金プラン ---- */
+  .plan-badge{display:inline-block; font-size:12px; font-weight:800; padding:3px 10px; border-radius:999px;}
+  .plan-badge.free{background:#EEF1EF; color:var(--ink-soft);}
+  .plan-badge.pro{background:linear-gradient(135deg,#C4842B,#E0A84E); color:#fff;}
+  .id-plan{font-size:11.5px; font-weight:700; background:rgba(255,255,255,.18); padding:4px 10px; border-radius:999px; cursor:pointer; position:relative; z-index:1;}
+  .plan-current{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-top:8px;}
+  .plan-current-name{margin:6px 0 8px; display:flex; align-items:center;}
+  .plan-current-name .plan-badge{font-size:14px; padding:5px 14px;}
+  .plan-usage{font-size:13.5px; font-weight:600;}
+  .plan-table-wrap{overflow-x:auto; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);}
+  .plan-table{width:100%; border-collapse:collapse; font-size:13px;}
+  .plan-table th, .plan-table td{padding:11px 10px; border-bottom:1px solid var(--line); text-align:center; white-space:nowrap;}
+  .plan-table tbody th{text-align:left; font-weight:700; color:var(--ink-soft);}
+  .plan-table tr:last-child th, .plan-table tr:last-child td{border-bottom:none;}
+  .plan-table .cur{background:var(--primary-tint); font-weight:800;}
+  .plan-table small{font-size:10.5px; font-weight:700; color:var(--primary-dark);}
   .sidebar-brand{display:none;}
 
   /* ==== 端末に合わせた自動切り替え ==== */
@@ -514,6 +531,7 @@ const S = {
   aiDraft:{ loading:false, result:null, error:'' }, // 作成画面のAI評価(保存しない)
   aiBusy:false,       // 詳細画面でAI評価を実行中のレポートID(実行中でなければ false)
   aiError:'',
+  plan:null,          // 料金プラン(サーバーの getMyPlan の結果)
   aiReview:null,      // 詳細画面に表示する最新のAI評価
   aiReviewLoaded:false,
 };
@@ -613,6 +631,94 @@ async function loadDirectory(){
   }
 }
 
+/* ============ 料金プラン ============ */
+// プランの内容(回数や上限)はサーバー側(functions/plans.js)が正。アプリはサーバーから受け取って表示する。
+// サーバーに接続できないときだけ、無料プラン相当の値で動かす
+const FALLBACK_PLAN = { id:'free', label:'無料プラン', price:'無料', aiDailyLimit:3, maxAttachments:3, maxRecipients:10, showAds:true };
+function currentPlan(){ return (S.plan && S.plan.plan) || FALLBACK_PLAN; }
+function isFreePlan(){ return currentPlan().id === 'free'; }
+function proPlan(){ return ((S.plan && S.plan.plans) || []).find(p=>p.id==='pro') || null; }
+function callFunction(name, payload, timeout){
+  if(!window.fb || !window.fb.functions) return Promise.reject(Object.assign(new Error('Firebaseの読み込み中です'), {code:'unavailable'}));
+  const fn = window.fb.httpsCallable(window.fb.functions, name, timeout ? { timeout } : undefined);
+  return fn(payload || {}).then(r=>r.data);
+}
+async function loadMyPlan(){
+  try{
+    const data = await callFunction('getMyPlan');
+    S.plan = Object.assign({ loaded:true, error:'' }, data);
+  }catch(e){
+    console.error(e);
+    S.plan = { loaded:true, error:'プラン情報を取得できませんでした(サーバー未設定の可能性があります)', plan:null, usage:null, plans:null };
+  }
+  if(['home','settings','plan','create','detail'].includes(S.screen)) render();
+}
+// 上限に達したときの案内(無料プランなら、プロプランでの上限も添える)
+function limitMessage(base, key){
+  const pro = proPlan();
+  return isFreePlan() && pro && pro[key] > currentPlan()[key] ? `${base}(${pro.label}なら${pro[key]}まで)` : base;
+}
+function adSlotHtml(style){
+  return currentPlan().showAds ? `<div class="ad-slot" style="${style||''}">広告スペース(準備中)</div>` : '';
+}
+function planBadgeHtml(){
+  const p = currentPlan();
+  return `<span class="plan-badge ${p.id==='free'?'free':'pro'}">${escapeHtml(p.label)}</span>`;
+}
+function aiRemainingText(){
+  const u = S.plan && S.plan.usage;
+  const p = currentPlan();
+  if(p.aiDailyLimit<=0) return `AI評価は${escapeHtml((proPlan()||{label:'有料プラン'}).label)}の機能です`;
+  return u ? `今日のAI評価:残り ${Number(u.aiRemainingToday)||0} / ${p.aiDailyLimit} 回` : `AI評価:1日 ${p.aiDailyLimit} 回まで`;
+}
+function aiLocked(){ return currentPlan().aiDailyLimit <= 0; }
+
+// 有料プランへの申し込み(決済は今後つなぐ。Web は Stripe、スマホアプリはアプリ内課金を予定)
+function upgradePlan(){
+  alert('有料プランは準備中です。\n提供を開始したら、この画面から申し込めるようになります。');
+}
+
+// ---- プラン画面 ----
+function screenPlan(){
+  const p = currentPlan();
+  const plans = (S.plan && S.plan.plans) || [FALLBACK_PLAN];
+  const u = S.plan && S.plan.usage;
+  const until = p.expiresAt ? new Date(p.expiresAt).toLocaleDateString('ja-JP', { timeZone:'Asia/Tokyo' }) : ''; // 契約期限は日本時間で表示
+  const row = (label, f)=>`<tr><th>${label}</th>${plans.map(pl=>`<td class="${pl.id===p.id?'cur':''}">${f(pl)}</td>`).join('')}</tr>`;
+  return `
+    <div class="topbar bordered">
+      <div class="back-btn" onclick="go('settings')">←</div>
+      <h1>プラン</h1>
+    </div>
+    <div class="content">
+      <div class="plan-current">
+        <div class="set-sub">現在のプラン</div>
+        <div class="plan-current-name">${planBadgeHtml()}${until ? `<span class="set-sub" style="margin-left:8px;">${escapeHtml(until)} まで</span>` : ''}</div>
+        <div class="plan-usage">${aiRemainingText()}</div>
+        ${S.plan && S.plan.error ? `<div class="ai-note" style="margin-top:10px;">${escapeHtml(S.plan.error)}</div>` : ''}
+        ${p.expired ? `<div class="ai-note" style="margin-top:10px;">有料プランの期限が切れたため、無料プランになっています</div>` : ''}
+      </div>
+
+      <div class="section-title">プランの比較</div>
+      <div class="plan-table-wrap">
+        <table class="plan-table">
+          <thead><tr><th></th>${plans.map(pl=>`<th class="${pl.id===p.id?'cur':''}">${escapeHtml(pl.label)}${pl.id===p.id?'<br><small>ご利用中</small>':''}</th>`).join('')}</tr></thead>
+          <tbody>
+            ${row('料金', pl=>escapeHtml(pl.price))}
+            ${row('🤖 AI評価', pl=>pl.aiDailyLimit>0 ? `1日 ${pl.aiDailyLimit} 回` : '—')}
+            ${row('🖼 画像添付', pl=>`${pl.maxAttachments} 枚まで`)}
+            ${row('📤 送信先', pl=>`1回 ${pl.maxRecipients} 名まで`)}
+            ${row('広告', pl=>pl.showAds ? 'あり' : 'なし')}
+          </tbody>
+        </table>
+      </div>
+
+      ${isFreePlan() ? `<button class="btn solid block" style="margin-top:18px;" onclick="upgradePlan()">${escapeHtml((proPlan()||{label:'有料プラン'}).label)}にアップグレード</button>
+        <div class="set-sub" style="text-align:center; margin-top:8px;">有料プランは準備中です</div>` : ''}
+    </div>
+  `;
+}
+
 /* ============ Render ============ */
 let _lastRenderedScreen = null;
 function render(){
@@ -626,6 +732,7 @@ function render(){
   else if(S.screen==='send') html = wrap(screenSend(), 'create');
   else if(S.screen==='settings') html = wrap(screenSettings(), 'settings');
   else if(S.screen==='contacts') html = wrap(screenContacts(), 'home');
+  else if(S.screen==='plan') html = wrap(screenPlan(), 'settings');
   else if(S.screen==='terms') html = screenLegal('terms');
   else if(S.screen==='privacy') html = screenLegal('privacy');
   // 相手のコメント受信などで再描画されても、入力途中のコメントが消えないようにする
@@ -760,7 +867,9 @@ const TERMS_TEXT = `
 <p>利用者が作成したレポート等の内容は、利用者本人が指定した送信先にのみ共有されます。運営者は、サービス運営上必要な範囲を除き、投稿内容の内容そのものを閲覧・利用しません。</p>
 <h3 style="font-size:14px;">第4条(免責事項)</h3>
 <p>本サービスは学習・情報共有を目的としたものであり、記載内容の医学的正確性を保証するものではありません。診療上の最終判断は、必ず所属施設のルールおよび利用者自身の専門的判断に基づいて行ってください。</p>
-<h3 style="font-size:14px;">第5条(規約の変更)</h3>
+<h3 style="font-size:14px;">第5条(有料プラン)</h3>
+<p>本サービスの一部の機能(AI評価の利用回数の拡大等)は、有料プランで提供することがあります。料金、支払方法、契約期間、解約の方法は、申込画面および別途定める表示(特定商取引法に基づく表記を含む)に従うものとします。</p>
+<h3 style="font-size:14px;">第6条(規約の変更)</h3>
 <p>運営者は、必要と判断した場合、利用者への通知の上、本規約を変更できるものとします。</p>
 <p style="color:var(--ink-soft); font-size:12px; margin-top:20px;">※これは開発中のプロトタイプ向けのひな形です。実際の運用前に、必ず医療機関の法務・コンプライアンス部門、または弁護士による確認を受けてください。</p>
 `;
@@ -850,6 +959,7 @@ function applyAuthUser(user, fallback){
   ME.id = id || makePersonalId('', user.uid);
   ME.emailVerified = !!user.emailVerified;
   startReportsListener(); // ログインしたら、レポートのリアルタイム監視を開始する
+  loadMyPlan();           // 料金プランと今日の利用状況を取得する
 }
 
 async function doLogin(){
@@ -933,6 +1043,7 @@ async function loadProfileAndApply(user){
 
 async function doLogout(){
   stopReportsListener();
+  S.plan = null;
   if(!window.fb){ S.screen='login'; render(); return; }
   try{ await window.fb.signOut(window.fb.auth); }catch(e){}
   toast('ログアウトしました');
@@ -1039,6 +1150,7 @@ function screenHome(){
         <div class="name">${escapeHtml(ME.name)} さん</div>
         <div class="idrow">
           <div><div class="idlabel">個人ID</div><div class="idval">${escapeHtml(ME.id)}</div></div>
+          <div class="id-plan" onclick="go('plan')">${escapeHtml(currentPlan().label)} ›</div>
         </div>
       </div>
 
@@ -1093,7 +1205,7 @@ function screenHome(){
       }).join('') || `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🔔</div>まだ通知はありません</div>`}
       ${notifItems.length>4 ? `<div style="text-align:center; margin-top:6px;"><a style="font-size:12.5px; color:var(--primary-dark); font-weight:700; cursor:pointer;" onclick="go('saved')">すべて見る(${notifItems.length}件)</a></div>` : ''}
 
-      <div class="ad-slot" style="margin-top:24px;">広告スペース(準備中)</div>
+      ${adSlotHtml('margin-top:24px;')}
     </div>
   `;
 }
@@ -1162,7 +1274,8 @@ function screenCreate(){
 
       <div class="create-actions">
         <button class="btn sm" onclick="saveDraft()">💾 保存</button>
-        <button class="btn sm ai-btn" onclick="aiEvaluateDraft()" ${S.aiDraft.loading?'disabled':''}>${S.aiDraft.loading ? '🤖 評価中…' : '🤖 AI評価'}</button>
+        ${aiLocked() ? `<button class="btn sm ai-btn" onclick="go('plan')">🔒 AI評価</button>`
+          : `<button class="btn sm ai-btn" onclick="aiEvaluateDraft()" ${S.aiDraft.loading?'disabled':''}>${S.aiDraft.loading ? '🤖 評価中…' : '🤖 AI評価'}</button>`}
         <button class="btn sm" onclick="doPrint()" title="印刷・PDF" aria-label="印刷・PDF">🖨</button>
         <button class="btn sm solid send" onclick="goToSend()">送信 →</button>
       </div>
@@ -1238,7 +1351,8 @@ function stopMic(){
 function addAttachment(){
   const d = S.draft; // アップロード中に画面を移動しても、この下書きに添付する
   d.attachments = d.attachments||[];
-  if(d.attachments.length>=6){ toast('添付は6件までです'); return; }
+  const maxAtt = currentPlan().maxAttachments;
+  if(d.attachments.length>=maxAtt){ toast(limitMessage(`画像の添付は${maxAtt}枚までです`, 'maxAttachments')); return; }
   if(!window.fb || !ME.uid){ toast('ログイン状態を確認してください'); return; }
   const input = document.createElement('input');
   input.type = 'file';
@@ -1530,7 +1644,7 @@ function detailContent(r){
     <div class="detail-title">${escapeHtml(r.title)}</div>
     <div class="detail-meta">${escapeHtml(r.createdAt)} 作成 ${r.originalId?'・🔗 再編集版':''}</div>
     <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
-      <button class="btn sm ai-btn" onclick="openAiTabAndRun(${jsArg(r.id)})">🤖 AIで評価</button>
+      ${aiLocked() ? `<button class="btn sm ai-btn" onclick="go('plan')">🔒 AIで評価</button>` : `<button class="btn sm ai-btn" onclick="openAiTabAndRun(${jsArg(r.id)})">🤖 AIで評価</button>`}
       <button class="btn sm" onclick="printReport(${jsArg(r.id)})">🖨 印刷・PDF</button>
     </div>
     <div class="detail-body">${escapeHtml(r.body)}
@@ -1572,9 +1686,23 @@ function detailChat(r){
 /* ---- AI評価 ---- */
 // サーバー側(Cloud Functions の evaluateReport)が Claude を呼び出して評価する。APIキーはブラウザに置かない
 function callAiEvaluate(payload){
-  if(!window.fb || !window.fb.functions) throw Object.assign(new Error('Firebaseの読み込み中です'), {code:'unavailable'});
-  const fn = window.fb.httpsCallable(window.fb.functions, 'evaluateReport', { timeout: 540000 });
-  return fn(payload).then(r=>r.data);
+  return callFunction('evaluateReport', payload, 540000).then(data=>{
+    // 残り回数を画面に反映
+    if(S.plan && S.plan.usage && typeof data.remaining==='number') S.plan.usage.aiRemainingToday = data.remaining;
+    return data;
+  });
+}
+// プランの上限によるエラーか(アップグレードの案内を出す)
+function isPlanLimitError(e){
+  const reason = e && e.details && e.details.reason;
+  return reason==='upgrade_required' || (reason==='daily_limit' && isFreePlan());
+}
+function aiErrorHtml(msg, upgrade){
+  return `<div class="ai-error">⚠️ ${escapeHtml(msg)}
+    ${upgrade ? `<div style="margin-top:8px;"><button class="btn sm" onclick="go('plan')">プランを見る ›</button></div>` : ''}</div>`;
+}
+function aiLockedHtml(){
+  return `<div class="ai-note">🔒 ${aiRemainingText()}。<a style="font-weight:700; cursor:pointer;" onclick="go('plan')">プランを見る ›</a></div>`;
 }
 function aiErrorMessage(e){
   const code = String(e && e.code || '').replace('functions/','');
@@ -1612,14 +1740,15 @@ async function aiEvaluateDraft(){
     if(typeof data.remaining==='number') toast('AI評価が完了しました(今日はあと' + data.remaining + '回)');
   }catch(e){
     console.error(e);
-    S.aiDraft = { loading:false, result:null, error: aiErrorMessage(e) };
+    S.aiDraft = { loading:false, result:null, error: aiErrorMessage(e), upgrade: isPlanLimitError(e) };
+    if(e && e.details && e.details.reason==='daily_limit' && S.plan && S.plan.usage) S.plan.usage.aiRemainingToday = 0;
   }
   if(S.screen==='create' && S.draft===d) render();
 }
 function aiDraftPanelHtml(){
   const a = S.aiDraft;
   if(a.loading) return aiLoadingHtml();
-  if(a.error) return `<div class="ai-error">⚠️ ${escapeHtml(a.error)}</div>`;
+  if(a.error) return aiErrorHtml(a.error, a.upgrade);
   if(!a.result) return '';
   const changed = S.draft && a.snapshot && draftSnapshot(S.draft)!==a.snapshot;
   return `<div class="ai-panel">
@@ -1671,6 +1800,8 @@ async function aiEvaluateReport(id){
   }catch(e){
     console.error(e);
     S.aiError = aiErrorMessage(e);
+    S.aiErrorUpgrade = isPlanLimitError(e);
+    if(e && e.details && e.details.reason==='daily_limit' && S.plan && S.plan.usage) S.plan.usage.aiRemainingToday = 0;
   }
   S.aiBusy = false;
   if(S.screen==='detail') render();
@@ -1689,11 +1820,12 @@ function detailAi(r){
       <span style="font-size:12px;">※評価のため、内容がAIサービス(Anthropic社)に送信されます。添付画像は評価に含まれません。</span>
       ${isMine(r) ? '' : '<br>評価結果は、作成者と受信者の全員が見られます。'}
     </div>
-    <button class="btn solid block ai-run" onclick="aiEvaluateReport(${jsArg(r.id)})" ${S.aiBusy?'disabled':''}>
-      ${S.aiBusy===r.id ? '🤖 評価中…' : rv ? '🤖 もう一度評価する' : '🤖 AIで評価する'}
+    ${aiLocked() ? aiLockedHtml() : `<div class="set-sub" style="margin:-4px 0 8px;">${aiRemainingText()}</div>`}
+    <button class="btn solid block ai-run" onclick="${aiLocked() ? `go('plan')` : `aiEvaluateReport(${jsArg(r.id)})`}" ${S.aiBusy?'disabled':''}>
+      ${aiLocked() ? '🔒 プランを見る' : S.aiBusy===r.id ? '🤖 評価中…' : rv ? '🤖 もう一度評価する' : '🤖 AIで評価する'}
     </button>
     ${S.aiBusy===r.id ? aiLoadingHtml() : ''}
-    ${S.aiError ? `<div class="ai-error">⚠️ ${escapeHtml(S.aiError)}</div>` : ''}
+    ${S.aiError ? aiErrorHtml(S.aiError, S.aiErrorUpgrade) : ''}
     ${!S.aiReviewLoaded && !rv ? `<div class="ai-note" style="margin-top:14px;">読み込み中…</div>` : ''}
     ${S.aiReviewLoaded && !rv && S.aiBusy!==r.id ? `<div class="empty-state" style="padding:30px 10px;"><div class="em-ic">🤖</div>まだAI評価はありません</div>` : ''}
     ${rv ? `<div class="ai-panel">
@@ -1926,12 +2058,14 @@ function screenSend(){
 }
 function toggleRecipient(id){
   const i = S.sendSelected.indexOf(id);
+  const max = currentPlan().maxRecipients;
+  if(i===-1 && S.sendSelected.length >= max){ toast(limitMessage(`一度に送信できるのは${max}名までです`, 'maxRecipients')); return; }
   if(i>-1) S.sendSelected.splice(i,1); else S.sendSelected.push(id);
   render();
 }
 async function doSend(){
   if(!S.sendSelected.length){ toast('送信先を選択してください'); return; }
-  if(S.sendSelected.length > 50){ toast('一度に送信できるのは50名までです'); return; }
+  if(S.sendSelected.length > currentPlan().maxRecipients){ toast(limitMessage(`一度に送信できるのは${currentPlan().maxRecipients}名までです`, 'maxRecipients')); return; }
   const btn = document.getElementById('send-submit-btn');
   const originalLabel = btn ? btn.textContent : null;
   if(btn){ btn.textContent = '送信中…'; btn.disabled = true; }
@@ -2056,6 +2190,14 @@ function screenSettings(){
   return `
     <div class="topbar"><h1>設定</h1></div>
     <div class="content no-pad-top">
+      <div class="section-title">プラン</div>
+      <div class="set-card">
+        <div class="set-row" style="cursor:pointer;" onclick="go('plan')">
+          <div><div class="set-label">${planBadgeHtml()}</div><div class="set-sub" style="margin-top:6px;">${aiRemainingText()}</div></div>
+          <div style="color:var(--ink-soft);">${isFreePlan() ? 'アップグレード ›' : '詳細 ›'}</div>
+        </div>
+      </div>
+
       <div class="section-title">アカウント</div>
       <div class="set-card">
         <div class="set-row">
@@ -2105,8 +2247,7 @@ function screenSettings(){
         </div>
       </div>
 
-      <div class="section-title">広告</div>
-      <div class="ad-slot">広告スペース(準備中)</div>
+      ${currentPlan().showAds ? `<div class="section-title">広告</div>${adSlotHtml()}` : ''}
 
       ${IS_STANDALONE ? '' : `
       <div class="section-title">アプリ</div>

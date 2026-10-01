@@ -154,5 +154,11 @@ service cloud.firestore {
     match /aiUsage/{uid} {
       allow read, write: if false;
     }
+
+    // 料金プランの契約状況。本人は読めるが、書き込みはサーバー(決済処理)と管理者だけ
+    match /entitlements/{uid} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if false;
+    }
   }
 }
