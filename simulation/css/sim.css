@@ -1,22 +1,22 @@
 :root {
-  --primary: #0b6e99;
-  --primary-dark: #084f70;
-  --accent: #e8f4f9;
+  --primary: #0a7470;
+  --primary-dark: #075551;
+  --accent: #e4f3f1;
   --danger: #c0392b;
   --danger-dark: #a93226;
   --danger-soft: #fdecea;
   --warning: #8a5300;
   --warning-soft: #fff4d6;
   --success: #1e8449;
-  --gray: #e9eef1;
-  --gray-dark: #d9e1e6;
-  --text: #1a2530;
-  --muted: #56666f;
-  --border: #d7e3ea;
-  --bg: #f4f8fa;
+  --gray: #e7eef0;
+  --gray-dark: #d5e0e3;
+  --text: #12242e;
+  --muted: #4f626a;
+  --border: #d3e0e2;
+  --bg: #eff4f5;
   --surface: #ffffff;
   --input-bg: #ffffff;
-  --accent-border: #bfe0ee;
+  --accent-border: #b3ddd7;
   --warning-border: #f1d48a;
   --warning-text: #5d3a00;
   --success-soft: #e6f4ea;
@@ -28,35 +28,45 @@
   --danger-border: #f0c4bf;
   --disabled: #9aa7b0;
   --disabled-bg: #eef2f4;
-  --track: #e3edf2;
+  --track: #e0ecee;
   --bar-bg: rgba(255, 255, 255, 0.97);
   --radius: 14px;
   --topbar: 56px;
   --tabbar: 62px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --chrome: #0f2c40;
+  --chrome-2: #18425c;
+  --chrome-text: #e9f2f6;
+  --chrome-muted: #a3bccb;
+  --abn-hi: #c3241c;
+  --abn-lo: #1b5fbf;
+  --abn-bg: #fdeceb;
+  --abn-lo-bg: #e8f0fc;
+  --font: "IBM Plex Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
 /* ダークモード：端末の設定に合わせる（マイページで「ライト」「ダーク」を選ぶとそちらを優先） */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --primary: #2489b8;
-    --primary-dark: #8fd0ef;
-    --accent: #13303d;
+    --primary: #1f978f;
+    --primary-dark: #8fe0d6;
+    --accent: #0f2f2d;
     --danger: #d9584a;
     --danger-dark: #c04a3d;
     --danger-soft: #3a1f1c;
     --warning: #f0b65a;
     --warning-soft: #3a2e14;
     --success: #4cc27a;
-    --gray: #26323a;
-    --gray-dark: #33424c;
+    --gray: #22313a;
+    --gray-dark: #2f414b;
     --text: #e6edf2;
     --muted: #9aaab5;
-    --border: #2f3d46;
-    --bg: #10171c;
-    --surface: #19232a;
-    --input-bg: #131c22;
-    --accent-border: #26576e;
+    --border: #263840;
+    --bg: #0d1519;
+    --surface: #152128;
+    --input-bg: #111b20;
+    --accent-border: #23564f;
     --warning-border: #6b5320;
     --warning-text: #f3d39a;
     --success-soft: #173325;
@@ -70,28 +80,36 @@
     --disabled-bg: #1b242a;
     --track: #202b32;
     --bar-bg: rgba(25, 35, 42, 0.97);
+    --chrome: #0a1b26;
+    --chrome-2: #143446;
+    --chrome-text: #e3eef3;
+    --chrome-muted: #8ea7b5;
+    --abn-hi: #ff8a80;
+    --abn-lo: #8ab4ff;
+    --abn-bg: #3a1d1b;
+    --abn-lo-bg: #1a2a44;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --primary: #2489b8;
-  --primary-dark: #8fd0ef;
-  --accent: #13303d;
+  --primary: #1f978f;
+  --primary-dark: #8fe0d6;
+  --accent: #0f2f2d;
   --danger: #d9584a;
   --danger-dark: #c04a3d;
   --danger-soft: #3a1f1c;
   --warning: #f0b65a;
   --warning-soft: #3a2e14;
   --success: #4cc27a;
-  --gray: #26323a;
-  --gray-dark: #33424c;
+  --gray: #22313a;
+  --gray-dark: #2f414b;
   --text: #e6edf2;
   --muted: #9aaab5;
-  --border: #2f3d46;
-  --bg: #10171c;
-  --surface: #19232a;
-  --input-bg: #131c22;
-  --accent-border: #26576e;
+  --border: #263840;
+  --bg: #0d1519;
+  --surface: #152128;
+  --input-bg: #111b20;
+  --accent-border: #23564f;
   --warning-border: #6b5320;
   --warning-text: #f3d39a;
   --success-soft: #173325;
@@ -105,6 +123,14 @@
   --disabled-bg: #1b242a;
   --track: #202b32;
   --bar-bg: rgba(25, 35, 42, 0.97);
+  --chrome: #0a1b26;
+  --chrome-2: #143446;
+  --chrome-text: #e3eef3;
+  --chrome-muted: #8ea7b5;
+  --abn-hi: #ff8a80;
+  --abn-lo: #8ab4ff;
+  --abn-bg: #3a1d1b;
+  --abn-lo-bg: #1a2a44;
   color-scheme: dark;
 }
 /* 文字サイズの切り替え（マイページ） */
@@ -114,7 +140,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, -apple-system, sans-serif;
+  font-family: var(--font);
   background: var(--bg);
   color: var(--text);
   font-size: 16px;
@@ -127,7 +153,7 @@ h1, h2, h3, h4, p { margin: 0; }
 a { color: var(--primary); }
 button, input, select, textarea { font: inherit; color: inherit; }
 [hidden] { display: none !important; }
-:focus-visible { outline: 3px solid rgba(11, 110, 153, 0.45); outline-offset: 2px; }
+:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 50%, transparent); outline-offset: 2px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* ---------- レイアウト ---------- */
@@ -1175,3 +1201,94 @@ body.sheet-open::before {
 .howto-switch h2 { margin: 0 0 4px; }
 .guideline-list li { margin-bottom: 6px; }
 .minds-link { display: inline-block; margin-left: 4px; padding: 0 6px; border-radius: 6px; font-size: 11px; font-weight: 700; line-height: 18px; color: var(--success); background: var(--success-soft); border: 1px solid var(--success-border); text-decoration: none; vertical-align: 1px; }
+
+/* ================================================================
+   医療系テーマ：電子カルテ風の濃紺の枠と、生体モニター風の数値表示
+   ================================================================ */
+.topbar { background: var(--chrome); color: var(--chrome-text); box-shadow: inset 0 -3px 0 var(--primary); }
+.back-btn, .topbar-btn { background: color-mix(in srgb, var(--chrome-text) 14%, transparent); color: var(--chrome-text); }
+.brand-mark { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 34px; height: 34px; border-radius: 9px; background: var(--primary); color: #fff; }
+.brand-mark .brand-icon { color: #fff; width: 20px; height: 20px; }
+.tab-link.active { color: var(--primary); }
+.tab-link.active .nav-icon { background: var(--accent); border-radius: 999px; padding: 2px 14px; }
+
+@media (min-width: 900px) {
+  .sidenav { background: var(--chrome); border-right: 0; color: var(--chrome-text); padding: 18px 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px 18px; margin-bottom: 10px; color: var(--chrome-text); border-bottom: 1px solid color-mix(in srgb, var(--chrome-text) 14%, transparent); }
+  .brand-text { display: flex; flex-direction: column; font-size: 15px; line-height: 1.3; }
+  .brand-text small { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 0.06em; color: var(--chrome-muted); }
+  .side-link { color: var(--chrome-muted); font-weight: 500; }
+  .side-link:hover { background: var(--chrome-2); color: var(--chrome-text); }
+  .side-link.active { background: var(--primary); color: #fff; font-weight: 700; }
+  .side-foot { color: var(--chrome-muted); }
+  .topbar { box-shadow: 0 1px 0 var(--border); background: var(--surface); color: var(--text); }
+  .topbar .back-btn, .topbar .topbar-btn { background: var(--gray); color: var(--text); }
+  .topbar h1 { font-size: 18px; font-weight: 700; }
+}
+
+/* 角を少し締めて、業務アプリらしい落ち着いた面に */
+.card { border-radius: 12px; box-shadow: 0 1px 3px rgba(15, 44, 64, 0.06); }
+.scenario-card, .inbox-card { border-radius: 10px; box-shadow: none; }
+.scenario-card:hover, .inbox-card:hover { border-color: var(--primary); }
+.btn { border-radius: 8px; }
+h2 { letter-spacing: 0.01em; }
+
+/* ログイン：心電図の波形 */
+.auth-brand { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.auth-brand .brand-mark { width: 52px; height: 52px; border-radius: 14px; }
+.auth-brand .brand-mark .brand-icon { width: 30px; height: 30px; }
+.auth-brand .ecg { width: min(240px, 80%); height: 36px; color: var(--primary); }
+.auth-brand .ecg polyline { stroke-dasharray: 1000; stroke-dashoffset: 0; animation: ecg-draw 2.4s ease-out 1; }
+@keyframes ecg-draw { from { stroke-dashoffset: 1000; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .auth-brand .ecg polyline { animation: none; } }
+
+/* 数字（ID・バイタル）は等幅で */
+.big-id, .detail-meta, .sc-date, .formatted-id { font-variant-numeric: tabular-nums; }
+.big-id { font-family: var(--mono); }
+
+/* 一覧：バイタル1の主な値 */
+.sc-vitals { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 2px; }
+.vt { display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 7px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; line-height: 1.6; }
+.vt-k { color: var(--muted); font-weight: 600; font-size: 10.5px; letter-spacing: 0.04em; }
+.vt-v { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
+.vt.abn.hi { color: var(--abn-hi); background: var(--abn-bg); border-color: color-mix(in srgb, var(--abn-hi) 35%, transparent); }
+.vt.abn.lo { color: var(--abn-lo); background: var(--abn-lo-bg); border-color: color-mix(in srgb, var(--abn-lo) 35%, transparent); }
+.vt.abn .vt-k { color: inherit; }
+
+/* シナリオシート：患者バンドと、モニター風のバイタル表 */
+.sheet { border-radius: 12px; padding: 0 16px 14px; gap: 0; }
+.sheet > .sheet-head { padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.sheet > .sheet-issues { margin-top: 10px; }
+.sheet-band { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 -16px 10px; padding: 7px 16px; border-radius: 11px 11px 0 0; background: var(--chrome); color: var(--chrome-text); }
+.sheet-kind { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; }
+.sheet-band .sheet-profile { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--chrome-text); }
+.sheet-title { color: var(--text); font-size: 22px; }
+.sheet-label { color: var(--primary-dark); }
+.sheet-table thead th { background: var(--accent); color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
+.sheet-table td.num { font-family: var(--mono); font-weight: 600; }
+.sheet-table td.num .sub { font-family: var(--font); }
+.sheet-table td.abn.hi { color: var(--abn-hi); }
+.sheet-table td.abn.lo { color: var(--abn-lo); }
+.sheet-table td.abn.abn:not(.hi):not(.lo) { color: var(--abn-hi); }
+.sheet .flag { display: inline-block; margin-left: 4px; padding: 0 4px; border: 1px solid currentColor; border-radius: 4px; font-family: var(--mono); font-size: 11px; font-weight: 700; line-height: 16px; vertical-align: 2px; }
+.sheet-legend { margin-top: 8px; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+.sheet-legend .abn { display: inline-block; min-width: 18px; text-align: center; border: 1px solid currentColor; border-radius: 4px; font-family: var(--mono); font-size: 11px; font-weight: 700; line-height: 16px; }
+.sheet-legend .abn.hi, .sheet-legend .abn.x { color: var(--abn-hi); }
+.sheet-legend .abn.lo { color: var(--abn-lo); }
+
+/* 印刷：用紙は白・文字は黒（色付きは範囲外の値だけ） */
+.sheet.print { padding: 0; }
+.sheet.print > .sheet-head { padding: 0 0 6px; margin-bottom: 6px; border-bottom: 1px solid #999; }
+.sheet.print .sheet-band { margin: 0 0 4px; padding: 3px 8px; background: #fff; color: #000; border: 1px solid #000; }
+.sheet.print .sheet-band .sheet-profile { color: #000; }
+.sheet.print .sheet-label { color: #333; }
+.sheet.print .sheet-table thead th { border-bottom: 1px solid #000; }
+.sheet.print td.abn:not(.lo), .sheet.print .sheet-legend .abn.hi, .sheet.print .sheet-legend .abn.x { color: #b00000; }
+.sheet.print td.abn.lo, .sheet.print .sheet-legend .abn.lo { color: #0a4aa8; }
+.sheet.print .sheet-legend { font-size: 7.5pt; color: #333; margin-top: 3px; }
+@media (min-width: 640px) {
+  .sheet { padding: 0 22px 18px; }
+  .sheet-band { margin: 0 -22px 12px; padding: 8px 22px; }
+}
+.sheet.print { padding: 0; }
+.sheet.print .sheet-band { margin: 0 0 4px; padding: 3px 8px; border-radius: 0; }

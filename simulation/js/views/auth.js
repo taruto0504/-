@@ -13,7 +13,7 @@ export function loginView(el, presetId) {
   setTitle("ログイン");
   el.innerHTML = `
     <div class="auth-card">
-      <div class="auth-brand">${icon("cross", "brand-icon")}<h2>医療シミュレーション</h2><p>症例シナリオを作って、共有して、話し合う</p></div>
+      <div class="auth-brand"><span class="brand-mark">${icon("cross", "brand-icon")}</span><svg class="ecg" viewBox="0 0 240 36" aria-hidden="true" focusable="false"><polyline points="0,20 70,20 80,20 86,14 92,20 104,20 110,24 116,2 122,32 128,20 140,20 150,16 160,20 240,20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg><h2>医療シミュレーション</h2><p>症例シナリオを作って、共有して、話し合う</p></div>
       <form id="login-form" novalidate>
         <div class="field">
           <label for="login-id">個人ID</label>
@@ -46,7 +46,7 @@ export function registerView(el) {
   setTitle("新規登録");
   el.innerHTML = `
     <div class="auth-card">
-      <div class="auth-brand">${icon("cross", "brand-icon")}<h2>新規登録</h2><p>名前とパスワードだけで登録できます</p></div>
+      <div class="auth-brand"><span class="brand-mark">${icon("cross", "brand-icon")}</span><h2>新規登録</h2><p>名前とパスワードだけで登録できます</p></div>
       <form id="reg-form" novalidate>
         <div class="field">
           <label for="reg-name">名前</label>

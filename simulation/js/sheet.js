@@ -4,10 +4,11 @@
 import { gcsTotal, isVitalsEmpty, scenarioTitle, fieldLabel } from "./fields.js";
 import { esc } from "./ui.js";
 import { icon } from "./icons.js";
+import { flagOf, bpFlag, flagMark, flagsApply, RANGE_NOTE } from "./vitals.js";
 
 // バイタルサインの行。keys は v1./v2. を除いた項目キー
 const ROWS = [
-  { label: "意識(JCS)", keys: ["jcs"], fmt: (g) => (g("jcs") !== "" ? g("jcs") : ""), trend: "jcs" },
+  { label: "意識(JCS)", keys: ["jcs"], fmt: (g) => (g("jcs") !== "" ? g("jcs") : ""), trend: "jcs", flag: (g) => flagOf("jcs", g("jcs")) },
   {
     label: "GCS",
     keys: ["gcsE", "gcsV", "gcsM"],
@@ -18,15 +19,16 @@ const ROWS = [
       const total = gcsTotal(d, p);
       return total ? { main: total, sub: detail } : detail;
     },
+    flag: (g, d, p) => flagOf("gcs", gcsTotal(d, p)),
   },
-  { label: "HR", unit: "回/分", keys: ["hr"], trend: "hr" },
-  { label: "血圧(右)", unit: "mmHg", keys: ["bpRSys", "bpRDia"], fmt: (g) => bp(g("bpRSys"), g("bpRDia")), trend: "bpRSys" },
-  { label: "血圧(左)", unit: "mmHg", keys: ["bpLSys", "bpLDia"], fmt: (g) => bp(g("bpLSys"), g("bpLDia")), trend: "bpLSys" },
-  { label: "SpO2(RA)", unit: "%", keys: ["spo2"], trend: "spo2" },
+  { label: "HR", unit: "回/分", keys: ["hr"], trend: "hr", flag: (g) => flagOf("hr", g("hr")) },
+  { label: "血圧(右)", unit: "mmHg", keys: ["bpRSys", "bpRDia"], fmt: (g) => bp(g("bpRSys"), g("bpRDia")), trend: "bpRSys", flag: (g) => bpFlag(g("bpRSys"), g("bpRDia")) },
+  { label: "血圧(左)", unit: "mmHg", keys: ["bpLSys", "bpLDia"], fmt: (g) => bp(g("bpLSys"), g("bpLDia")), trend: "bpLSys", flag: (g) => bpFlag(g("bpLSys"), g("bpLDia")) },
+  { label: "SpO2(RA)", unit: "%", keys: ["spo2"], trend: "spo2", flag: (g) => flagOf("spo2", g("spo2")) },
   { label: "酸素投与", keys: ["o2", "o2Flow"], fmt: (g) => (g("o2") ? `${g("o2")}${g("o2Flow") && g("o2") !== "なし" ? ` ${g("o2Flow")}L/分` : ""}` : "") },
-  { label: "SpO2(投与後)", unit: "%", keys: ["spo2O2"], trend: "spo2O2" },
-  { label: "RR", unit: "回/分", keys: ["rr"], trend: "rr" },
-  { label: "体温", unit: "℃", keys: ["temp"], trend: "temp" },
+  { label: "SpO2(投与後)", unit: "%", keys: ["spo2O2"], trend: "spo2O2", flag: (g) => flagOf("spo2", g("spo2O2")) },
+  { label: "RR", unit: "回/分", keys: ["rr"], trend: "rr", flag: (g) => flagOf("rr", g("rr")) },
+  { label: "体温", unit: "℃", keys: ["temp"], trend: "temp", flag: (g) => flagOf("temp", g("temp")) },
   { label: "既往歴", keys: ["history"], text: true },
   { label: "処置", keys: ["treatment"], text: true },
   { label: "備考", keys: ["notes"], text: true },
@@ -39,7 +41,8 @@ function bp(sys, dia) {
 
 // 値の文字（比較・変更前の表示用）と、表に出すHTML
 const valueText = (v) => (v && typeof v === "object" ? `${v.main} ${v.sub}` : v || "");
-const valueHtml = (v) => (v && typeof v === "object" ? `${esc(v.main)}<span class="sub">${esc(v.sub)}</span>` : esc(v));
+const valueHtml = (v, flag = "") =>
+  v && typeof v === "object" ? `${esc(v.main)}${flag}<span class="sub">${esc(v.sub)}</span>` : v ? `${esc(v)}${flag}` : "";
 
 function cellValue(row, data, prefix) {
   const g = (k) => data[`${prefix}.${k}`] || "";
@@ -62,6 +65,8 @@ function trendMark(row, data) {
  */
 export function sheetHtml(data, { changes = {}, issues = {}, print = false } = {}) {
   const hasV2 = !isVitalsEmpty(data, "v2");
+  const useFlags = flagsApply(data);
+  let flagged = false;
   const prefixes = hasV2 ? ["v1", "v2"] : ["v1"];
   const mark = (keys) => {
     if (print) return { cls: "", before: null, issue: false };
@@ -95,7 +100,10 @@ export function sheetHtml(data, { changes = {}, issues = {}, print = false } = {
           prev = `<span class="before">前: ${esc(valueText(cellValue(row, old, p))) || "（未入力）"}</span>`;
         }
         const trend = i === 1 ? trendMark(row, data) : "";
-        return `<td class="${row.text ? "text" : "num"} ${m.cls}">${valueHtml(values[i]) || '<span class="muted">—</span>'}${trend}${m.issue ? icon("alert", "issue-icon") : ""}${prev}</td>`;
+        const g = (k) => data[`${p}.${k}`] || "";
+        const flag = useFlags && row.flag && values[i] ? row.flag(g, data, p) : "";
+        if (flag) flagged = true;
+        return `<td class="${row.text ? "text" : "num"} ${m.cls} ${flag ? `abn ${flag}` : ""}">${valueHtml(values[i], flagMark(flag)) || '<span class="muted">—</span>'}${trend}${m.issue ? icon("alert", "issue-icon") : ""}${prev}</td>`;
       })
       .join("");
     return `<tr${row.text ? ' class="text-row"' : ""}><th scope="row">${row.label}${row.unit ? `<span class="unit">${row.unit}</span>` : ""}</th>${cells}</tr>`;
@@ -115,10 +123,11 @@ export function sheetHtml(data, { changes = {}, issues = {}, print = false } = {
   return `
     <article class="sheet ${print ? "print" : ""}">
       <header class="sheet-head">
-        <div class="sheet-title-row">
-          <h2 class="sheet-title ${basicMark("disease").cls}">${esc(scenarioTitle(data))}</h2>
+        <div class="sheet-band">
+          <span class="sheet-kind">症例シナリオ</span>
           ${profile ? `<span class="sheet-profile">${profile}</span>` : ""}
         </div>
+        <h2 class="sheet-title ${basicMark("disease").cls}">${esc(scenarioTitle(data))}</h2>
         ${before("disease")}${before("age")}${before("sex")}
         ${textBlock("complaint", "主訴")}
         ${textBlock("summary", "概要")}
@@ -127,9 +136,10 @@ export function sheetHtml(data, { changes = {}, issues = {}, print = false } = {
         rows
           ? `<div class="sheet-table-wrap"><table class="sheet-table ${hasV2 ? "two" : "one"}">
               <colgroup><col class="col-label">${prefixes.map(() => "<col>").join("")}</colgroup>
-              <thead><tr><th scope="col">項目</th><th scope="col">バイタル1</th>${hasV2 ? '<th scope="col">バイタル2<span class="unit">急変時</span></th>' : ""}</tr></thead>
+              <thead><tr><th scope="col">項目</th><th scope="col">バイタル1<span class="unit">初期</span></th>${hasV2 ? '<th scope="col">バイタル2<span class="unit">急変時</span></th>' : ""}</tr></thead>
               <tbody>${rows}</tbody>
-            </table></div>`
+            </table></div>
+            ${flagged ? `<p class="sheet-legend"><span class="abn hi">H</span> 高値　<span class="abn lo">L</span> 低値　<span class="abn x">!</span> 異常（${RANGE_NOTE}）</p>` : ""}`
           : '<p class="muted small">バイタルサインは未入力です。</p>'
       }
       ${issueList}

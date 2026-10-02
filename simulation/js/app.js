@@ -57,7 +57,7 @@ function shell() {
     ).join("");
   app.innerHTML = `
     <aside class="sidenav" aria-label="メインメニュー">
-      <div class="brand">${icon("cross", "brand-icon")} 医療シミュレーション</div>
+      <div class="brand"><span class="brand-mark">${icon("cross", "brand-icon")}</span><span class="brand-text">医療シミュレーション<small>Scenario Trainer</small></span></div>
       <nav>${navLinks("side-link")}</nav>
       <a href="../index.html" class="side-foot">← 医療サポートツールへ</a>
     </aside>

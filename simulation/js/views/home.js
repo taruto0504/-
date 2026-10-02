@@ -1,6 +1,7 @@
 import * as store from "../store.js";
 import { icon } from "../icons.js";
 import { scenarioTitle, scenarioSubtitle } from "../fields.js";
+import { flagOf, bpFlag, flagsApply } from "../vitals.js";
 import { esc, setTitle, formatDateTime, formatId, modal, toast, menu } from "../ui.js";
 
 const FILTERS = [
@@ -96,6 +97,7 @@ export function homeView(el) {
     if (s.hasUpdate) badges.push('<span class="badge warn">更新あり</span>');
     if (s.unreadMessages) badges.push(`<span class="badge accent">新着メッセージ ${s.unreadMessages}</span>`);
     const sub = scenarioSubtitle(s.data);
+    const vitals = vitalStrip(s.data);
     return `
       <li class="scenario-item">
         <a class="scenario-card ${selected.has(s.id) ? "selected" : ""}" href="#/s/${s.id}" data-id="${s.id}">
@@ -103,12 +105,29 @@ export function homeView(el) {
           <span class="sc-main">
             <span class="sc-title">${esc(scenarioTitle(s.data))}</span>
             <span class="sc-sub">${esc(sub || "年齢・性別 未入力")}</span>
+            ${vitals}
             <span class="sc-badges">${badges.join("")}</span>
             <span class="sc-date">更新 ${formatDateTime(s.updatedAt)}</span>
           </span>
         </a>
         ${selecting ? "" : `<button type="button" class="btn small item-menu" data-menu="${s.id}">メニュー</button>`}
       </li>`;
+  }
+
+  // 一覧で状態が分かるよう、バイタル1の主な値を並べる（基準範囲外は色を変える）
+  function vitalStrip(d) {
+    const useFlags = flagsApply(d);
+    const items = [
+      ["HR", d["v1.hr"], flagOf("hr", d["v1.hr"])],
+      ["BP", d["v1.bpRSys"] ? `${d["v1.bpRSys"]}/${d["v1.bpRDia"] || "-"}` : "", bpFlag(d["v1.bpRSys"], d["v1.bpRDia"])],
+      ["SpO2", d["v1.spo2"] ? `${d["v1.spo2"]}%` : "", flagOf("spo2", d["v1.spo2"])],
+      ["RR", d["v1.rr"], flagOf("rr", d["v1.rr"])],
+      ["T", d["v1.temp"] ? `${d["v1.temp"]}℃` : "", flagOf("temp", d["v1.temp"])],
+    ].filter(([, v]) => v);
+    if (!items.length) return "";
+    return `<span class="sc-vitals">${items
+      .map(([k, v, f]) => `<span class="vt ${useFlags && f ? `abn ${f}` : ""}"><span class="vt-k">${k}</span><span class="vt-v">${esc(v)}</span></span>`)
+      .join("")}</span>`;
   }
 
   function listHtml(all, list) {
