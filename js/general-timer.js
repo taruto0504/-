@@ -733,9 +733,30 @@
 
   renderLaps();
 
+  // Lists scroll inside their card and get only the height left on screen,
+  // so each tab fits one screen whatever the device's status/home bars take.
+  const FIT_LISTS = { countdown: "saved-preset-list", stopwatch: "lap-list", cpa: "log-list" };
+  const MIN_LIST_PX = 72;
+  function fitListToScreen() {
+    const panel = document.querySelector(".tab-panel.active");
+    const list = panel && document.getElementById(FIT_LISTS[panel.id.replace("tab-", "")]);
+    if (!list) return;
+    if (list.classList.contains("expanded")) {
+      list.style.maxHeight = "";
+      return;
+    }
+    const rest = document.body.scrollHeight - list.offsetHeight;
+    const px = Math.max(MIN_LIST_PX, Math.floor(window.innerHeight - rest)) + "px";
+    if (list.style.maxHeight !== px) list.style.maxHeight = px;
+  }
+  tabBtns.forEach((btn) => btn.addEventListener("click", fitListToScreen));
+  document.getElementById("btn-toggle-log").addEventListener("click", fitListToScreen);
+  window.addEventListener("resize", fitListToScreen);
+
   function tick() {
     renderCountdown();
     renderStopwatch();
+    fitListToScreen();
   }
 
   tick();

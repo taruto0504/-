@@ -12,6 +12,7 @@
 </head>
 <body>
 <script src="js/icons.js"></script>
+<script src="js/native.js"></script>
 <header class="app-header">
   <a class="back-btn" href="index.html" aria-label="戻る"><svg class="ic"><use href="#i-chevron-left"/></svg></a>
   <h1><svg class="ic"><use href="#i-stopwatch"/></svg>タイマー</h1>
@@ -107,7 +108,8 @@
   <!-- CPA記録タイマー -->
   <section id="tab-cpa" class="tab-panel cpa-compact">
     <div class="card cpa-cycles-card">
-      <div class="cpa-cycle">
+      <div class="cpa-cycle" id="rhythm-cycle">
+        <div class="cycle-due-msg" role="alert"><svg class="ic"><use href="#i-clock"/></svg> リズムチェックの時間</div>
         <h2><span class="cycle-dot"></span>リズムチェック<span class="cpa-cycle-period">2分</span></h2>
         <div class="time cpa-cycle-time-sm" id="rhythm-cycle-time">02:00</div>
         <div class="cycle-controls">
@@ -115,7 +117,8 @@
           <button class="cycle-reset" id="rhythm-reset">リセット</button>
         </div>
       </div>
-      <div class="cpa-cycle">
+      <div class="cpa-cycle med" id="med-cycle">
+        <div class="cycle-due-msg" role="alert"><svg class="ic"><use href="#i-syringe"/></svg> 薬剤投与の時間</div>
         <h2><span class="cycle-dot med"></span>薬剤投与<span class="cpa-cycle-period">4分</span></h2>
         <div class="time cpa-cycle-time-sm" id="med-cycle-time">04:00</div>
         <div class="cycle-controls">
@@ -124,8 +127,6 @@
         </div>
       </div>
     </div>
-    <div class="alert-banner rhythm" id="alert-rhythm"><svg class="ic"><use href="#i-clock"/></svg> リズムチェックの時間です(開始で圧迫音も再生)</div>
-    <div class="alert-banner epi" id="alert-epi"><svg class="ic"><use href="#i-syringe"/></svg> 薬剤投与の時間です</div>
 
     <div class="card">
       <h2><svg class="ic"><use href="#i-note"/></svg>イベント記録</h2>
@@ -177,11 +178,11 @@
 
     <div class="card">
       <div class="note-row">
-        <input type="text" id="note-input" placeholder="メモ入力 例: 家族到着 など" autocomplete="off">
+        <input type="text" id="note-input" placeholder="メモ(例: 家族到着)" autocomplete="off">
         <button class="mic-btn" id="btn-mic" type="button" aria-label="音声入力"><svg class="ic"><use href="#i-mic"/></svg></button>
         <button class="btn-primary cpa-note-add" id="btn-add-note" type="button">追加</button>
       </div>
-      <div class="voice-hint" id="voice-hint">マイクボタンで音声入力(話すと自動追加)</div>
+      <div class="voice-hint" id="voice-hint"></div>
 
       <div class="log-list" id="log-list">
         <div class="empty-log">まだ記録がありません</div>

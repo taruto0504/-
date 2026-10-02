@@ -14,8 +14,8 @@
     medTime: document.getElementById("med-cycle-time"),
     medStartPause: document.getElementById("med-start-pause"),
     medReset: document.getElementById("med-reset"),
-    alertRhythm: document.getElementById("alert-rhythm"),
-    alertEpi: document.getElementById("alert-epi"),
+    rhythmCycle: document.getElementById("rhythm-cycle"),
+    medCycle: document.getElementById("med-cycle"),
     medDrugSelect: document.getElementById("med-drug-select"),
     rhythmWaveSelect: document.getElementById("rhythm-wave-select"),
     ettSizeSelect: document.getElementById("ett-size-select"),
@@ -174,20 +174,21 @@
     }
   }
 
-  function flashBanner(el) {
-    el.classList.add("show");
+  // Highlights the due timer in place (no extra banner rows, so the tab keeps fitting one screen).
+  function flashDue(el) {
+    el.classList.add("is-due");
     clearTimeout(el._hideTimer);
-    el._hideTimer = setTimeout(() => el.classList.remove("show"), 6000);
+    el._hideTimer = setTimeout(() => el.classList.remove("is-due"), 6000);
   }
 
   function triggerRhythmAlert() {
-    flashBanner(els.alertRhythm);
+    flashDue(els.rhythmCycle);
     vibrate([300, 120, 300, 120, 300]);
     playAlarmBurst([1400, 1000, 1400, 1000]);
   }
 
   function triggerMedAlert() {
-    flashBanner(els.alertEpi);
+    flashDue(els.medCycle);
     vibrate([300, 150, 300]);
     playAlarmBurst([900, 1300, 900]);
   }
@@ -480,7 +481,8 @@
 
   // --- 音声入力 ---
   const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const DEFAULT_VOICE_HINT = "マイクボタンをタップすると音声入力を開始します。話した内容は自動で記録に追加されます。";
+  // Empty by default so the hint line takes no space; it only appears for status messages.
+  const DEFAULT_VOICE_HINT = "";
   let recognition = null;
   let isListening = false;
   let stoppingIntentionally = false;
@@ -558,9 +560,8 @@
       }
     });
   } else {
-    els.micBtn.disabled = true;
-    els.micBtn.style.opacity = "0.4";
-    els.voiceHint.textContent = "この端末・ブラウザは音声入力に対応していません。テキスト入力をご利用ください。";
+    // e.g. the iOS app's WebView: the keyboard's own dictation still works.
+    els.micBtn.style.display = "none";
   }
 
   window.addEventListener("pagehide", stopCompressionSound);
