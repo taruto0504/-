@@ -486,7 +486,8 @@
     const file = soundEls.file.files && soundEls.file.files[0];
     soundEls.file.value = "";
     if (!file) return;
-    if (file.type && !file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
+    const isAudioExt = /\.(mp3|m4a|m4r|aac|wav|aiff?|caf|flac|ogg|oga|opus)$/i.test(file.name);
+    if (!isAudioExt && !(file.type || "").startsWith("audio/")) {
       showPresetMsg("音声ファイルを選んでください。", true);
       return;
     }
