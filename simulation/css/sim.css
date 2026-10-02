@@ -38,10 +38,6 @@
   --chrome-2: #18425c;
   --chrome-text: #e9f2f6;
   --chrome-muted: #a3bccb;
-  --abn-hi: #c3241c;
-  --abn-lo: #1b5fbf;
-  --abn-bg: #fdeceb;
-  --abn-lo-bg: #e8f0fc;
   --font: "IBM Plex Sans JP", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
 }
@@ -84,10 +80,6 @@
     --chrome-2: #143446;
     --chrome-text: #e3eef3;
     --chrome-muted: #8ea7b5;
-    --abn-hi: #ff8a80;
-    --abn-lo: #8ab4ff;
-    --abn-bg: #3a1d1b;
-    --abn-lo-bg: #1a2a44;
     color-scheme: dark;
   }
 }
@@ -127,10 +119,6 @@
   --chrome-2: #143446;
   --chrome-text: #e3eef3;
   --chrome-muted: #8ea7b5;
-  --abn-hi: #ff8a80;
-  --abn-lo: #8ab4ff;
-  --abn-bg: #3a1d1b;
-  --abn-lo-bg: #1a2a44;
   color-scheme: dark;
 }
 /* 文字サイズの切り替え（マイページ） */
@@ -1251,9 +1239,6 @@ h2 { letter-spacing: 0.01em; }
 .vt { display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 7px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); font-size: 12px; line-height: 1.6; }
 .vt-k { color: var(--muted); font-weight: 600; font-size: 10.5px; letter-spacing: 0.04em; }
 .vt-v { font-family: var(--mono); font-weight: 600; font-variant-numeric: tabular-nums; }
-.vt.abn.hi { color: var(--abn-hi); background: var(--abn-bg); border-color: color-mix(in srgb, var(--abn-hi) 35%, transparent); }
-.vt.abn.lo { color: var(--abn-lo); background: var(--abn-lo-bg); border-color: color-mix(in srgb, var(--abn-lo) 35%, transparent); }
-.vt.abn .vt-k { color: inherit; }
 
 /* シナリオシート：患者バンドと、モニター風のバイタル表 */
 .sheet { border-radius: 12px; padding: 0 16px 14px; gap: 0; }
@@ -1267,14 +1252,6 @@ h2 { letter-spacing: 0.01em; }
 .sheet-table thead th { background: var(--accent); color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
 .sheet-table td.num { font-family: var(--mono); font-weight: 600; }
 .sheet-table td.num .sub { font-family: var(--font); }
-.sheet-table td.abn.hi { color: var(--abn-hi); }
-.sheet-table td.abn.lo { color: var(--abn-lo); }
-.sheet-table td.abn.abn:not(.hi):not(.lo) { color: var(--abn-hi); }
-.sheet .flag { display: inline-block; margin-left: 4px; padding: 0 4px; border: 1px solid currentColor; border-radius: 4px; font-family: var(--mono); font-size: 11px; font-weight: 700; line-height: 16px; vertical-align: 2px; }
-.sheet-legend { margin-top: 8px; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
-.sheet-legend .abn { display: inline-block; min-width: 18px; text-align: center; border: 1px solid currentColor; border-radius: 4px; font-family: var(--mono); font-size: 11px; font-weight: 700; line-height: 16px; }
-.sheet-legend .abn.hi, .sheet-legend .abn.x { color: var(--abn-hi); }
-.sheet-legend .abn.lo { color: var(--abn-lo); }
 
 /* 印刷：用紙は白・文字は黒（色付きは範囲外の値だけ） */
 .sheet.print { padding: 0; }
@@ -1283,9 +1260,6 @@ h2 { letter-spacing: 0.01em; }
 .sheet.print .sheet-band .sheet-profile { color: #000; }
 .sheet.print .sheet-label { color: #333; }
 .sheet.print .sheet-table thead th { border-bottom: 1px solid #000; }
-.sheet.print td.abn:not(.lo), .sheet.print .sheet-legend .abn.hi, .sheet.print .sheet-legend .abn.x { color: #b00000; }
-.sheet.print td.abn.lo, .sheet.print .sheet-legend .abn.lo { color: #0a4aa8; }
-.sheet.print .sheet-legend { font-size: 7.5pt; color: #333; margin-top: 3px; }
 @media (min-width: 640px) {
   .sheet { padding: 0 22px 18px; }
   .sheet-band { margin: 0 -22px 12px; padding: 8px 22px; }

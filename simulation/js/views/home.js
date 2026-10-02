@@ -1,7 +1,6 @@
 import * as store from "../store.js";
 import { icon } from "../icons.js";
 import { scenarioTitle, scenarioSubtitle } from "../fields.js";
-import { flagOf, bpFlag, flagsApply } from "../vitals.js";
 import { esc, setTitle, formatDateTime, formatId, modal, toast, menu } from "../ui.js";
 
 const FILTERS = [
@@ -114,19 +113,18 @@ export function homeView(el) {
       </li>`;
   }
 
-  // 一覧で状態が分かるよう、バイタル1の主な値を並べる（基準範囲外は色を変える）
+  // 一覧で状態が分かるよう、バイタル1の主な値を並べる
   function vitalStrip(d) {
-    const useFlags = flagsApply(d);
     const items = [
-      ["HR", d["v1.hr"], flagOf("hr", d["v1.hr"])],
-      ["BP", d["v1.bpRSys"] ? `${d["v1.bpRSys"]}/${d["v1.bpRDia"] || "-"}` : "", bpFlag(d["v1.bpRSys"], d["v1.bpRDia"])],
-      ["SpO2", d["v1.spo2"] ? `${d["v1.spo2"]}%` : "", flagOf("spo2", d["v1.spo2"])],
-      ["RR", d["v1.rr"], flagOf("rr", d["v1.rr"])],
-      ["T", d["v1.temp"] ? `${d["v1.temp"]}℃` : "", flagOf("temp", d["v1.temp"])],
+      ["HR", d["v1.hr"]],
+      ["BP", d["v1.bpRSys"] ? `${d["v1.bpRSys"]}/${d["v1.bpRDia"] || "-"}` : ""],
+      ["SpO2", d["v1.spo2"] ? `${d["v1.spo2"]}%` : ""],
+      ["RR", d["v1.rr"]],
+      ["T", d["v1.temp"] ? `${d["v1.temp"]}℃` : ""],
     ].filter(([, v]) => v);
     if (!items.length) return "";
     return `<span class="sc-vitals">${items
-      .map(([k, v, f]) => `<span class="vt ${useFlags && f ? `abn ${f}` : ""}"><span class="vt-k">${k}</span><span class="vt-v">${esc(v)}</span></span>`)
+      .map(([k, v]) => `<span class="vt"><span class="vt-k">${k}</span><span class="vt-v">${esc(v)}</span></span>`)
       .join("")}</span>`;
   }
 
