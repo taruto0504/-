@@ -1,4 +1,4 @@
-const CACHE_NAME = "medsim-v19";
+const CACHE_NAME = "medsim-v20";
 const ASSETS = [
   "index.html",
   "manifest.json",
@@ -29,9 +29,9 @@ const ASSETS = [
   "js/views/notifications.js",
   "js/views/me.js",
   "js/views/guide.js",
-  "../icons/icon.svg",
-  "../icons/icon-192.png",
-  "../icons/icon-512.png",
+  "icons/icon.svg",
+  "icons/icon-192.png",
+  "icons/icon-512.png",
 ];
 
 self.addEventListener("install", (event) => {

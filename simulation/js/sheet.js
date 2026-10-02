@@ -7,7 +7,7 @@ import { icon } from "./icons.js";
 
 // バイタルサインの行。keys は v1./v2. を除いた項目キー
 const ROWS = [
-  { label: "意識(JCS)", keys: ["jcs"], fmt: (g) => (g("jcs") !== "" ? g("jcs") : ""), trend: "jcs" },
+  { label: "意識(JCS)", keys: ["jcs"], fmt: (g) => (g("jcs") !== "" ? g("jcs") : "") },
   {
     label: "GCS",
     keys: ["gcsE", "gcsV", "gcsM"],
@@ -19,14 +19,14 @@ const ROWS = [
       return total ? { main: total, sub: detail } : detail;
     },
   },
-  { label: "HR", unit: "回/分", keys: ["hr"], trend: "hr" },
-  { label: "血圧(右)", unit: "mmHg", keys: ["bpRSys", "bpRDia"], fmt: (g) => bp(g("bpRSys"), g("bpRDia")), trend: "bpRSys" },
-  { label: "血圧(左)", unit: "mmHg", keys: ["bpLSys", "bpLDia"], fmt: (g) => bp(g("bpLSys"), g("bpLDia")), trend: "bpLSys" },
-  { label: "SpO2(RA)", unit: "%", keys: ["spo2"], trend: "spo2" },
+  { label: "HR", unit: "回/分", keys: ["hr"] },
+  { label: "血圧(右)", unit: "mmHg", keys: ["bpRSys", "bpRDia"], fmt: (g) => bp(g("bpRSys"), g("bpRDia")) },
+  { label: "血圧(左)", unit: "mmHg", keys: ["bpLSys", "bpLDia"], fmt: (g) => bp(g("bpLSys"), g("bpLDia")) },
+  { label: "SpO2(RA)", unit: "%", keys: ["spo2"] },
   { label: "酸素投与", keys: ["o2", "o2Flow"], fmt: (g) => (g("o2") ? `${g("o2")}${g("o2Flow") && g("o2") !== "なし" ? ` ${g("o2Flow")}L/分` : ""}` : "") },
-  { label: "SpO2(投与後)", unit: "%", keys: ["spo2O2"], trend: "spo2O2" },
-  { label: "RR", unit: "回/分", keys: ["rr"], trend: "rr" },
-  { label: "体温", unit: "℃", keys: ["temp"], trend: "temp" },
+  { label: "SpO2(投与後)", unit: "%", keys: ["spo2O2"] },
+  { label: "RR", unit: "回/分", keys: ["rr"] },
+  { label: "体温", unit: "℃", keys: ["temp"] },
   { label: "既往歴", keys: ["history"], text: true },
   { label: "処置", keys: ["treatment"], text: true },
   { label: "備考", keys: ["notes"], text: true },
@@ -44,15 +44,6 @@ const valueHtml = (v) => (v && typeof v === "object" ? `${esc(v.main)}<span clas
 function cellValue(row, data, prefix) {
   const g = (k) => data[`${prefix}.${k}`] || "";
   return row.fmt ? row.fmt(g, data, prefix) : g(row.keys[0]);
-}
-
-// バイタル1→2で数値が上がったか下がったか
-function trendMark(row, data) {
-  if (!row.trend) return "";
-  const a = parseFloat(data[`v1.${row.trend}`]);
-  const b = parseFloat(data[`v2.${row.trend}`]);
-  if (Number.isNaN(a) || Number.isNaN(b) || a === b) return "";
-  return b > a ? '<span class="trend up" aria-label="上昇">↑</span>' : '<span class="trend down" aria-label="低下">↓</span>';
 }
 
 /**
@@ -94,8 +85,7 @@ export function sheetHtml(data, { changes = {}, issues = {}, print = false } = {
           for (const k of rowKeysBy(p)) if (changes[k]) old[k] = changes[k].from;
           prev = `<span class="before">前: ${esc(valueText(cellValue(row, old, p))) || "（未入力）"}</span>`;
         }
-        const trend = i === 1 ? trendMark(row, data) : "";
-        return `<td class="${row.text ? "text" : "num"} ${m.cls}">${valueHtml(values[i]) || '<span class="muted">—</span>'}${trend}${m.issue ? icon("alert", "issue-icon") : ""}${prev}</td>`;
+        return `<td class="${row.text ? "text" : "num"} ${m.cls}">${valueHtml(values[i]) || '<span class="muted">—</span>'}${m.issue ? icon("alert", "issue-icon") : ""}${prev}</td>`;
       })
       .join("");
     return `<tr${row.text ? ' class="text-row"' : ""}><th scope="row">${row.label}${row.unit ? `<span class="unit">${row.unit}</span>` : ""}</th>${cells}</tr>`;

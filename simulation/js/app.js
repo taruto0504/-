@@ -59,7 +59,6 @@ function shell() {
     <aside class="sidenav" aria-label="メインメニュー">
       <div class="brand"><span class="brand-mark">${icon("cross", "brand-icon")}</span><span class="brand-text">医療シミュレーション<small>Scenario Trainer</small></span></div>
       <nav>${navLinks("side-link")}</nav>
-      <a href="../index.html" class="side-foot">← 医療サポートツールへ</a>
     </aside>
     <div class="main-col">
       <header class="topbar">
@@ -288,7 +287,7 @@ function checkNewNotifications() {
     for (const n of fresh.slice(0, 3)) {
       if ("Notification" in window && Notification.permission === "granted" && document.hidden) {
         try {
-          const notice = new Notification("医療シミュレーション", { body: n.text, icon: "../icons/icon-192.png", tag: n.id });
+          const notice = new Notification("医療シミュレーション", { body: n.text, icon: "icons/icon-192.png", tag: n.id });
           notice.onclick = () => {
             window.focus();
             location.hash = `#/s/${n.scenarioId}${n.type === "reply" ? "/chat" : ""}`;
