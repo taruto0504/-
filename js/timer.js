@@ -294,7 +294,7 @@
       .map(
         (ev, i) => `
       <div class="log-item">
-        <div class="log-label">${ev.emoji} ${escapeHtml(ev.label)}</div>
+        <div class="log-label">${logIcon(ev.emoji)} ${escapeHtml(ev.label)}</div>
         <div class="log-meta">
           <span class="log-time">${formatClock(ev.time)}</span>
           <button class="log-del" data-index="${i}" aria-label="削除">✕</button>
@@ -306,6 +306,23 @@
     els.logList.querySelectorAll(".log-del").forEach((btn) => {
       btn.addEventListener("click", () => deleteEvent(parseInt(btn.dataset.index, 10)));
     });
+  }
+
+  // Events keep their original emoji (saved logs and copied text use it); show a line icon instead.
+  const LOG_ICONS = {
+    "〰️": ["ecg", ""],
+    "⚡": ["bolt", "tone-warning"],
+    "🌬️": ["lungs", ""],
+    "🩸": ["drop", "tone-danger"],
+    "💉": ["syringe", "tone-purple"],
+    "✅": ["heart-pulse", "tone-success"],
+    "🏁": ["flag", ""],
+    "📝": ["note", ""],
+    "🎤": ["mic", ""],
+  };
+  function logIcon(emoji) {
+    const entry = LOG_ICONS[emoji];
+    return entry ? window.icon(entry[0], entry[1]) : escapeHtml(emoji || "");
   }
 
   function escapeHtml(str) {
@@ -343,7 +360,7 @@
   // viewers (they can silently no-op), so destructive actions use a
   // "tap again to confirm" pattern instead of a native dialog.
   function armTwoTapConfirm(btn, armedLabel, action, canAct) {
-    const originalLabel = btn.textContent;
+    const originalLabel = btn.innerHTML;
     let armed = false;
     let timer = null;
     btn.addEventListener("click", (e) => {
@@ -351,18 +368,18 @@
       if (!armed) {
         e.preventDefault();
         armed = true;
-        btn.textContent = armedLabel;
+        btn.innerHTML = armedLabel;
         btn.classList.add("confirm-armed");
         clearTimeout(timer);
         timer = setTimeout(() => {
           armed = false;
-          btn.textContent = originalLabel;
+          btn.innerHTML = originalLabel;
           btn.classList.remove("confirm-armed");
         }, 3000);
       } else {
         armed = false;
         clearTimeout(timer);
-        btn.textContent = originalLabel;
+        btn.innerHTML = originalLabel;
         btn.classList.remove("confirm-armed");
         action();
       }
@@ -407,7 +424,7 @@
   document.querySelectorAll(".event-btn").forEach((btn) => {
     if (!btn.dataset.label) return; // skip compound controls like the drug-select button
     if (btn.dataset.label === "CPA対応終了") {
-      armTwoTapConfirm(btn, "🏁 もう一度押すと終了", () => logEvent(btn.dataset.label, btn.dataset.emoji));
+      armTwoTapConfirm(btn, `<span class="ev-ic">${window.icon("flag")}</span>もう一度押すと終了`, () => logEvent(btn.dataset.label, btn.dataset.emoji));
       return;
     }
     btn.addEventListener("click", () => {
@@ -417,7 +434,7 @@
 
   els.toggleLogBtn.addEventListener("click", () => {
     const expanded = els.logList.classList.toggle("expanded");
-    els.toggleLogBtn.textContent = expanded ? "🔼 折りたたむ" : "🔍 全表示";
+    els.toggleLogBtn.innerHTML = expanded ? window.icon("collapse") + " 折りたたむ" : window.icon("expand") + " 全表示";
     els.toggleLogBtn.classList.toggle("is-active", expanded);
   });
 
@@ -430,13 +447,13 @@
     } catch (e) {
       ok = fallbackCopyToClipboard(text);
     }
-    els.copyBtn.textContent = ok ? "✅ コピーしました" : "⚠ コピーできませんでした";
-    setTimeout(() => (els.copyBtn.textContent = "📋 コピー"), 1800);
+    els.copyBtn.innerHTML = ok ? window.icon("check") + " コピーしました" : window.icon("alert") + " コピーできませんでした";
+    setTimeout(() => (els.copyBtn.innerHTML = window.icon("copy") + " コピー"), 1800);
   });
 
   armTwoTapConfirm(
     els.clearBtn,
-    "🗑 もう一度押すと削除",
+    window.icon("trash") + " もう一度押すと削除",
     () => {
       state.events = [];
       saveState();
@@ -463,7 +480,7 @@
 
   // --- 音声入力 ---
   const SpeechRecognitionImpl = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const DEFAULT_VOICE_HINT = "🎤をタップすると音声入力を開始します。話した内容は自動で記録に追加されます。";
+  const DEFAULT_VOICE_HINT = "マイクボタンをタップすると音声入力を開始します。話した内容は自動で記録に追加されます。";
   let recognition = null;
   let isListening = false;
   let stoppingIntentionally = false;
@@ -504,7 +521,7 @@
 
     recognition.addEventListener("error", (event) => {
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        els.voiceHint.textContent = "⚠ マイクの使用が許可されていません。ブラウザの設定を確認してください。";
+        els.voiceHint.textContent = "マイクの使用が許可されていません。ブラウザの設定を確認してください。";
         stoppingIntentionally = true;
         isListening = false;
         els.micBtn.classList.remove("is-listening");
@@ -524,7 +541,7 @@
         try {
           recognition.start();
           els.micBtn.classList.add("is-listening");
-          els.voiceHint.textContent = "🔴 音声入力中... もう一度タップで停止します。";
+          els.voiceHint.textContent = "● 音声入力中... もう一度タップで停止します。";
         } catch (e) {
           isListening = false;
         }

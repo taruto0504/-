@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b6e99">
+<meta name="theme-color" content="#0f74bf">
 <title>タイマー | 医療サポートツール</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -11,9 +11,10 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<script src="js/icons.js"></script>
 <header class="app-header">
-  <a class="back-btn" href="index.html" aria-label="戻る">‹</a>
-  <h1>タイマー</h1>
+  <a class="back-btn" href="index.html" aria-label="戻る"><svg class="ic"><use href="#i-chevron-left"/></svg></a>
+  <h1><svg class="ic"><use href="#i-stopwatch"/></svg>タイマー</h1>
 </header>
 
 <main>
@@ -30,7 +31,7 @@
         <div class="time" id="countdown-time">00:00</div>
       </div>
 
-      <div class="alert-banner rhythm" id="countdown-finished-banner">⏰ 設定時間になりました</div>
+      <div class="alert-banner rhythm" id="countdown-finished-banner"><svg class="ic"><use href="#i-bell"/></svg> 設定時間になりました</div>
 
       <label>時間を設定</label>
       <div class="field-row">
@@ -53,29 +54,29 @@
       </div>
 
       <div class="alarm-sound-row">
-        <span class="alarm-sound-label">🔔 アラーム音</span>
+        <span class="alarm-sound-label"><svg class="ic"><use href="#i-bell"/></svg> アラーム音</span>
         <span class="alarm-sound-name" id="alarm-sound-name">標準</span>
         <label class="alarm-sound-btn" for="alarm-sound-file">変更</label>
         <input type="file" id="alarm-sound-file" accept=".mp3,.m4a,.m4r,.aac,.wav,.aif,.aiff,.caf,.flac,.ogg,.oga,.opus" hidden>
-        <button class="alarm-sound-btn" id="alarm-sound-preview" type="button">▶ 試聴</button>
+        <button class="alarm-sound-btn" id="alarm-sound-preview" type="button"><svg class="ic"><use href="#i-play"/></svg> 試聴</button>
         <button class="alarm-sound-btn" id="alarm-sound-default" type="button" style="display:none;">標準</button>
       </div>
       <div class="alarm-source-row" id="alarm-source-row" style="display:none;">
-        <button class="alarm-sound-btn" id="alarm-source-music" type="button">🎵 ミュージック</button>
-        <button class="alarm-sound-btn" id="alarm-source-file" type="button">📁 ファイル</button>
+        <button class="alarm-sound-btn" id="alarm-source-music" type="button"><svg class="ic"><use href="#i-music"/></svg> ミュージック</button>
+        <button class="alarm-sound-btn" id="alarm-source-file" type="button"><svg class="ic"><use href="#i-folder"/></svg> ファイル</button>
         <button class="alarm-sound-btn" id="alarm-source-cancel" type="button">キャンセル</button>
       </div>
 
       <label for="preset-name-input">名前を付けて保存</label>
       <div class="preset-save-row">
         <input type="text" id="preset-name-input" placeholder="例: ネブライザー吸入" autocomplete="off">
-        <button class="btn-secondary" id="save-preset-btn" type="button">💾 保存</button>
+        <button class="btn-secondary" id="save-preset-btn" type="button"><svg class="ic"><use href="#i-bookmark"/></svg> 保存</button>
       </div>
       <div class="preset-msg" id="preset-msg"></div>
     </div>
 
     <div class="card">
-      <h2>保存したタイマー</h2>
+      <h2><svg class="ic"><use href="#i-bookmark"/></svg>保存したタイマー</h2>
       <div class="log-list" id="saved-preset-list">
         <div class="empty-log">保存したタイマーはありません</div>
       </div>
@@ -92,11 +93,11 @@
         <button id="stopwatch-start-pause">開始</button>
         <button id="stopwatch-reset">リセット</button>
       </div>
-      <button class="btn-secondary" id="stopwatch-lap" type="button" style="width:100%; margin-top:10px;">🏁 ラップを記録</button>
+      <button class="btn-secondary" id="stopwatch-lap" type="button" style="width:100%; margin-top:10px;"><svg class="ic"><use href="#i-flag"/></svg> ラップを記録</button>
     </div>
 
     <div class="card">
-      <h2>ラップ記録</h2>
+      <h2><svg class="ic"><use href="#i-flag"/></svg>ラップ記録</h2>
       <div class="log-list" id="lap-list">
         <div class="empty-log">まだラップがありません</div>
       </div>
@@ -107,7 +108,7 @@
   <section id="tab-cpa" class="tab-panel cpa-compact">
     <div class="card cpa-cycles-card">
       <div class="cpa-cycle">
-        <h2>🔴 リズムチェック<span class="cpa-cycle-period">2分</span></h2>
+        <h2><span class="cycle-dot"></span>リズムチェック<span class="cpa-cycle-period">2分</span></h2>
         <div class="time cpa-cycle-time-sm" id="rhythm-cycle-time">02:00</div>
         <div class="cycle-controls">
           <button class="cycle-start-pause" id="rhythm-start-pause">開始</button>
@@ -115,7 +116,7 @@
         </div>
       </div>
       <div class="cpa-cycle">
-        <h2>🟠 薬剤投与<span class="cpa-cycle-period">4分</span></h2>
+        <h2><span class="cycle-dot med"></span>薬剤投与<span class="cpa-cycle-period">4分</span></h2>
         <div class="time cpa-cycle-time-sm" id="med-cycle-time">04:00</div>
         <div class="cycle-controls">
           <button class="cycle-start-pause" id="med-start-pause">開始</button>
@@ -123,14 +124,14 @@
         </div>
       </div>
     </div>
-    <div class="alert-banner rhythm" id="alert-rhythm">🔴 リズムチェックの時間です(開始で圧迫音も再生)</div>
-    <div class="alert-banner epi" id="alert-epi">🟠 薬剤投与の時間です</div>
+    <div class="alert-banner rhythm" id="alert-rhythm"><svg class="ic"><use href="#i-clock"/></svg> リズムチェックの時間です(開始で圧迫音も再生)</div>
+    <div class="alert-banner epi" id="alert-epi"><svg class="ic"><use href="#i-syringe"/></svg> 薬剤投与の時間です</div>
 
     <div class="card">
-      <h2>イベント記録</h2>
+      <h2><svg class="ic"><use href="#i-note"/></svg>イベント記録</h2>
       <div class="event-grid">
         <div class="event-btn med-btn-wrap">
-          <span class="emoji">〰️</span>波形
+          <span class="ev-ic"><svg class="ic"><use href="#i-ecg"/></svg></span>波形
           <select id="rhythm-wave-select" class="med-select-overlay" aria-label="波形を選択">
             <option value="" disabled selected hidden>波形を選択</option>
             <option value="VF">VF(心室細動)</option>
@@ -140,10 +141,10 @@
           </select>
         </div>
         <button class="event-btn" data-label="除細動(電気ショック)" data-emoji="⚡" id="btn-shock">
-          <span class="emoji">⚡</span>除細動(ショック)
+          <span class="ev-ic tone-warning"><svg class="ic"><use href="#i-bolt"/></svg></span>除細動(ショック)
         </button>
         <div class="event-btn med-btn-wrap">
-          <span class="emoji">🌬️</span>気管挿管
+          <span class="ev-ic"><svg class="ic"><use href="#i-lungs"/></svg></span>気管挿管
           <select id="ett-size-select" class="med-select-overlay" aria-label="チューブサイズを選択">
             <option value="" disabled selected hidden>サイズを選択</option>
             <option value="6.0mm">6.0mm</option>
@@ -154,10 +155,10 @@
           </select>
         </div>
         <button class="event-btn" data-label="静脈路確保" data-emoji="🩸">
-          <span class="emoji">🩸</span>静脈路確保
+          <span class="ev-ic tone-danger"><svg class="ic"><use href="#i-drop"/></svg></span>静脈路確保
         </button>
         <div class="event-btn med-btn-wrap">
-          <span class="emoji">💉</span>薬剤投与
+          <span class="ev-ic tone-purple"><svg class="ic"><use href="#i-syringe"/></svg></span>薬剤投与
           <select id="med-drug-select" class="med-select-overlay" aria-label="薬剤を選択">
             <option value="" disabled selected hidden>薬剤を選択</option>
             <option value="アドレナリン">アドレナリン</option>
@@ -166,10 +167,10 @@
           </select>
         </div>
         <button class="event-btn" data-label="ROSC(自己心拍再開)" data-emoji="✅" id="btn-rosc">
-          <span class="emoji">✅</span>ROSC
+          <span class="ev-ic tone-success"><svg class="ic"><use href="#i-heart-pulse"/></svg></span>ROSC
         </button>
         <button class="event-btn end" data-label="CPA対応終了" data-emoji="🏁">
-          <span class="emoji">🏁</span>CPA対応終了
+          <span class="ev-ic"><svg class="ic"><use href="#i-flag"/></svg></span>CPA対応終了
         </button>
       </div>
     </div>
@@ -177,18 +178,18 @@
     <div class="card">
       <div class="note-row">
         <input type="text" id="note-input" placeholder="メモ入力 例: 家族到着 など" autocomplete="off">
-        <button class="mic-btn" id="btn-mic" type="button" aria-label="音声入力">🎤</button>
+        <button class="mic-btn" id="btn-mic" type="button" aria-label="音声入力"><svg class="ic"><use href="#i-mic"/></svg></button>
         <button class="btn-primary cpa-note-add" id="btn-add-note" type="button">追加</button>
       </div>
-      <div class="voice-hint" id="voice-hint">🎤で音声入力(話すと自動追加)</div>
+      <div class="voice-hint" id="voice-hint">マイクボタンで音声入力(話すと自動追加)</div>
 
       <div class="log-list" id="log-list">
         <div class="empty-log">まだ記録がありません</div>
       </div>
       <div class="log-actions">
-        <button class="btn-secondary" id="btn-toggle-log">🔍 全表示</button>
-        <button class="btn-secondary" id="btn-copy-log">📋 コピー</button>
-        <button class="btn-secondary" id="btn-clear-log">🗑 削除</button>
+        <button class="btn-secondary" id="btn-toggle-log"><svg class="ic"><use href="#i-expand"/></svg> 全表示</button>
+        <button class="btn-secondary" id="btn-copy-log"><svg class="ic"><use href="#i-copy"/></svg> コピー</button>
+        <button class="btn-secondary" id="btn-clear-log"><svg class="ic"><use href="#i-trash"/></svg> 削除</button>
       </div>
     </div>
   </section>

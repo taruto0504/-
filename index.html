@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b6e99">
+<meta name="theme-color" content="#0f74bf">
 <title>医療サポートツール</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -11,43 +11,49 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<script src="js/icons.js"></script>
 <main>
   <div class="home-hero">
-    <h1>医療サポートツール</h1>
-    <p>現場で使う計算・記録を、ひとつのアプリに</p>
+    <img class="home-logo" src="icons/icon.svg" alt="">
+    <div>
+      <h1>医療サポートツール</h1>
+      <p>現場で使う計算・記録を、ひとつのアプリに</p>
+    </div>
   </div>
 
+  <div class="section-label">メニュー</div>
   <nav class="menu-list">
     <a class="menu-card" href="drip-oxygen.html">
-      <div class="icon">💧</div>
+      <div class="icon"><svg class="ic"><use href="#i-drip"/></svg></div>
       <div class="label">
         <span class="title">点滴・酸素ボンベ計算</span>
         <span class="desc">滴下数計算 / ボンベ残量・使用可能時間</span>
       </div>
-      <div class="chevron">›</div>
+      <div class="chevron"><svg class="ic"><use href="#i-chevron-right"/></svg></div>
     </a>
 
     <a class="menu-card" href="timer.html">
-      <div class="icon">⏱️</div>
+      <div class="icon tone-teal"><svg class="ic"><use href="#i-heart-pulse"/></svg></div>
       <div class="label">
-        <span class="title">タイマー</span>
-        <span class="desc">CPA記録 / カウントダウンタイマー(名前付き保存) / ストップウォッチ</span>
+        <span class="title">タイマー・CPA記録</span>
+        <span class="desc">CPA記録 / カウントダウンタイマー / ストップウォッチ</span>
       </div>
-      <div class="chevron">›</div>
+      <div class="chevron"><svg class="ic"><use href="#i-chevron-right"/></svg></div>
     </a>
 
     <a class="menu-card" href="calculator.html">
-      <div class="icon">🧮</div>
+      <div class="icon tone-indigo"><svg class="ic"><use href="#i-calculator"/></svg></div>
       <div class="label">
         <span class="title">電卓</span>
         <span class="desc">四則演算の簡易計算機</span>
       </div>
-      <div class="chevron">›</div>
+      <div class="chevron"><svg class="ic"><use href="#i-chevron-right"/></svg></div>
     </a>
   </nav>
 
   <div class="disclaimer">
-    ⚠️ 本アプリの計算結果・記録は参考情報です。実際の投与・処置の判断は、必ず院内基準や医師の指示、添付文書等に基づいて行ってください。
+    <svg class="ic"><use href="#i-info"/></svg>
+    <div>本アプリの計算結果・記録は参考情報です。実際の投与・処置の判断は、必ず院内基準や医師の指示、添付文書等に基づいて行ってください。</div>
   </div>
 </main>
 <script>

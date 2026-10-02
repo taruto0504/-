@@ -125,7 +125,7 @@
     }
     beepIntervalSec = 60 / dropsPerMin;
     dripSoundBtn.classList.add("is-playing");
-    dripSoundBtn.textContent = "⏹ 音を止める";
+    dripSoundBtn.innerHTML = window.icon("stop") + " 音を止める";
 
     const beginScheduling = () => {
       // Guard against the button having been toggled off again before resume() resolved.
@@ -147,7 +147,7 @@
       beepSchedulerId = null;
     }
     dripSoundBtn.classList.remove("is-playing");
-    dripSoundBtn.textContent = "🔊 この速さの音を鳴らす";
+    dripSoundBtn.innerHTML = window.icon("volume") + " この速さの音を鳴らす";
   }
 
   dripSoundBtn.addEventListener("click", () => {
@@ -204,7 +204,7 @@
     o2ResultMain.textContent = h > 0 ? h + "時間" + m + "分" : formatNum(minutes) + "分";
     o2ResultSub.innerHTML =
       "ボンベ残量: 約 " + formatNum(remainingLiters) + " L<br>" +
-      (minutes < 30 ? "⚠ 残量が少なくなっています。早めに交換を検討してください。" : "");
+      (minutes < 30 ? window.icon("alert") + " 残量が少なくなっています。早めに交換を検討してください。" : "");
   });
 
   function formatNum(n) {

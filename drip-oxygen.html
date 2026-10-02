@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b6e99">
+<meta name="theme-color" content="#0f74bf">
 <title>点滴・酸素ボンベ計算 | 医療サポートツール</title>
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -11,9 +11,10 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+<script src="js/icons.js"></script>
 <header class="app-header">
-  <a class="back-btn" href="index.html" aria-label="戻る">‹</a>
-  <h1>点滴・酸素ボンベ計算</h1>
+  <a class="back-btn" href="index.html" aria-label="戻る"><svg class="ic"><use href="#i-chevron-left"/></svg></a>
+  <h1><svg class="ic"><use href="#i-drip"/></svg>点滴・酸素ボンベ計算</h1>
 </header>
 
 <main>
@@ -25,7 +26,7 @@
   <!-- 点滴滴下数計算 -->
   <section id="tab-drip" class="tab-panel active drip-compact">
     <div class="card">
-      <h2>点滴 滴下数計算</h2>
+      <h2><svg class="ic"><use href="#i-drip"/></svg>点滴 滴下数計算</h2>
 
       <label for="drip-volume">指示総量 (mL)</label>
       <input type="number" id="drip-volume" inputmode="decimal" placeholder="例: 500" min="0">
@@ -64,7 +65,7 @@
       <div class="result-box" id="drip-result" style="display:none;">
         <div class="result-main"><span id="drip-result-main">-</span><span class="unit">滴/分</span></div>
         <div class="result-sub" id="drip-result-sub"></div>
-        <button class="sound-btn" id="drip-sound-btn" type="button">🔊 この速さの音を鳴らす</button>
+        <button class="sound-btn" id="drip-sound-btn" type="button"><svg class="ic"><use href="#i-volume"/></svg> この速さの音を鳴らす</button>
       </div>
       <div class="hint">
         <span id="hint-time-formula">滴下数(滴/分) = 指示総量(mL) × 滴下係数(滴/mL) ÷ 投与時間(分)</span><span id="hint-rate-formula" style="display:none;">滴下数(滴/分) = 投与速度(mL/h) × 滴下係数(滴/mL) ÷ 60</span><br>「この速さの音を鳴らす」でペースと同じビープ音を鳴らせます。
@@ -75,7 +76,7 @@
   <!-- 酸素ボンベ残量計算 -->
   <section id="tab-oxygen" class="tab-panel drip-compact">
     <div class="card">
-      <h2>酸素ボンベ 残量・使用可能時間</h2>
+      <h2><svg class="ic"><use href="#i-oxygen"/></svg>酸素ボンベ 残量・使用可能時間</h2>
 
       <label>ボンベの種類</label>
       <div class="radio-group">

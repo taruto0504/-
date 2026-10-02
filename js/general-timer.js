@@ -450,7 +450,7 @@
   function renderSoundSetting() {
     soundEls.name.textContent = customSound ? customSound.name : "標準";
     soundEls.useDefault.style.display = customSound ? "" : "none";
-    soundEls.preview.textContent = previewing ? "■ 停止" : "▶ 試聴";
+    soundEls.preview.innerHTML = previewing ? window.icon("stop") + " 停止" : window.icon("play") + " 試聴";
     soundEls.preview.classList.toggle("is-playing", previewing);
   }
 
@@ -617,7 +617,7 @@
       .map(
         (p, i) => `
       <div class="log-item" data-index="${i}">
-        <div class="log-label">⭐ ${escapeHtml(p.name)}</div>
+        <div class="log-label">${window.icon("star")} ${escapeHtml(p.name)}</div>
         <div class="log-meta">
           <span class="log-time">${formatMs(p.durationMs)}</span>
           <button class="log-del" data-index="${i}" aria-label="削除">✕</button>
