@@ -1,0 +1,8 @@
+{
+  "appId": "jp.medicalsupporttool.app",
+  "appName": "医療サポートツール",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never"
+  }
+}

@@ -494,18 +494,62 @@
     stopPreview();
     file
       .arrayBuffer()
-      .then((data) => {
-        const record = { name: file.name, type: file.type, data };
-        setCustomSound(record);
-        if (cd.finished) startAlarm();
-        renderSoundSetting();
-        return soundDbRequest("readwrite", (store) => store.put(record, SOUND_KEY)).then(
-          () => showPresetMsg("アラーム音を変更しました。", false),
-          () => showPresetMsg("アラーム音を変更しました(この端末では保存できないため、ページを閉じると標準に戻ります)。", true)
-        );
-      })
+      .then((data) => useSoundRecord({ name: file.name, type: file.type, data }))
       .catch(() => showPresetMsg("ファイルを読み込めませんでした。", true));
   });
+
+  function useSoundRecord(record) {
+    setCustomSound(record);
+    if (cd.finished) startAlarm();
+    renderSoundSetting();
+    return soundDbRequest("readwrite", (store) => store.put(record, SOUND_KEY)).then(
+      () => showPresetMsg("アラーム音を変更しました。", false),
+      () => showPresetMsg("アラーム音を変更しました(この端末では保存できないため、ページを閉じると標準に戻ります)。", true)
+    );
+  }
+
+  // --- スマホアプリ(Capacitor)版のみ ---
+  const cap = window.Capacitor;
+  const nativePlatform = cap && cap.isNativePlatform && cap.isNativePlatform() ? cap.getPlatform() : "web";
+  const sourceRow = document.getElementById("alarm-source-row");
+
+  if (nativePlatform === "android") {
+    // Android's picker understands MIME types (not extensions) and never offers photos for audio/*.
+    soundEls.file.accept = "audio/*";
+  }
+
+  if (nativePlatform === "ios") {
+    const soundRow = document.querySelector(".alarm-sound-row");
+    // Swap rows instead of stacking them so the tab still fits one screen.
+    const showSourceChoice = (show) => {
+      sourceRow.style.display = show ? "flex" : "none";
+      soundRow.style.display = show ? "none" : "";
+    };
+    document.querySelector('label[for="alarm-sound-file"]').addEventListener("click", (e) => {
+      e.preventDefault();
+      showSourceChoice(true);
+    });
+    document.getElementById("alarm-source-cancel").addEventListener("click", () => showSourceChoice(false));
+    document.getElementById("alarm-source-file").addEventListener("click", () => {
+      showSourceChoice(false);
+      soundEls.file.click();
+    });
+    document.getElementById("alarm-source-music").addEventListener("click", () => {
+      showSourceChoice(false);
+      stopPreview();
+      cap
+        .nativePromise("MusicPicker", "pickSong", {})
+        .then((song) =>
+          fetch(song.webPath)
+            .then((res) => res.arrayBuffer())
+            .then((data) => useSoundRecord({ name: song.name, type: song.mimeType, data }))
+        )
+        .catch((err) => {
+          if (err && err.code === "CANCELLED") return;
+          showPresetMsg(err && err.code && err.message ? err.message : "曲を読み込めませんでした。", true);
+        });
+    });
+  }
 
   soundEls.useDefault.addEventListener("click", () => {
     stopPreview();

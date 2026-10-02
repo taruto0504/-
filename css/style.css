@@ -1062,7 +1062,19 @@ button {
   text-overflow: ellipsis;
 }
 
-.alarm-sound-row .alarm-sound-btn {
+.alarm-source-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.alarm-source-row .alarm-sound-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.alarm-sound-row .alarm-sound-btn,
+.alarm-source-row .alarm-sound-btn {
   flex-shrink: 0;
   display: inline-block;
   margin: 0;
@@ -1078,7 +1090,8 @@ button {
 }
 
 .alarm-sound-row .alarm-sound-btn:active,
-.alarm-sound-row .alarm-sound-btn.is-playing {
+.alarm-sound-row .alarm-sound-btn.is-playing,
+.alarm-source-row .alarm-sound-btn:active {
   background: var(--color-accent);
 }
 
