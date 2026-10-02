@@ -52,9 +52,20 @@
         <button id="countdown-reset">リセット</button>
       </div>
 
+      <div class="alarm-sound-row">
+        <span class="alarm-sound-label">🔔 アラーム音</span>
+        <span class="alarm-sound-name" id="alarm-sound-name">標準</span>
+        <label class="alarm-sound-btn" for="alarm-sound-file">変更</label>
+        <input type="file" id="alarm-sound-file" accept="audio/*" hidden>
+        <button class="alarm-sound-btn" id="alarm-sound-preview" type="button">▶ 試聴</button>
+        <button class="alarm-sound-btn" id="alarm-sound-default" type="button" style="display:none;">標準</button>
+      </div>
+
       <label for="preset-name-input">名前を付けて保存</label>
-      <input type="text" id="preset-name-input" placeholder="例: ネブライザー吸入" autocomplete="off">
-      <button class="btn-secondary" id="save-preset-btn" type="button" style="width:100%; margin-top:10px;">💾 この時間を保存</button>
+      <div class="preset-save-row">
+        <input type="text" id="preset-name-input" placeholder="例: ネブライザー吸入" autocomplete="off">
+        <button class="btn-secondary" id="save-preset-btn" type="button">💾 保存</button>
+      </div>
       <div class="preset-msg" id="preset-msg"></div>
     </div>
 

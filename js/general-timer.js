@@ -82,20 +82,169 @@
     }
   }
 
+  // --- お好みのアラーム音(端末の音声・音楽ファイル) ---
+  const SOUND_DB = "medicalToolSounds";
+  const SOUND_STORE = "files";
+  const SOUND_KEY = "countdownAlarm";
+
+  function openSoundDb() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error("no indexedDB"));
+      const req = indexedDB.open(SOUND_DB, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore(SOUND_STORE);
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  function soundDbRequest(mode, fn) {
+    return openSoundDb().then(
+      (db) =>
+        new Promise((resolve, reject) => {
+          const tx = db.transaction(SOUND_STORE, mode);
+          const req = fn(tx.objectStore(SOUND_STORE));
+          tx.oncomplete = () => resolve(req.result);
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        })
+    );
+  }
+
+  // { name, type, data: ArrayBuffer, url, audioEl, buffer }
+  let customSound = null;
+  let customSource = null;
+
+  function setCustomSound(record) {
+    clearCustomSound();
+    if (!record) return;
+    const blob = new Blob([record.data], { type: record.type || "" });
+    const url = URL.createObjectURL(blob);
+    const audioEl = new Audio();
+    audioEl.loop = true;
+    audioEl.preload = "auto";
+    audioEl.src = url;
+    customSound = { name: record.name, type: record.type, data: record.data, url, audioEl, buffer: null };
+  }
+
+  function clearCustomSound() {
+    if (!customSound) return;
+    stopCustomSound();
+    customSound.audioEl.removeAttribute("src");
+    URL.revokeObjectURL(customSound.url);
+    customSound = null;
+  }
+
+  // Some embedded viewers block blob: media; decoding through the already-unlocked
+  // AudioContext avoids that and also follows the silent-mode workaround.
+  function playCustomViaWebAudio() {
+    const ctx = ensureAudioCtx();
+    const sound = customSound;
+    const getBuffer = sound.buffer
+      ? Promise.resolve(sound.buffer)
+      : new Promise((resolve, reject) => ctx.decodeAudioData(sound.data.slice(0), resolve, reject)).then((buf) => {
+          sound.buffer = buf;
+          return buf;
+        });
+    const resumed = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
+    return Promise.all([getBuffer, resumed]).then(([buf]) => {
+      if (customSound !== sound || !customPlaying) return;
+      stopWebAudioSource();
+      customSource = ctx.createBufferSource();
+      customSource.buffer = buf;
+      customSource.loop = true;
+      customSource.connect(ctx.destination);
+      customSource.start();
+    });
+  }
+
+  function stopWebAudioSource() {
+    if (customSource) {
+      try {
+        customSource.stop();
+      } catch (e) {
+        /* already stopped */
+      }
+      customSource.disconnect();
+      customSource = null;
+    }
+  }
+
+  let customPlaying = false;
+  function playCustomSound() {
+    customPlaying = true;
+    const el = customSound.audioEl;
+    el.muted = false;
+    el.currentTime = 0;
+    return el.play().catch(() => {
+      if (!customPlaying) return;
+      return playCustomViaWebAudio();
+    });
+  }
+
+  function stopCustomSound() {
+    customPlaying = false;
+    if (customSound) {
+      customSound.audioEl.pause();
+      try {
+        customSound.audioEl.currentTime = 0;
+      } catch (e) {
+        /* not loaded yet */
+      }
+    }
+    stopWebAudioSource();
+  }
+
+  // iOS only lets an <audio> element start later without a tap if it has
+  // already been played once inside a tap, so warm it up on 開始.
+  function primeCustomSound() {
+    if (!customSound || customPlaying) return;
+    const el = customSound.audioEl;
+    el.muted = true;
+    el.play()
+      .then(() => {
+        if (customPlaying) return;
+        el.pause();
+        el.currentTime = 0;
+        el.muted = false;
+      })
+      .catch(() => {
+        el.muted = false;
+      });
+  }
+
   let alarmIntervalId = null;
-  function startAlarm() {
-    stopAlarm();
+  function startBeepAlarm() {
     playAlarmBurst();
-    vibrate([300, 120, 300, 120, 300, 120, 300]);
     alarmIntervalId = setInterval(() => {
       playAlarmBurst();
       vibrate([300, 120, 300, 120, 300]);
     }, 950);
   }
+
+  function startAlarm() {
+    stopAlarm();
+    stopPreview();
+    vibrate([300, 120, 300, 120, 300, 120, 300]);
+    if (customSound) {
+      playCustomSound().catch(() => {
+        if (!customPlaying) return;
+        clearInterval(alarmIntervalId);
+        startBeepAlarm();
+      });
+      alarmIntervalId = setInterval(() => vibrate([300, 120, 300, 120, 300]), 2000);
+    } else {
+      startBeepAlarm();
+    }
+  }
   function stopAlarm() {
     if (alarmIntervalId) {
       clearInterval(alarmIntervalId);
       alarmIntervalId = null;
+    }
+    stopCustomSound();
+    if (previewing) {
+      previewing = false;
+      renderSoundSetting();
     }
   }
 
@@ -233,6 +382,7 @@
 
   els.startPause.addEventListener("click", () => {
     primeAudioCtx();
+    if (!cd.running) primeCustomSound();
     if (cd.finished) {
       cd.finished = false;
       cd.accumulatedMs = 0;
@@ -288,8 +438,96 @@
     els.startPause.classList.toggle("is-running", cd.running);
   }
 
+  // ===================== アラーム音の設定 =====================
+  const soundEls = {
+    name: document.getElementById("alarm-sound-name"),
+    file: document.getElementById("alarm-sound-file"),
+    preview: document.getElementById("alarm-sound-preview"),
+    useDefault: document.getElementById("alarm-sound-default"),
+  };
+  let previewing = false;
+
+  function renderSoundSetting() {
+    soundEls.name.textContent = customSound ? customSound.name : "標準";
+    soundEls.useDefault.style.display = customSound ? "" : "none";
+    soundEls.preview.textContent = previewing ? "■ 停止" : "▶ 試聴";
+    soundEls.preview.classList.toggle("is-playing", previewing);
+  }
+
+  function stopPreview() {
+    if (!previewing) return;
+    previewing = false;
+    stopCustomSound();
+    renderSoundSetting();
+  }
+
+  soundEls.preview.addEventListener("click", () => {
+    primeAudioCtx();
+    if (previewing) {
+      stopPreview();
+      return;
+    }
+    if (!customSound) {
+      playAlarmBurst();
+      return;
+    }
+    if (cd.finished) return;
+    previewing = true;
+    renderSoundSetting();
+    playCustomSound().catch(() => {
+      previewing = false;
+      stopCustomSound();
+      renderSoundSetting();
+      showPresetMsg("この音声ファイルは再生できませんでした。", true);
+    });
+  });
+
+  soundEls.file.addEventListener("change", () => {
+    const file = soundEls.file.files && soundEls.file.files[0];
+    soundEls.file.value = "";
+    if (!file) return;
+    if (file.type && !file.type.startsWith("audio/") && !file.type.startsWith("video/")) {
+      showPresetMsg("音声ファイルを選んでください。", true);
+      return;
+    }
+    stopPreview();
+    file
+      .arrayBuffer()
+      .then((data) => {
+        const record = { name: file.name, type: file.type, data };
+        setCustomSound(record);
+        if (cd.finished) startAlarm();
+        renderSoundSetting();
+        return soundDbRequest("readwrite", (store) => store.put(record, SOUND_KEY)).then(
+          () => showPresetMsg("アラーム音を変更しました。", false),
+          () => showPresetMsg("アラーム音を変更しました(この端末では保存できないため、ページを閉じると標準に戻ります)。", true)
+        );
+      })
+      .catch(() => showPresetMsg("ファイルを読み込めませんでした。", true));
+  });
+
+  soundEls.useDefault.addEventListener("click", () => {
+    stopPreview();
+    clearCustomSound();
+    if (cd.finished) startAlarm();
+    renderSoundSetting();
+    soundDbRequest("readwrite", (store) => store.delete(SOUND_KEY)).catch(() => {});
+    showPresetMsg("アラーム音を標準に戻しました。", false);
+  });
+
+  renderSoundSetting();
+
   if (cd.durationMs > 0) writeInputsFromDuration(cd.durationMs);
   if (cd.finished) startAlarm();
+
+  soundDbRequest("readonly", (store) => store.get(SOUND_KEY))
+    .then((record) => {
+      if (!record || !record.data) return;
+      setCustomSound(record);
+      if (cd.finished) startAlarm();
+      renderSoundSetting();
+    })
+    .catch(() => {});
 
   // ===================== 名前付き保存タイマー =====================
   const PRESET_KEY = "savedTimerPresets_v1";
