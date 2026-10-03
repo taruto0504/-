@@ -480,6 +480,49 @@
   .doc-table th{background:#F3F6FA; width:32%; font-weight:700; color:var(--ink-soft);}
   .doc-foot{font-size:11px; color:var(--ink-soft); padding:10px 16px 14px; border-top:1px dashed var(--line);}
 
+  /* ==== カルテ・院内報告書の雰囲気 ==== */
+  :root{ --serif:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP","BIZ UDPMincho",serif; --rule:#C9D4E2; --band:#EAF0F7; --shu:#C8372D; }
+  /* 記載者・日付の帯(電子カルテの患者バーのような帯) */
+  .chart-strip{display:flex; flex-wrap:wrap; gap:4px 14px; margin:8px 0 10px; padding:7px 12px; background:#24384F; color:#E6EDF5; border-radius:8px; font-size:11.5px; font-variant-numeric:tabular-nums;}
+  .chart-strip b{color:#9FB4CC; font-weight:700; margin-right:5px;}
+  /* 記録用紙 */
+  .sheet{background:var(--panel); border:1px solid var(--rule); border-radius:6px; box-shadow:var(--shadow); overflow:hidden;}
+  .sheet-head{display:flex; justify-content:space-between; align-items:baseline; padding:10px 14px; background:var(--band); border-bottom:2px solid var(--primary-dark);}
+  .sheet-title{font-family:var(--serif); font-weight:700; font-size:16px; letter-spacing:.18em; color:var(--ink);}
+  .sheet-no{font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; letter-spacing:.04em;}
+  .sheet-body{padding:6px 14px 16px;}
+  .sheet-body .field-label{color:var(--ink); font-size:12px; letter-spacing:.04em;}
+  .sheet-body input[type=text], .sheet-body textarea{border-radius:4px; border-color:var(--rule); background:#FCFDFE;}
+  .sheet-body .sec-field{margin-top:4px; border:1px solid var(--rule); border-radius:4px; overflow:hidden;}
+  .sheet-body .sec-field .field-label{margin:0; padding:6px 10px; background:var(--band); border-bottom:1px solid var(--rule);}
+  .sheet-body .sec-field textarea{border:none; border-radius:0; background:#fff;
+    background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 27px, #EDF1F6 27px, #EDF1F6 28px); background-attachment:local; line-height:28px; padding-top:4px;}
+  .sheet-body .sec-field textarea:focus{outline:2px solid var(--primary); outline-offset:-2px;}
+  .sec-no{border-radius:3px;}
+  /* はんこ風の状態表示 */
+  .badge, .stamp{display:inline-block; font-family:var(--serif); font-weight:700; letter-spacing:.12em; border:1.5px solid currentColor; border-radius:4px; padding:2px 7px 1px 9px; background:transparent !important; transform:rotate(-6deg); line-height:1.4;}
+  .badge.sent, .stamp.st-sent{color:var(--shu);}
+  .badge.draft, .badge.saved, .stamp.st-draft{color:#7D8A99;}
+  .badge.received, .stamp.st-received{color:var(--teal);}
+  .stamp{font-size:15px; padding:4px 10px 3px 13px; border-width:2px; border-radius:6px; opacity:.88;}
+  .doc-stamp{position:absolute; right:16px; top:44px;}
+  /* 一覧:台帳のような行 */
+  .report-card{border-radius:6px; padding:12px 14px;}
+  .rc-title{font-family:var(--serif); font-size:15.5px;}
+  .rc-no{font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; letter-spacing:.03em;}
+  .type-tag{border-radius:3px;}
+  /* 詳細:書類 */
+  .doc{position:relative; border-radius:6px; border-top-width:3px;}
+  .doc-head{background:var(--band); padding:10px 16px; border-bottom:1px solid var(--rule);}
+  .doc-type{background:var(--panel); border:1px solid var(--rule); border-radius:3px;}
+  .doc-title{font-family:var(--serif); font-size:19px; letter-spacing:.03em; margin-top:14px; padding-right:84px;}
+  .doc-meta{border-color:var(--rule); border-radius:4px;}
+  .doc-meta div{border-right-color:var(--rule);}
+  .doc-sec{border-top-color:var(--rule);}
+  .doc-sec h3{font-family:var(--serif); letter-spacing:.06em; border-left:3px solid var(--primary-dark); padding-left:8px; margin-left:-2px;}
+  .doc-v{background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 25px, #EEF2F7 25px, #EEF2F7 26px); line-height:26px;}
+  .doc-summary .doc-v, .doc-question .doc-v{background-image:none;}
+
   /* ==== 端末に合わせた自動切り替え ==== */
 
   /* タッチ端末(スマホ・タブレット):iOSで入力欄をタップしたときに勝手に拡大されないよう16px以上にする */
@@ -814,6 +857,13 @@ function sectionsFor(type, old){
   return REPORT_TYPES[type].sections.map(t=>({ key:t.key, label:t.label, value: prev[t.key] || '' }));
 }
 // 報告番号(保存済みのレポートだけ。ドキュメントIDの先頭から作る)
+function nowLabel(){ return new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Tokyo' }); }
+// 状態を、書類に押すはんこ風に表示する
+function stampHtml(r){
+  const mine = isMine(r);
+  if(!mine) return `<span class="stamp st-received">受信</span>`;
+  return r.status==='sent' ? `<span class="stamp st-sent">送信済</span>` : `<span class="stamp st-draft">下書</span>`;
+}
 function reportNo(r){ return r && r.id ? 'R-' + String(r.id).slice(0,6).toUpperCase() : '未採番'; }
 function changeReportType(type){
   const d = S.draft;
@@ -1468,7 +1518,18 @@ function screenCreate(){
     <div class="content">
       ${isReedit ? `<div class="link-note">🔗 元のレポート「${escapeHtml((findReport(d.originalId)||{}).title || '元レポート')}」からの再編集です。送信すると新しいレポートとして届きます。</div>` : ''}
 
-      <div class="field-label" style="margin-top:8px;">レポートの種類</div>
+      <div class="chart-strip">
+        <span><b>記載者</b>${escapeHtml(ME.name)}(${escapeHtml(ME.occupation)})</span>
+        <span><b>ID</b>${escapeHtml(ME.id)}</span>
+        <span><b>記載日</b>${escapeHtml(nowLabel())}</span>
+      </div>
+      <div class="sheet">
+      <div class="sheet-head">
+        <span class="sheet-title">${escapeHtml(T.docTitle)}</span>
+        <span class="sheet-no">No. ${escapeHtml(reportNo(d))}</span>
+      </div>
+      <div class="sheet-body">
+      <div class="field-label" style="margin-top:4px;">レポートの種類</div>
       <div class="type-row">
         ${REPORT_TYPE_ORDER.map(k=>`<div class="chip type-chip ${reportTypeOf(d)===k?'active':''}" onclick="changeReportType('${k}')">${escapeHtml(REPORT_TYPES[k].label)}</div>`).join('')}
       </div>
@@ -1517,6 +1578,8 @@ function screenCreate(){
         </div>
       `).join('')}
       <button class="btn sm" style="margin-top:10px;" onclick="addField()">＋ 項目を追加</button>
+      </div>
+      </div>
 
       <div id="ai-draft-panel">${aiDraftPanelHtml()}</div>
 
@@ -1795,6 +1858,7 @@ function reportCard(r){
       </div>
       <div class="rc-meta">
         <span class="type-tag t-${reportTypeOf(r)}">${escapeHtml(REPORT_TYPES[reportTypeOf(r)].short)}</span>
+        <span class="rc-no">${escapeHtml(reportNo(r))}</span>
         <span>${escapeHtml(r.createdAt)}</span>
         ${!mine ? `<span>${escapeHtml(r.authorName||'')}さんから</span>` : ''}
         ${mine && r.recipients.length ? `<span class="rc-read">✓ 既読 ${readCount}/${r.recipients.length}</span>` : ''}
@@ -1906,6 +1970,7 @@ function detailContent(r){
         <span class="doc-type">${escapeHtml(T.label)}</span>
         <span class="doc-no">No. ${escapeHtml(reportNo(r))}</span>
       </div>
+      <div class="doc-stamp">${stampHtml(r)}</div>
       <h2 class="doc-title">${escapeHtml(r.title)}</h2>
       <dl class="doc-meta">
         <div><dt>報告日</dt><dd>${escapeHtml(r.createdAt)}${r.originalId?' (再編集版)':''}</dd></div>
