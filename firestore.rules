@@ -75,7 +75,8 @@ service cloud.firestore {
         return d.keys().hasOnly([
             'title', 'body', 'question', 'fields', 'attachments', 'status', 'originalId',
             'authorUid', 'authorId', 'authorName', 'recipients', 'recipientIdList', 'createdAt',
-            'lastCommentAt', 'lastCommentByUid', 'commentReads'])
+            'lastCommentAt', 'lastCommentByUid', 'commentReads',
+            'reportType', 'sections', 'authorOccupation'])
           && d.authorUid == request.auth.uid
           && d.authorId == myPid()
           && d.authorName == me().name
@@ -88,7 +89,11 @@ service cloud.firestore {
           && d.recipientIdList is list && d.recipientIdList.size() <= 50
           && d.recipients is map
           && d.recipients.keys().hasOnly(d.recipientIdList)
-          && d.recipients.size() == d.recipientIdList.size();
+          && d.recipients.size() == d.recipientIdList.size()
+          // レポートの種類(テンプレート)と見出しごとの内容。職種は本人のプロフィールと一致すること
+          && d.get('reportType', 'free') in ['learning', 'case', 'incident', 'ems', 'free']
+          && d.get('sections', []) is list && d.get('sections', []).size() <= 12
+          && d.get('authorOccupation', me().occupation) == me().occupation;
       }
 
       // 受信者は「自分の既読フラグ」と「コメントの既読・最終コメント情報」しか変更できない

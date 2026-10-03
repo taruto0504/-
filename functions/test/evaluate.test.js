@@ -38,9 +38,21 @@ test("長すぎる本文・不正な型は拒否", () => {
 });
 test("評価に使う項目だけに絞る(作成者情報などは送らない)", () => {
   const r = normalizeReport({ title: "t", body: "b", question: "q", fields: [{ name: "処置", value: "NG" }, { name: "", value: "" }], authorName: "山田", recipients: { a: 1 } });
-  assert.deepStrictEqual(r, { title: "t", body: "b", question: "q", fields: [{ name: "処置", value: "NG" }] });
+  assert.deepStrictEqual(r, { reportType: "free", title: "t", body: "b", question: "q", sections: [], fields: [{ name: "処置", value: "NG" }] });
   const m = buildUserMessage(r, "看護師", null);
   assert.match(m, /<report>/); assert.match(m, /処置:NG/); assert.match(m, /<question>/); assert.doesNotMatch(m, /山田/);
+});
+test("レポートの種類と見出し(SOAPなど)を AI に渡す", () => {
+  const r = normalizeReport({ reportType: "case", title: "急性心不全", body: "要旨", sections: [
+    { key: "s", label: "S:主観的情報", value: "息苦しい" }, { key: "o", label: "O:客観的情報", value: "SpO2 88%" }, { key: "a", label: "A:評価", value: "" } ] });
+  assert.strictEqual(r.reportType, "case");
+  assert.strictEqual(r.sections.length, 2); // 空の見出しは送らない
+  const m = buildUserMessage(r, "看護師", null);
+  assert.match(m, /<report_type>症例報告\(SOAP形式\)<\/report_type>/);
+  assert.match(m, /<section number="1" heading="S:主観的情報">\n息苦しい/);
+  assert.match(m, /<section number="2" heading="O:客観的情報">\nSpO2 88%/);
+  assert.strictEqual(normalizeReport({ reportType: "unknown", title: "t", body: "b" }).reportType, "free");
+  assert.throws(() => normalizeReport({ title: "t", body: "b", sections: new Array(13).fill({ label: "x", value: "y" }) }), /見出しが多すぎ/);
 });
 test("1段階目:Minds などに限定した Web 検索でガイドラインを調べる", async () => {
   const calls = [];

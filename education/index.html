@@ -446,6 +446,40 @@
   .sidebar-brand .logo .cross{width:18px; height:18px;}
   .sidebar-brand small{display:block; font-size:10px; font-weight:600; color:var(--ink-soft); letter-spacing:.06em;}
 
+  /* ==== 医療用レポートの体裁 ==== */
+  .type-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;}
+  .type-chip{font-size:12.5px;}
+  .type-desc{font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.6;}
+  .sec-field textarea{min-height:76px;}
+  .sec-no{display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 5px; border-radius:6px; background:var(--primary-tint); color:var(--primary-dark); font-size:11px; font-weight:800; margin-right:6px; font-variant-numeric:tabular-nums;}
+  .type-tag{font-size:10.5px; font-weight:800; padding:1px 7px; border-radius:5px; border:1px solid currentColor; letter-spacing:.02em;}
+  .type-tag.t-learning{color:var(--primary);}
+  .type-tag.t-case{color:#7B3FA0;}
+  .type-tag.t-incident{color:var(--danger);}
+  .type-tag.t-ems{color:#C2410C;}
+  .type-tag.t-free{color:var(--ink-soft);}
+  .doc{background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; border-top:4px solid var(--primary);}
+  .doc-head{display:flex; justify-content:space-between; align-items:center; padding:12px 16px 0;}
+  .doc-type{font-size:11.5px; font-weight:800; color:var(--primary-dark); background:var(--primary-tint); padding:3px 10px; border-radius:6px; letter-spacing:.04em;}
+  .doc-no{font-size:11.5px; color:var(--ink-soft); font-variant-numeric:tabular-nums; letter-spacing:.04em;}
+  .doc-title{font-size:18px; font-weight:800; line-height:1.45; margin:10px 16px 10px;}
+  .doc-meta{display:grid; grid-template-columns:repeat(auto-fit,minmax(96px,1fr)); margin:0 16px; border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .doc-meta div{padding:7px 10px; border-right:1px solid var(--line);}
+  .doc-meta div:last-child{border-right:none;}
+  .doc-meta dt{font-size:10.5px; color:var(--ink-soft); font-weight:700;}
+  .doc-meta dd{margin:1px 0 0; font-size:13px; font-weight:700;}
+  .doc-sec{padding:12px 16px; border-top:1px solid var(--line);}
+  .doc-sec:first-of-type{margin-top:12px;}
+  .doc-sec h3{margin:0 0 6px; font-size:13px; font-weight:800; color:var(--primary-dark); display:flex; align-items:center;}
+  .doc-v{font-size:14px; line-height:1.85; white-space:pre-wrap; word-break:break-word;}
+  .doc-summary{background:#F7FAFD;}
+  .doc-question{background:var(--amber-tint);}
+  .doc-question h3{color:#8A5B12;}
+  .doc-table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  .doc-table th, .doc-table td{border:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top;}
+  .doc-table th{background:#F3F6FA; width:32%; font-weight:700; color:var(--ink-soft);}
+  .doc-foot{font-size:11px; color:var(--ink-soft); padding:10px 16px 14px; border-top:1px dashed var(--line);}
+
   /* ==== 端末に合わせた自動切り替え ==== */
 
   /* タッチ端末(スマホ・タブレット):iOSで入力欄をタップしたときに勝手に拡大されないよう16px以上にする */
@@ -649,7 +683,7 @@ function toast(msg){
 }
 
 function newDraft(){
-  return { id:null, title:'', body:'', question:'', fields:[], status:'draft', createdAt:'今日', originalId:null, recipients:[], comments:[] };
+  return { id:null, reportType:'learning', title:'', body:'', question:'', sections: sectionsFor('learning'), fields:[], status:'draft', createdAt:'今日', originalId:null, recipients:[], comments:[] };
 }
 
 /* ============ Firestore データ読み込み ============ */
@@ -704,6 +738,9 @@ function fromFirestoreReport(id, data){
   const hasUnreadComment = !!lastCommentAt && lastCommentAt > myReadAt && data.lastCommentByUid !== ME.uid;
   return {
     id, title:data.title||'', body:data.body||'', question:data.question||'',
+    reportType: REPORT_TYPES[data.reportType] ? data.reportType : 'free',
+    sections: Array.isArray(data.sections) ? data.sections.map(x=>({ key:String(x.key||''), label:String(x.label||''), value:String(x.value||'') })) : [],
+    authorOccupation: data.authorOccupation || '',
     fields: data.fields||[], attachments: data.attachments||[], status: data.status||'draft',
     createdAt: ts ? new Date(ts).toLocaleDateString('ja-JP', {month:'2-digit', day:'2-digit'}) : '下書き',
     originalId: data.originalId||null,
@@ -723,6 +760,71 @@ async function loadDirectory(){
   }catch(e){
     console.error(e);
   }
+}
+
+/* ============ レポートの種類(医療現場の報告書の形式に合わせたテンプレート) ============ */
+const PRIVACY_PH = '氏名・ID・生年月日・詳しい日付など、個人が特定できる情報は書かないでください';
+const REPORT_TYPES = {
+  learning: { docTitle:'学習レポート', label:'学習レポート', short:'学習', desc:'調べたこと・学んだことを、目的・根拠・活かし方の順にまとめます',
+    bodyLabel:'要旨', bodyPh:'このレポートで伝えたいことを2〜3行で(例:急性心筋梗塞の初期対応で、MONAの考え方と最新の推奨を整理した)',
+    sections:[
+      { key:'purpose', label:'目的・テーマ', ph:'なぜ調べたか、何を学びたかったか' },
+      { key:'content', label:'調べた内容', ph:'要点を箇条書きでもOK' },
+      { key:'evidence', label:'根拠・出典', ph:'ガイドライン名(発行元・年)、文献、教科書など' },
+      { key:'practice', label:'臨床での活かし方', ph:'明日からの業務でどう使うか' },
+      { key:'reflection', label:'振り返り・今後の課題', ph:'わかったこと、まだわからないこと' },
+    ] },
+  case: { docTitle:'症例報告書', label:'症例報告(SOAP)', short:'症例', desc:'経験した症例を、SOAP形式で整理して振り返ります',
+    bodyLabel:'要旨', bodyPh:'症例の概要と学びを2〜3行で(例:70代男性の急性心不全。早期のNPPV導入で改善した一例)',
+    sections:[
+      { key:'patient', label:'患者背景', ph:'年代・性別・既往歴など(例:70代男性、高血圧・糖尿病)。' + PRIVACY_PH },
+      { key:'history', label:'主訴・現病歴', ph:'来院(要請)の理由と、それまでの経過' },
+      { key:'s', label:'S:主観的情報', ph:'患者さん・家族の訴え' },
+      { key:'o', label:'O:客観的情報', ph:'例:BP 120/80 mmHg、HR 80/分、RR 16/分、SpO2 98%(室内気)、BT 36.8℃、JCS 0、身体所見、検査結果' },
+      { key:'a', label:'A:評価(アセスメント)', ph:'S・O からの判断、考えられる病態' },
+      { key:'p', label:'P:計画・実施', ph:'行った処置・ケア、今後の計画' },
+      { key:'discussion', label:'考察', ph:'文献・ガイドラインと比べてどうだったか' },
+      { key:'conclusion', label:'結語', ph:'この症例から得た学びを一言で' },
+    ] },
+  incident: { docTitle:'インシデント振り返り報告書', label:'インシデント振り返り', short:'インシデント', desc:'ヒヤリ・ハットや事故を、原因と再発防止の視点で振り返ります',
+    bodyLabel:'概要', bodyPh:'何が起きたかを1〜2行で',
+    sections:[
+      { key:'situation', label:'発生状況', ph:'いつ・どこで・何が起きたか。' + PRIVACY_PH },
+      { key:'response', label:'発生時の対応', ph:'気づいたきっかけと、その後の対応' },
+      { key:'cause', label:'要因分析', ph:'人・物・環境・仕組みの面から(例:SHELモデル)' },
+      { key:'prevention', label:'再発防止策', ph:'個人として・チームとしてできること' },
+      { key:'learning', label:'学んだこと', ph:'' },
+    ] },
+  ems: { docTitle:'救急活動振り返り報告書', label:'救急活動の振り返り', short:'救急活動', desc:'救急出場事案を、観察・判断・処置・搬送の流れで振り返ります',
+    bodyLabel:'事案概要', bodyPh:'事案の概要を1〜2行で(例:60代男性、胸痛を主訴とする救急要請)',
+    sections:[
+      { key:'dispatch', label:'覚知・出場概要', ph:'通報内容、現場到着までの状況。' + PRIVACY_PH },
+      { key:'assessment', label:'傷病者観察', ph:'初期評価、バイタルサイン(JCS、呼吸数、脈拍、血圧、SpO2、体温)、身体所見' },
+      { key:'treatment', label:'判断・処置', ph:'実施した処置、特定行為、医師の指示' },
+      { key:'transport', label:'搬送・医療機関との連携', ph:'選定理由、伝達した内容' },
+      { key:'review', label:'振り返り', ph:'良かった点・改善点' },
+    ] },
+  free: { docTitle:'報告書', label:'自由形式', short:'自由', desc:'決まった見出しを使わず、自由に書きます',
+    bodyLabel:'本文', bodyPh:'調べたこと・レポート内容を自由に入力してください', sections:[] },
+};
+const REPORT_TYPE_ORDER = ['learning','case','incident','ems','free'];
+function reportTypeOf(r){ return REPORT_TYPES[r && r.reportType] ? r.reportType : 'free'; }
+function sectionsFor(type, old){
+  const prev = {}; (old||[]).forEach(x=>{ prev[x.key] = x.value; });
+  return REPORT_TYPES[type].sections.map(t=>({ key:t.key, label:t.label, value: prev[t.key] || '' }));
+}
+// 報告番号(保存済みのレポートだけ。ドキュメントIDの先頭から作る)
+function reportNo(r){ return r && r.id ? 'R-' + String(r.id).slice(0,6).toUpperCase() : '未採番'; }
+function changeReportType(type){
+  const d = S.draft;
+  if(!REPORT_TYPES[type] || d.reportType===type) return;
+  const next = sectionsFor(type, d.sections);
+  const keep = new Set(next.map(x=>x.key));
+  const lost = (d.sections||[]).filter(x=>x.value && x.value.trim() && !keep.has(x.key));
+  if(lost.length && !window.confirm('入力済みの「' + lost.map(x=>x.label).join('・') + '」は、この種類にない項目のため消えます。変更しますか?')) return;
+  d.reportType = type;
+  d.sections = next;
+  render();
 }
 
 /* ============ 料金プラン ============ */
@@ -1354,6 +1456,9 @@ function screenCreate(){
   const d = S.draft || (S.draft = newDraft());
   const isReedit = !!d.originalId;   // 送信済みレポートをもとに作り直している
   const isEditing = !isReedit && !!d.id; // 保存済みの下書きを編集している
+  if(!REPORT_TYPES[d.reportType]) d.reportType = 'free';
+  if(!Array.isArray(d.sections)) d.sections = sectionsFor(d.reportType);
+  const T = REPORT_TYPES[d.reportType];
   return `
     <div class="topbar bordered">
       <div class="back-btn" onclick="go('home')" aria-label="戻る">${ic('back')}</div>
@@ -1363,15 +1468,29 @@ function screenCreate(){
     <div class="content">
       ${isReedit ? `<div class="link-note">🔗 元のレポート「${escapeHtml((findReport(d.originalId)||{}).title || '元レポート')}」からの再編集です。送信すると新しいレポートとして届きます。</div>` : ''}
 
+      <div class="field-label" style="margin-top:8px;">レポートの種類</div>
+      <div class="type-row">
+        ${REPORT_TYPE_ORDER.map(k=>`<div class="chip type-chip ${reportTypeOf(d)===k?'active':''}" onclick="changeReportType('${k}')">${escapeHtml(REPORT_TYPES[k].label)}</div>`).join('')}
+      </div>
+      <div class="type-desc">${escapeHtml(T.desc)}</div>
+
       <div class="field-label">タイトル<span class="req">必須</span></div>
       <input type="text" id="f-title" placeholder="例:急性心筋梗塞の初期対応まとめ" value="${escapeHtml(d.title)}" oninput="d_.title=this.value">
 
-      <div class="field-label">本文(調べたこと・学んだこと)<span class="req">必須</span></div>
-      <textarea id="f-body" placeholder="調べたこと・レポート内容を自由に入力してください" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
+      <div class="field-label">${escapeHtml(T.bodyLabel)}<span class="req">必須</span></div>
+      <textarea id="f-body" style="${T.sections.length ? 'min-height:84px;' : ''}" placeholder="${escapeHtml(T.bodyPh)}" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
 
       ${HAS_SPEECH ? `<div class="mic-btn ${S.recording?'recording':''}" onclick="toggleMic()">
-        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声で本文を入力`}
+        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声で${escapeHtml(T.bodyLabel)}を入力`}
       </div>` : ''}
+
+      ${(d.sections||[]).map((x,i)=>{
+        const tpl = T.sections.find(t=>t.key===x.key) || {};
+        return `<div class="sec-field">
+          <div class="field-label"><span class="sec-no">${i+1}</span>${escapeHtml(x.label)}<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></div>
+          <textarea class="sec-input" placeholder="${escapeHtml(tpl.ph||'')}" oninput="d_.sections[${i}].value=this.value">${escapeHtml(x.value)}</textarea>
+        </div>`;
+      }).join('')}
 
       <div class="field-label">疑問・困りごと<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></div>
       <textarea id="f-question" style="min-height:90px;" placeholder="分からなかったこと、意見が欲しい点など、相手に聞きたいことがあれば書いてください" oninput="d_.question=this.value">${escapeHtml(d.question||'')}</textarea>
@@ -1550,6 +1669,9 @@ async function persistDraft(d){
   if(!window.fb || !ME.uid){ toast('ログイン状態を確認できません。再読み込みしてからお試しください'); return false; }
   const payload = {
     title:d.title, body:d.body, question:d.question||'', fields:d.fields||[],
+    reportType: reportTypeOf(d),
+    sections: (d.sections||[]).map(x=>({ key:x.key, label:x.label, value:x.value||'' })),
+    authorOccupation: ME.occupation,
     attachments: (d.attachments||[]).map(a=>({url:a.url, name:a.name, path:a.path})),
     status:d.status, originalId:d.originalId||null,
     authorUid: ME.uid, authorId: ME.id, authorName: ME.name,
@@ -1672,6 +1794,7 @@ function reportCard(r){
         <div class="badge ${mine ? (status==='sent'?'sent':'draft') : 'received'}">${mine ? badgeLabel : (r.recipients.some(x=>x.id===ME.id && !x.read) ? '受信・未読' : '受信')}</div>
       </div>
       <div class="rc-meta">
+        <span class="type-tag t-${reportTypeOf(r)}">${escapeHtml(REPORT_TYPES[reportTypeOf(r)].short)}</span>
         <span>${escapeHtml(r.createdAt)}</span>
         ${!mine ? `<span>${escapeHtml(r.authorName||'')}さんから</span>` : ''}
         ${mine && r.recipients.length ? `<span class="rc-read">✓ 既読 ${readCount}/${r.recipients.length}</span>` : ''}
@@ -1769,18 +1892,48 @@ function screenDetail(){
   `;
 }
 function detailContent(r){
+  const T = REPORT_TYPES[reportTypeOf(r)];
+  const secs = (r.sections||[]).filter(x=>x.value && x.value.trim());
+  const author = isMine(r) ? ME.name : (r.authorName||'');
+  const occ = isMine(r) ? ME.occupation : (r.authorOccupation||'');
   return `
-    <div class="detail-title">${escapeHtml(r.title)}</div>
-    <div class="detail-meta">${escapeHtml(r.createdAt)} 作成 ${r.originalId?'・🔗 再編集版':''}</div>
-    <div class="btn-row" style="margin-top:0; margin-bottom:14px;">
+    <div class="btn-row" style="margin-top:0; margin-bottom:12px;">
       ${aiLocked() ? `<button class="btn sm ai-btn" onclick="go('plan')">🔒 AIで評価</button>` : `<button class="btn sm ai-btn" onclick="openAiTabAndRun(${jsArg(r.id)})">${ic('ai')}AIで評価</button>`}
       <button class="btn sm" onclick="printReport(${jsArg(r.id)})">${ic('print')}印刷・PDF</button>
     </div>
-    <div class="detail-body">${escapeHtml(r.body)}
-    ${(r.attachments && r.attachments.length) ? `<div class="attach-row" style="margin-top:12px;">${r.attachments.filter(a=>safeUrl(a.url)).map(a=>`<a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" class="attach-thumb" style="padding:0; overflow:hidden;"><img src="${safeUrl(a.url)}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(a.name||'添付画像')}"></a>`).join('')}</div>` : ''}
-    ${(r.fields||[]).map(f=>`<div class="cf-view"><div class="cfn">${escapeHtml(f.name||'項目')}</div><div class="cfv">${escapeHtml(f.value)}</div></div>`).join('')}
-    ${r.question ? `<div class="cf-view"><div class="cfn" style="color:var(--amber);">疑問・困りごと</div><div class="cfv">${escapeHtml(r.question)}</div></div>` : ''}
-    </div>
+    <article class="doc">
+      <div class="doc-head">
+        <span class="doc-type">${escapeHtml(T.label)}</span>
+        <span class="doc-no">No. ${escapeHtml(reportNo(r))}</span>
+      </div>
+      <h2 class="doc-title">${escapeHtml(r.title)}</h2>
+      <dl class="doc-meta">
+        <div><dt>報告日</dt><dd>${escapeHtml(r.createdAt)}${r.originalId?' (再編集版)':''}</dd></div>
+        <div><dt>作成者</dt><dd>${escapeHtml(author)}</dd></div>
+        ${occ ? `<div><dt>職種</dt><dd>${escapeHtml(occ)}</dd></div>` : ''}
+      </dl>
+      <section class="doc-sec doc-summary">
+        <h3>${escapeHtml(T.bodyLabel)}</h3>
+        <div class="doc-v">${escapeHtml(r.body)}</div>
+      </section>
+      ${secs.map((x,i)=>`<section class="doc-sec">
+        <h3><span class="sec-no">${i+1}</span>${escapeHtml(x.label)}</h3>
+        <div class="doc-v">${escapeHtml(x.value)}</div>
+      </section>`).join('')}
+      ${(r.fields||[]).filter(f=>f.name||f.value).length ? `<section class="doc-sec">
+        <h3>補足</h3>
+        <table class="doc-table">${(r.fields||[]).filter(f=>f.name||f.value).map(f=>`<tr><th>${escapeHtml(f.name||'項目')}</th><td>${escapeHtml(f.value)}</td></tr>`).join('')}</table>
+      </section>` : ''}
+      ${r.question ? `<section class="doc-sec doc-question">
+        <h3>疑問・相談事項</h3>
+        <div class="doc-v">${escapeHtml(r.question)}</div>
+      </section>` : ''}
+      ${(r.attachments && r.attachments.length) ? `<section class="doc-sec">
+        <h3>添付資料</h3>
+        <div class="attach-row">${r.attachments.filter(a=>safeUrl(a.url)).map(a=>`<a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer" class="attach-thumb" style="padding:0; overflow:hidden;"><img src="${safeUrl(a.url)}" style="width:100%;height:100%;object-fit:cover;" alt="${escapeHtml(a.name||'添付画像')}"></a>`).join('')}</div>
+      </section>` : ''}
+      <div class="doc-foot">※ 本報告は学習を目的とした記録であり、診療録ではありません。</div>
+    </article>
   `;
 }
 function detailRead(r){
@@ -1851,7 +2004,9 @@ function aiConfirm(){
   return aiConsented;
 }
 function draftSnapshot(d){
-  return JSON.stringify({ title:d.title||'', body:d.body||'', question:d.question||'', fields:(d.fields||[]).map(f=>({name:f.name||'', value:f.value||''})) });
+  return JSON.stringify({ reportType: reportTypeOf(d), title:d.title||'', body:d.body||'', question:d.question||'',
+    sections:(d.sections||[]).map(x=>({ key:x.key, label:x.label, value:x.value||'' })),
+    fields:(d.fields||[]).map(f=>({name:f.name||'', value:f.value||''})) });
 }
 
 // 作成画面:保存前の内容をそのまま評価する(結果は保存しない)
@@ -2107,10 +2262,10 @@ function editReport(id){
   if(!isMine(r)) return;
   if(r.status==='sent'){
     // 送信済みのものを編集する場合は、仕様通り「新しいレポート」として作り直す
-    S.draft = {...r, id:null, originalId: r.id, status:'draft', fields:(r.fields||[]).map(f=>({...f})), recipients:[], comments:[]};
+    S.draft = {...r, id:null, originalId: r.id, status:'draft', fields:(r.fields||[]).map(f=>({...f})), sections:(r.sections||[]).map(x=>({...x})), recipients:[], comments:[]};
   } else {
     // 下書き・保存済み(まだ未送信)の場合は、同じレポートをそのまま編集する(複製を作らない)
-    S.draft = {...r, fields:(r.fields||[]).map(f=>({...f})), recipients:[], comments:[]};
+    S.draft = {...r, fields:(r.fields||[]).map(f=>({...f})), sections:(r.sections||[]).map(x=>({...x})), recipients:[], comments:[]};
   }
   S._editingId = S.draft.id;
   S.aiDraft = { loading:false, result:null, error:'' };
@@ -2506,43 +2661,60 @@ function isPathReferenced(path, exceptId){
 }
 
 function buildPrintDocumentHTML(d, mode){
-  // 受け取ったレポートを印刷するときは、自分ではなく作成者の名前を載せる
-  const authorLabel = (d.authorUid && d.authorUid!==ME.uid)
-    ? `${escapeHtml(d.authorName)}(${escapeHtml(d.authorId)})`
-    : `${escapeHtml(ME.name)}(${escapeHtml(ME.occupation)}・${escapeHtml(ME.id)})`;
-  const fieldsHtml = (d.fields||[]).map(f=>`<div class="field"><div class="n">${escapeHtml(f.name||'項目')}</div><div class="v">${escapeHtml(f.value)}</div></div>`).join('');
-  const questionHtml = d.question ? `<div class="field"><div class="n" style="color:#C4842B;">疑問・困りごと</div><div class="v">${escapeHtml(d.question)}</div></div>` : '';
-  const imgsHtml = (d.attachments && d.attachments.length) ? `<div class="imgs">${d.attachments.filter(a=>safeUrl(a.url)).map(a=>`<img src="${safeUrl(a.url)}">`).join('')}</div>` : '';
+  const T = REPORT_TYPES[reportTypeOf(d)];
+  const theirs = d.authorUid && d.authorUid!==ME.uid; // 受け取ったレポートは作成者の情報を載せる
+  const author = theirs ? (d.authorName||'') : ME.name;
+  const occ = theirs ? (d.authorOccupation||'') : ME.occupation;
+  const pid = theirs ? (d.authorId||'') : ME.id;
+  const fmt = (ms)=>new Date(ms).toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', timeZone:'Asia/Tokyo' });
+  const reportDate = d._ts ? fmt(d._ts) : '(未保存)';
+  const rows = [];
+  rows.push(['row-summary', T.bodyLabel, d.body||'']);
+  (d.sections||[]).filter(x=>x.value && x.value.trim()).forEach((x,i)=>rows.push(['', `${i+1}. ${x.label}`, x.value]));
+  (d.fields||[]).filter(f=>f.name||f.value).forEach(f=>rows.push(['', f.name||'補足', f.value||'']));
+  if(d.question) rows.push(['row-question', '疑問・相談事項', d.question]);
+  const imgsHtml = (d.attachments && d.attachments.length) ? `<div class="imgs-title">添付資料</div><div class="imgs">${d.attachments.filter(a=>safeUrl(a.url)).map(a=>`<img src="${safeUrl(a.url)}">`).join('')}</div>` : '';
   const isPdf = mode==='pdf';
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8">
-<title>${escapeHtml(d.title||'レポート')}</title>
+<title>${escapeHtml(T.docTitle)}_${escapeHtml(d.title||'レポート')}</title>
 <style>
   *{box-sizing:border-box;}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic","Segoe UI",sans-serif; color:#16232B; margin:0;}
-  .toolbar{
-    position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:10px;
-    background:#0D47A1; color:#fff; padding:12px 16px;
-  }
-  .toolbar button{
-    border:none; border-radius:999px; padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;
-  }
+  body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP",serif; color:#111; margin:0; background:#E9EDF2;}
+  .toolbar{position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:10px; background:#0D47A1; color:#fff; padding:12px 16px; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;}
+  .toolbar button{border:none; border-radius:999px; padding:9px 16px; font-size:13.5px; font-weight:700; cursor:pointer;}
   .toolbar .back{background:rgba(255,255,255,.16); color:#fff;}
   .toolbar .action{background:#fff; color:#0D47A1; margin-left:auto;}
   .toolbar .ttl{font-size:13.5px; font-weight:700; opacity:.9;}
-  .hint{background:#FBF0DE; color:#7A5A16; font-size:12.5px; padding:10px 16px; line-height:1.6;}
-  .page{padding:26px 30px; font-size:13px; line-height:1.9;}
-  h1{font-size:19px; margin:0 0 4px; font-weight:800;}
-  .meta{font-size:11px; color:#555; margin-bottom:18px; padding-bottom:10px; border-bottom:1px solid #ccc;}
-  .body{white-space:pre-wrap; font-size:12.5px;}
-  .field{margin-top:14px; page-break-inside:avoid;}
-  .field .n{font-size:11px; font-weight:700; color:#1565C0;}
-  .field .v{font-size:12.5px; margin-top:2px; white-space:pre-wrap;}
-  .imgs{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px;}
-  .imgs img{width:150px; height:150px; object-fit:cover; border-radius:6px; border:1px solid #ddd;}
+  .hint{background:#FBF0DE; color:#7A5A16; font-size:12.5px; padding:10px 16px; line-height:1.6; font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;}
+  /* A4 の用紙イメージ */
+  .page{width:210mm; max-width:100%; min-height:297mm; margin:16px auto; background:#fff; padding:16mm 15mm; box-shadow:0 2px 12px rgba(0,0,0,.12); font-size:10.5pt; line-height:1.75;}
+  .doc-header{display:flex; justify-content:space-between; align-items:flex-end; font-size:9pt; color:#333; border-bottom:2px solid #0D47A1; padding-bottom:6px;}
+  .doc-header .org{font-weight:700; color:#0D47A1; letter-spacing:.08em;}
+  .doc-header .no{text-align:right; line-height:1.6;}
+  h1{font-size:17pt; text-align:center; letter-spacing:.3em; margin:14px 0 12px; font-weight:700;}
+  table{width:100%; border-collapse:collapse;}
+  th, td{border:1px solid #555; padding:6px 9px; vertical-align:top; text-align:left;}
+  th{background:#EEF3F9; font-weight:700; white-space:nowrap; font-size:9.5pt;}
+  .meta th{width:16%;} .meta td{width:34%;}
+  .sections{margin-top:10px;}
+  .sections th{width:24%; white-space:normal;}
+  .sections td{white-space:pre-wrap; word-break:break-word;}
+  .sections tr{page-break-inside:avoid;}
+  .row-summary th, .row-summary td{background:#F7FAFD;}
+  .row-question th{background:#FDF2E1;}
+  .imgs-title{margin-top:12px; font-weight:700; font-size:9.5pt;}
+  .imgs{display:flex; flex-wrap:wrap; gap:8px; margin-top:6px;}
+  .imgs img{width:45mm; height:45mm; object-fit:cover; border:1px solid #999;}
+  .sign{width:60%; margin:16px 0 0 auto;}
+  .sign th{text-align:center; font-size:9pt;}
+  .sign td{height:20mm;}
+  .foot{margin-top:12px; font-size:8.5pt; color:#444; border-top:1px solid #999; padding-top:6px; line-height:1.6;}
   @media print{
+    body{background:#fff;}
     .toolbar, .hint{ display:none !important; }
-    @page{ margin:16mm 14mm; }
+    .page{margin:0; box-shadow:none; width:auto; min-height:0; padding:0;}
+    @page{ size:A4; margin:15mm 14mm; }
   }
 </style></head>
 <body>
@@ -2553,12 +2725,25 @@ function buildPrintDocumentHTML(d, mode){
   </div>
   ${isPdf ? `<div class="hint">「🖨 印刷・PDF保存」を押すと印刷ダイアログが開きます。PDFにしたい場合は、送信先(プリンター)で「PDFに保存」を選んでください。</div>` : ''}
   <div class="page">
-    <h1>${escapeHtml(d.title||'(無題のレポート)')}</h1>
-    <div class="meta">作成者:${authorLabel} ／ ${escapeHtml(d.createdAt||'本日')}</div>
-    <div class="body">${escapeHtml(d.body||'')}</div>
+    <div class="doc-header">
+      <div class="org">医療教育アプリ</div>
+      <div class="no">報告番号 ${escapeHtml(reportNo(d))}<br>出力日 ${escapeHtml(fmt(Date.now()))}</div>
+    </div>
+    <h1>${escapeHtml(T.docTitle)}</h1>
+    <table class="meta">
+      <tr><th>表題</th><td colspan="3">${escapeHtml(d.title||'(無題)')}</td></tr>
+      <tr><th>作成者</th><td>${escapeHtml(author)}</td><th>職種</th><td>${escapeHtml(occ)}</td></tr>
+      <tr><th>個人ID</th><td>${escapeHtml(pid)}</td><th>報告日</th><td>${escapeHtml(reportDate)}${d.originalId ? '(再編集版)' : ''}</td></tr>
+    </table>
+    <table class="sections">
+      ${rows.map(([cls, h, v])=>`<tr class="${cls}"><th>${escapeHtml(h)}</th><td>${escapeHtml(v)}</td></tr>`).join('')}
+    </table>
     ${imgsHtml}
-    ${fieldsHtml}
-    ${questionHtml}
+    <table class="sign">
+      <tr><th>作成者</th><th>指導者確認</th><th>確認日</th></tr>
+      <tr><td></td><td></td><td></td></tr>
+    </table>
+    <div class="foot">※ 本報告は学習を目的とした記録であり、診療録ではありません。患者等を特定できる情報は記載しないでください。</div>
   </div>
 </body></html>`;
 }

@@ -9,7 +9,16 @@ const Anthropic = require("@anthropic-ai/sdk");
 const MODEL = "claude-opus-5-5";
 
 // 入力サイズの上限(Firestore ルールと同じ値)
-const LIMITS = { title: 200, body: 20000, question: 5000, fields: 30, fieldName: 200, fieldValue: 2000 };
+const LIMITS = { title: 200, body: 20000, question: 5000, fields: 30, fieldName: 200, fieldValue: 2000, sections: 12, sectionLabel: 100, sectionValue: 10000 };
+
+// レポートの種類(アプリのテンプレートと同じ)
+const REPORT_TYPE_LABELS = {
+  learning: "学習レポート",
+  case: "症例報告(SOAP形式)",
+  incident: "インシデント振り返り",
+  ems: "救急活動の振り返り",
+  free: "自由形式",
+};
 
 // Web検索・ページ取得を許可するサイト(医療ガイドラインや公的機関など、信頼できる情報源に限定する)
 // サブドメインも含まれる(例: www.mhlw.go.jp)。必要に応じて追加・削除する
@@ -53,6 +62,7 @@ const SYSTEM_PROMPT = `あなたは日本の医療現場で働く医療従事者
 3. 提案:学習を深めるために、追記・修正すると良い点を具体的に示す。
 4. 参考:さらに学ぶのに役立つ資料(ガイドライン、教科書、学会の指針など)を挙げる。
 5. 疑問への回答:レポートに「疑問・困りごと」があれば、それに答える。
+6. 報告書としての構成:<report_type> に応じた構成になっているか(例:症例報告なら S・O・A・P の区別、O に客観的な数値があるか、A が S・O から導かれているか。インシデント振り返りなら要因分析と再発防止策が具体的か)。不足は suggestions で指摘する。
 
 ガイドライン調査結果の使い方:
 - <guideline_research> に、Webで調べたガイドラインの要点がある場合は、それを優先して判定と参考資料に使う。
@@ -157,10 +167,15 @@ function normalizeReport(src) {
   if (!src || typeof src !== "object") throw new EvaluationError("invalid-argument", "レポートがありません");
   const fields = Array.isArray(src.fields) ? src.fields : [];
   if (fields.length > LIMITS.fields) throw new EvaluationError("invalid-argument", "追加項目が多すぎます");
+  const sections = Array.isArray(src.sections) ? src.sections : [];
+  if (sections.length > LIMITS.sections) throw new EvaluationError("invalid-argument", "見出しが多すぎます");
   const report = {
+    reportType: REPORT_TYPE_LABELS[src.reportType] ? src.reportType : "free",
     title: str(src.title, LIMITS.title).trim(),
     body: str(src.body, LIMITS.body).trim(),
     question: str(src.question, LIMITS.question).trim(),
+    sections: sections.map((x) => ({ label: str(x && x.label, LIMITS.sectionLabel).trim(), value: str(x && x.value, LIMITS.sectionValue).trim() }))
+      .filter((x) => x.value),
     fields: fields.map((f) => ({ name: str(f && f.name, LIMITS.fieldName), value: str(f && f.value, LIMITS.fieldValue) }))
       .filter((f) => f.name || f.value),
   };
@@ -170,12 +185,14 @@ function normalizeReport(src) {
 
 function reportXml(report) {
   const fieldsText = report.fields.map((f) => `- ${f.name || "(項目名なし)"}:${f.value}`).join("\n");
+  const sectionsText = (report.sections || []).map((x, i) => `<section number="${i + 1}" heading="${x.label.replace(/"/g, "'")}">\n${x.value}\n</section>`).join("\n");
   return `<report>
+<report_type>${REPORT_TYPE_LABELS[report.reportType] || REPORT_TYPE_LABELS.free}</report_type>
 <title>${report.title}</title>
-<body>
+<summary>
 ${report.body}
-</body>
-${fieldsText ? `<additional_fields>\n${fieldsText}\n</additional_fields>\n` : ""}${report.question ? `<question>\n${report.question}\n</question>\n` : ""}</report>`;
+</summary>
+${sectionsText ? `${sectionsText}\n` : ""}${fieldsText ? `<additional_fields>\n${fieldsText}\n</additional_fields>\n` : ""}${report.question ? `<question>\n${report.question}\n</question>\n` : ""}</report>`;
 }
 
 function buildUserMessage(report, occupation, research) {
