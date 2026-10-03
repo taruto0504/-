@@ -447,17 +447,8 @@
   .sidebar-brand small{display:block; font-size:10px; font-weight:600; color:var(--ink-soft); letter-spacing:.06em;}
 
   /* ==== 医療用レポートの体裁 ==== */
-  .type-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px;}
-  .type-chip{font-size:12.5px;}
-  .type-desc{font-size:12px; color:var(--ink-soft); margin-top:6px; line-height:1.6;}
   .sec-field textarea{min-height:76px;}
   .sec-no{display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; padding:0 5px; border-radius:6px; background:var(--primary-tint); color:var(--primary-dark); font-size:11px; font-weight:800; margin-right:6px; font-variant-numeric:tabular-nums;}
-  .type-tag{font-size:10.5px; font-weight:800; padding:1px 7px; border-radius:5px; border:1px solid currentColor; letter-spacing:.02em;}
-  .type-tag.t-learning{color:var(--primary);}
-  .type-tag.t-case{color:#7B3FA0;}
-  .type-tag.t-incident{color:var(--danger);}
-  .type-tag.t-ems{color:#C2410C;}
-  .type-tag.t-free{color:var(--ink-soft);}
   .doc{background:var(--panel); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; border-top:4px solid var(--primary);}
   .doc-head{display:flex; justify-content:space-between; align-items:center; padding:12px 16px 0;}
   .doc-type{font-size:11.5px; font-weight:800; color:var(--primary-dark); background:var(--primary-tint); padding:3px 10px; border-radius:6px; letter-spacing:.04em;}
@@ -499,6 +490,8 @@
     background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 27px, #EDF1F6 27px, #EDF1F6 28px); background-attachment:local; line-height:28px; padding-top:4px;}
   .sheet-body .sec-field textarea:focus{outline:2px solid var(--primary); outline-offset:-2px;}
   .sec-no{border-radius:3px;}
+  .sheet-body textarea.ruled{min-height:200px; background-color:#fff;
+    background-image:repeating-linear-gradient(to bottom, transparent 0, transparent 27px, #EDF1F6 27px, #EDF1F6 28px); background-attachment:local; line-height:28px; padding-top:4px;}
   /* はんこ風の状態表示 */
   .badge, .stamp{display:inline-block; font-family:var(--serif); font-weight:700; letter-spacing:.12em; border:1.5px solid currentColor; border-radius:4px; padding:2px 7px 1px 9px; background:transparent !important; transform:rotate(-6deg); line-height:1.4;}
   .badge.sent, .stamp.st-sent{color:var(--shu);}
@@ -510,7 +503,6 @@
   .report-card{border-radius:6px; padding:12px 14px;}
   .rc-title{font-family:var(--serif); font-size:15.5px;}
   .rc-no{font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; letter-spacing:.03em;}
-  .type-tag{border-radius:3px;}
   /* 詳細:書類 */
   .doc{position:relative; border-radius:6px; border-top-width:3px;}
   .doc-head{background:var(--band); padding:10px 16px; border-bottom:1px solid var(--rule);}
@@ -726,7 +718,7 @@ function toast(msg){
 }
 
 function newDraft(){
-  return { id:null, reportType:'learning', title:'', body:'', question:'', sections: sectionsFor('learning'), fields:[], status:'draft', createdAt:'今日', originalId:null, recipients:[], comments:[] };
+  return { id:null, reportType:'free', title:'', body:'', question:'', sections:[], fields:[], status:'draft', createdAt:'今日', originalId:null, recipients:[], comments:[] };
 }
 
 /* ============ Firestore データ読み込み ============ */
@@ -781,7 +773,7 @@ function fromFirestoreReport(id, data){
   const hasUnreadComment = !!lastCommentAt && lastCommentAt > myReadAt && data.lastCommentByUid !== ME.uid;
   return {
     id, title:data.title||'', body:data.body||'', question:data.question||'',
-    reportType: REPORT_TYPES[data.reportType] ? data.reportType : 'free',
+    reportType: reportTypeOf(data),
     sections: Array.isArray(data.sections) ? data.sections.map(x=>({ key:String(x.key||''), label:String(x.label||''), value:String(x.value||'') })) : [],
     authorOccupation: data.authorOccupation || '',
     fields: data.fields||[], attachments: data.attachments||[], status: data.status||'draft',
@@ -805,58 +797,10 @@ async function loadDirectory(){
   }
 }
 
-/* ============ レポートの種類(医療現場の報告書の形式に合わせたテンプレート) ============ */
-const PRIVACY_PH = '氏名・ID・生年月日・詳しい日付など、個人が特定できる情報は書かないでください';
-const REPORT_TYPES = {
-  learning: { docTitle:'学習レポート', label:'学習レポート', short:'学習', desc:'調べたこと・学んだことを、目的・根拠・活かし方の順にまとめます',
-    bodyLabel:'要旨', bodyPh:'このレポートで伝えたいことを2〜3行で(例:急性心筋梗塞の初期対応で、MONAの考え方と最新の推奨を整理した)',
-    sections:[
-      { key:'purpose', label:'目的・テーマ', ph:'なぜ調べたか、何を学びたかったか' },
-      { key:'content', label:'調べた内容', ph:'要点を箇条書きでもOK' },
-      { key:'evidence', label:'根拠・出典', ph:'ガイドライン名(発行元・年)、文献、教科書など' },
-      { key:'practice', label:'臨床での活かし方', ph:'明日からの業務でどう使うか' },
-      { key:'reflection', label:'振り返り・今後の課題', ph:'わかったこと、まだわからないこと' },
-    ] },
-  case: { docTitle:'症例報告書', label:'症例報告(SOAP)', short:'症例', desc:'経験した症例を、SOAP形式で整理して振り返ります',
-    bodyLabel:'要旨', bodyPh:'症例の概要と学びを2〜3行で(例:70代男性の急性心不全。早期のNPPV導入で改善した一例)',
-    sections:[
-      { key:'patient', label:'患者背景', ph:'年代・性別・既往歴など(例:70代男性、高血圧・糖尿病)。' + PRIVACY_PH },
-      { key:'history', label:'主訴・現病歴', ph:'来院(要請)の理由と、それまでの経過' },
-      { key:'s', label:'S:主観的情報', ph:'患者さん・家族の訴え' },
-      { key:'o', label:'O:客観的情報', ph:'例:BP 120/80 mmHg、HR 80/分、RR 16/分、SpO2 98%(室内気)、BT 36.8℃、JCS 0、身体所見、検査結果' },
-      { key:'a', label:'A:評価(アセスメント)', ph:'S・O からの判断、考えられる病態' },
-      { key:'p', label:'P:計画・実施', ph:'行った処置・ケア、今後の計画' },
-      { key:'discussion', label:'考察', ph:'文献・ガイドラインと比べてどうだったか' },
-      { key:'conclusion', label:'結語', ph:'この症例から得た学びを一言で' },
-    ] },
-  incident: { docTitle:'インシデント振り返り報告書', label:'インシデント振り返り', short:'インシデント', desc:'ヒヤリ・ハットや事故を、原因と再発防止の視点で振り返ります',
-    bodyLabel:'概要', bodyPh:'何が起きたかを1〜2行で',
-    sections:[
-      { key:'situation', label:'発生状況', ph:'いつ・どこで・何が起きたか。' + PRIVACY_PH },
-      { key:'response', label:'発生時の対応', ph:'気づいたきっかけと、その後の対応' },
-      { key:'cause', label:'要因分析', ph:'人・物・環境・仕組みの面から(例:SHELモデル)' },
-      { key:'prevention', label:'再発防止策', ph:'個人として・チームとしてできること' },
-      { key:'learning', label:'学んだこと', ph:'' },
-    ] },
-  ems: { docTitle:'救急活動振り返り報告書', label:'救急活動の振り返り', short:'救急活動', desc:'救急出場事案を、観察・判断・処置・搬送の流れで振り返ります',
-    bodyLabel:'事案概要', bodyPh:'事案の概要を1〜2行で(例:60代男性、胸痛を主訴とする救急要請)',
-    sections:[
-      { key:'dispatch', label:'覚知・出場概要', ph:'通報内容、現場到着までの状況。' + PRIVACY_PH },
-      { key:'assessment', label:'傷病者観察', ph:'初期評価、バイタルサイン(JCS、呼吸数、脈拍、血圧、SpO2、体温)、身体所見' },
-      { key:'treatment', label:'判断・処置', ph:'実施した処置、特定行為、医師の指示' },
-      { key:'transport', label:'搬送・医療機関との連携', ph:'選定理由、伝達した内容' },
-      { key:'review', label:'振り返り', ph:'良かった点・改善点' },
-    ] },
-  free: { docTitle:'報告書', label:'自由形式', short:'自由', desc:'決まった見出しを使わず、自由に書きます',
-    bodyLabel:'本文', bodyPh:'調べたこと・レポート内容を自由に入力してください', sections:[] },
-};
-const REPORT_TYPE_ORDER = ['learning','case','incident','ems','free'];
-function reportTypeOf(r){ return REPORT_TYPES[r && r.reportType] ? r.reportType : 'free'; }
-function sectionsFor(type, old){
-  const prev = {}; (old||[]).forEach(x=>{ prev[x.key] = x.value; });
-  return REPORT_TYPES[type].sections.map(t=>({ key:t.key, label:t.label, value: prev[t.key] || '' }));
-}
-// 報告番号(保存済みのレポートだけ。ドキュメントIDの先頭から作る)
+/* ============ レポートの表示用 ============ */
+// 以前のバージョンで作った「種類つき」のレポートも、そのまま読み書きできるように値だけ引き継ぐ
+const KNOWN_REPORT_TYPES = ['learning','case','incident','ems','free'];
+function reportTypeOf(r){ return r && KNOWN_REPORT_TYPES.includes(r.reportType) ? r.reportType : 'free'; }
 function nowLabel(){ return new Date().toLocaleString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', timeZone:'Asia/Tokyo' }); }
 // 状態を、書類に押すはんこ風に表示する
 function stampHtml(r){
@@ -864,18 +808,8 @@ function stampHtml(r){
   if(!mine) return `<span class="stamp st-received">受信</span>`;
   return r.status==='sent' ? `<span class="stamp st-sent">送信済</span>` : `<span class="stamp st-draft">下書</span>`;
 }
+// 報告番号(保存済みのレポートだけ。ドキュメントIDの先頭から作る)
 function reportNo(r){ return r && r.id ? 'R-' + String(r.id).slice(0,6).toUpperCase() : '未採番'; }
-function changeReportType(type){
-  const d = S.draft;
-  if(!REPORT_TYPES[type] || d.reportType===type) return;
-  const next = sectionsFor(type, d.sections);
-  const keep = new Set(next.map(x=>x.key));
-  const lost = (d.sections||[]).filter(x=>x.value && x.value.trim() && !keep.has(x.key));
-  if(lost.length && !window.confirm('入力済みの「' + lost.map(x=>x.label).join('・') + '」は、この種類にない項目のため消えます。変更しますか?')) return;
-  d.reportType = type;
-  d.sections = next;
-  render();
-}
 
 /* ============ 料金プラン ============ */
 // プランの内容(回数や上限)はサーバー側(functions/plans.js)が正。アプリはサーバーから受け取って表示する。
@@ -1506,9 +1440,7 @@ function screenCreate(){
   const d = S.draft || (S.draft = newDraft());
   const isReedit = !!d.originalId;   // 送信済みレポートをもとに作り直している
   const isEditing = !isReedit && !!d.id; // 保存済みの下書きを編集している
-  if(!REPORT_TYPES[d.reportType]) d.reportType = 'free';
-  if(!Array.isArray(d.sections)) d.sections = sectionsFor(d.reportType);
-  const T = REPORT_TYPES[d.reportType];
+  if(!Array.isArray(d.sections)) d.sections = [];
   return `
     <div class="topbar bordered">
       <div class="back-btn" onclick="go('home')" aria-label="戻る">${ic('back')}</div>
@@ -1525,31 +1457,25 @@ function screenCreate(){
       </div>
       <div class="sheet">
       <div class="sheet-head">
-        <span class="sheet-title">${escapeHtml(T.docTitle)}</span>
+        <span class="sheet-title">報告書</span>
         <span class="sheet-no">No. ${escapeHtml(reportNo(d))}</span>
       </div>
       <div class="sheet-body">
-      <div class="field-label" style="margin-top:4px;">レポートの種類</div>
-      <div class="type-row">
-        ${REPORT_TYPE_ORDER.map(k=>`<div class="chip type-chip ${reportTypeOf(d)===k?'active':''}" onclick="changeReportType('${k}')">${escapeHtml(REPORT_TYPES[k].label)}</div>`).join('')}
-      </div>
-      <div class="type-desc">${escapeHtml(T.desc)}</div>
-
-      <div class="field-label">タイトル<span class="req">必須</span></div>
+      <div class="field-label" style="margin-top:4px;">タイトル<span class="req">必須</span></div>
       <input type="text" id="f-title" placeholder="例:急性心筋梗塞の初期対応まとめ" value="${escapeHtml(d.title)}" oninput="d_.title=this.value">
 
-      <div class="field-label">${escapeHtml(T.bodyLabel)}<span class="req">必須</span></div>
-      <textarea id="f-body" style="${T.sections.length ? 'min-height:84px;' : ''}" placeholder="${escapeHtml(T.bodyPh)}" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
+      <div class="field-label">本文(調べたこと・学んだこと)<span class="req">必須</span></div>
+      <textarea id="f-body" class="ruled" placeholder="調べたこと・経験したこと・学んだことを書いてください(患者さんを特定できる情報は書かないでください)" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
 
       ${HAS_SPEECH ? `<div class="mic-btn ${S.recording?'recording':''}" onclick="toggleMic()">
-        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声で${escapeHtml(T.bodyLabel)}を入力`}
+        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声で本文を入力`}
       </div>` : ''}
 
       ${(d.sections||[]).map((x,i)=>{
-        const tpl = T.sections.find(t=>t.key===x.key) || {};
+        // 以前のバージョンで作った見出しつきのレポートを編集するときだけ表示される
         return `<div class="sec-field">
           <div class="field-label"><span class="sec-no">${i+1}</span>${escapeHtml(x.label)}<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></div>
-          <textarea class="sec-input" placeholder="${escapeHtml(tpl.ph||'')}" oninput="d_.sections[${i}].value=this.value">${escapeHtml(x.value)}</textarea>
+          <textarea class="sec-input" oninput="d_.sections[${i}].value=this.value">${escapeHtml(x.value)}</textarea>
         </div>`;
       }).join('')}
 
@@ -1857,7 +1783,6 @@ function reportCard(r){
         <div class="badge ${mine ? (status==='sent'?'sent':'draft') : 'received'}">${mine ? badgeLabel : (r.recipients.some(x=>x.id===ME.id && !x.read) ? '受信・未読' : '受信')}</div>
       </div>
       <div class="rc-meta">
-        <span class="type-tag t-${reportTypeOf(r)}">${escapeHtml(REPORT_TYPES[reportTypeOf(r)].short)}</span>
         <span class="rc-no">${escapeHtml(reportNo(r))}</span>
         <span>${escapeHtml(r.createdAt)}</span>
         ${!mine ? `<span>${escapeHtml(r.authorName||'')}さんから</span>` : ''}
@@ -1956,7 +1881,6 @@ function screenDetail(){
   `;
 }
 function detailContent(r){
-  const T = REPORT_TYPES[reportTypeOf(r)];
   const secs = (r.sections||[]).filter(x=>x.value && x.value.trim());
   const author = isMine(r) ? ME.name : (r.authorName||'');
   const occ = isMine(r) ? ME.occupation : (r.authorOccupation||'');
@@ -1967,7 +1891,7 @@ function detailContent(r){
     </div>
     <article class="doc">
       <div class="doc-head">
-        <span class="doc-type">${escapeHtml(T.label)}</span>
+        <span class="doc-type">報告書</span>
         <span class="doc-no">No. ${escapeHtml(reportNo(r))}</span>
       </div>
       <div class="doc-stamp">${stampHtml(r)}</div>
@@ -1978,7 +1902,7 @@ function detailContent(r){
         ${occ ? `<div><dt>職種</dt><dd>${escapeHtml(occ)}</dd></div>` : ''}
       </dl>
       <section class="doc-sec doc-summary">
-        <h3>${escapeHtml(T.bodyLabel)}</h3>
+        <h3>本文</h3>
         <div class="doc-v">${escapeHtml(r.body)}</div>
       </section>
       ${secs.map((x,i)=>`<section class="doc-sec">
@@ -2726,7 +2650,6 @@ function isPathReferenced(path, exceptId){
 }
 
 function buildPrintDocumentHTML(d, mode){
-  const T = REPORT_TYPES[reportTypeOf(d)];
   const theirs = d.authorUid && d.authorUid!==ME.uid; // 受け取ったレポートは作成者の情報を載せる
   const author = theirs ? (d.authorName||'') : ME.name;
   const occ = theirs ? (d.authorOccupation||'') : ME.occupation;
@@ -2734,7 +2657,7 @@ function buildPrintDocumentHTML(d, mode){
   const fmt = (ms)=>new Date(ms).toLocaleDateString('ja-JP', { year:'numeric', month:'2-digit', day:'2-digit', timeZone:'Asia/Tokyo' });
   const reportDate = d._ts ? fmt(d._ts) : '(未保存)';
   const rows = [];
-  rows.push(['row-summary', T.bodyLabel, d.body||'']);
+  rows.push(['row-summary', '本文', d.body||'']);
   (d.sections||[]).filter(x=>x.value && x.value.trim()).forEach((x,i)=>rows.push(['', `${i+1}. ${x.label}`, x.value]));
   (d.fields||[]).filter(f=>f.name||f.value).forEach(f=>rows.push(['', f.name||'補足', f.value||'']));
   if(d.question) rows.push(['row-question', '疑問・相談事項', d.question]);
@@ -2742,7 +2665,7 @@ function buildPrintDocumentHTML(d, mode){
   const isPdf = mode==='pdf';
   return `<!DOCTYPE html>
 <html lang="ja"><head><meta charset="UTF-8">
-<title>${escapeHtml(T.docTitle)}_${escapeHtml(d.title||'レポート')}</title>
+<title>報告書_${escapeHtml(d.title||'レポート')}</title>
 <style>
   *{box-sizing:border-box;}
   body{font-family:"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif JP",serif; color:#111; margin:0; background:#E9EDF2;}
@@ -2794,7 +2717,7 @@ function buildPrintDocumentHTML(d, mode){
       <div class="org">医療教育アプリ</div>
       <div class="no">報告番号 ${escapeHtml(reportNo(d))}<br>出力日 ${escapeHtml(fmt(Date.now()))}</div>
     </div>
-    <h1>${escapeHtml(T.docTitle)}</h1>
+    <h1>報告書</h1>
     <table class="meta">
       <tr><th>表題</th><td colspan="3">${escapeHtml(d.title||'(無題)')}</td></tr>
       <tr><th>作成者</th><td>${escapeHtml(author)}</td><th>職種</th><td>${escapeHtml(occ)}</td></tr>
