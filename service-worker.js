@@ -1,4 +1,4 @@
-const CACHE_NAME = "medical-support-tool-v14";
+const CACHE_NAME = "medical-support-tool-v15";
 const ASSETS = [
   "index.html",
   "drip-oxygen.html",
@@ -20,9 +20,16 @@ const ASSETS = [
   "icons/icon-512.png",
 ];
 
+// On a slow connection, fall back to the saved copy instead of making the user wait.
+const NETWORK_TIMEOUT_MS = 4000;
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches
+      .open(CACHE_NAME)
+      // "reload" skips the browser's HTTP cache, which could otherwise hand back files from the previous version.
+      .then((cache) => cache.addAll(ASSETS.map((url) => new Request(url, { cache: "reload" }))))
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -37,20 +44,25 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+// Network first: online users always get the latest version; the saved copy is used only offline.
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  const request = event.request;
+  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+
+  const network = fetch(request, { cache: "no-cache" }).then((response) => {
+    if (response && response.ok) {
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+    }
+    return response;
+  });
+  event.waitUntil(network.catch(() => {}));
+
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), NETWORK_TIMEOUT_MS));
+
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request)
-        .then((response) => {
-          if (response && response.status === 200) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || fetchPromise;
-    })
+    Promise.race([network, timeout]).catch(() =>
+      caches.match(request, { ignoreSearch: true }).then((cached) => cached || network)
+    )
   );
 });
