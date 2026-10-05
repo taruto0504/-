@@ -91,7 +91,7 @@
   function formatClock(ms) {
     const d = new Date(ms);
     const pad = (n) => String(n).padStart(2, "0");
-    return `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
   function vibrate(pattern) {
