@@ -164,11 +164,6 @@
     display:flex; align-items:center; justify-content:center; font-size:18px; position:relative; color:var(--primary-dark);
   }
 
-  .mic-btn{
-    display:flex; align-items:center; gap:8px; margin-top:10px; padding:10px 14px;
-    border-radius:999px; border:1px solid var(--line); background:var(--panel); cursor:pointer; font-size:13.5px; font-weight:600;
-  }
-  .mic-btn.recording{background:#FBEAE7; border-color:var(--danger); color:var(--danger);}
   .mic-dot{width:8px;height:8px;border-radius:50%; background:var(--danger); animation:pulse 1s infinite;}
   @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
 
@@ -333,7 +328,6 @@
   }
   .create-actions .send{flex:1; min-width:96px;}
   .create-actions .btn{white-space:nowrap; height:40px; padding-top:0; padding-bottom:0;}
-  .mic-btn{display:inline-flex; font-size:13px; padding:8px 14px;}
   .welcome{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin-bottom:6px;}
   .welcome-h{font-weight:800; font-size:14px; margin-bottom:6px;}
   .welcome ol{margin:0; padding-left:20px; font-size:13px; line-height:1.9; color:var(--ink-soft);}
@@ -360,6 +354,18 @@
   .plan-table tr:last-child th, .plan-table tr:last-child td{border-bottom:none;}
   .plan-table .cur{background:var(--primary-tint); font-weight:800;}
   .plan-table small{font-size:10.5px; font-weight:700; color:var(--primary-dark);}
+  /* ---- 音声入力 ---- */
+  .field-label.with-voice{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .voice-btn{display:inline-flex; align-items:center; gap:4px; flex-shrink:0; border:1px solid var(--line); background:var(--panel); color:var(--primary-dark); border-radius:999px; padding:5px 12px; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; min-height:32px;}
+  .voice-btn .ic{width:16px; height:16px;}
+  .voice-btn.recording{background:#FBEAE7; border-color:var(--danger); color:var(--danger); animation:voicePulse 1.4s ease-in-out infinite;}
+  @keyframes voicePulse{0%,100%{box-shadow:0 0 0 0 rgba(201,60,60,.35);} 50%{box-shadow:0 0 0 6px rgba(201,60,60,0);}}
+  @media (prefers-reduced-motion: reduce){ .voice-btn.recording{animation:none;} }
+  .chat-input-row .voice-btn{min-height:40px; padding:0 12px;}
+  .voice-status{position:fixed; left:50%; transform:translateX(-50%); top:calc(10px + env(safe-area-inset-top,0px)); z-index:60; display:flex; align-items:center; gap:10px; background:var(--ink); color:#fff; border-radius:999px; padding:8px 8px 8px 14px; font-size:13px; font-weight:700; box-shadow:0 6px 20px rgba(16,42,67,.25); max-width:calc(100% - 32px); white-space:nowrap;}
+  .voice-status-text{overflow:hidden; text-overflow:ellipsis;}
+  .voice-status button{flex-shrink:0; border:none; border-radius:999px; background:var(--danger); color:#fff; font-weight:800; padding:6px 14px; cursor:pointer; font-family:inherit;}
+  .mic-dot{width:8px; height:8px; border-radius:50%; background:#FF6B6B; animation:pulse 1s infinite; flex-shrink:0;}
   .sidebar-brand{display:none;}
 
 
@@ -682,7 +688,6 @@ const S = {
   deleteSelected:[],
   filterQuery:'',
   draft:null,     // report being created/edited
-  recording:false,
   sendSelected:[], // contact ids
   sendQuery:'',
   sendMode:'search', // search | saved
@@ -702,7 +707,7 @@ const S = {
 /* ============ 端末の判定 ============ */
 // 画面レイアウトはCSSのメディアクエリで自動的に切り替わる。ここでは操作方法の違い(マウスかタッチか)を判定する
 const IS_DESKTOP = window.matchMedia('(hover:hover) and (pointer:fine)').matches;
-const HAS_SPEECH = !!(window.SpeechRecognition || window.webkitSpeechRecognition); // 音声入力に対応していない端末ではボタンを出さない
+const HAS_SPEECH = !!(window.SpeechRecognition || window.webkitSpeechRecognition); // 音声入力ボタン(Web Speech API)に対応しているか
 const IS_STANDALONE = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; // インストール済みアプリとして起動中か
 const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
 // Enterキー判定(日本語入力の変換確定のEnterでは反応しない)
@@ -926,6 +931,10 @@ function render(){
     chatAfter.value = chatState.value;
     if(chatState.focused) chatAfter.focus();
   }
+  // 音声入力中に画面が作り直されたら、入力中の内容とボタンの状態を戻す
+  if(voice){
+    if(document.getElementById(voice.field)) { writeVoice(); updateVoiceUI(); } else stopVoice();
+  }
   // 画面そのものが切り替わったときだけ一番上に戻す(同じ画面内の再描画では今のスクロール位置を保つ)
   if(_lastRenderedScreen !== S.screen){
     window.scrollTo(0,0);
@@ -953,6 +962,7 @@ function navBtn(key,icon,label,active,showDot){
 }
 
 async function go(screen){
+  if(voice) stopVoice();
   if(screen!=='detail'){ stopCommentsListener(); stopAiReviewListener(); }
   S.screen = screen;
   if(screen==='create'){
@@ -1464,12 +1474,9 @@ function screenCreate(){
       <div class="field-label" style="margin-top:4px;">タイトル<span class="req">必須</span></div>
       <input type="text" id="f-title" placeholder="例:急性心筋梗塞の初期対応まとめ" value="${escapeHtml(d.title)}" oninput="d_.title=this.value">
 
-      <div class="field-label">本文(調べたこと・学んだこと)<span class="req">必須</span></div>
+      <div class="field-label with-voice"><span>本文(調べたこと・学んだこと)<span class="req">必須</span></span>${voiceBtnHtml('f-body')}</div>
       <textarea id="f-body" class="ruled" placeholder="調べたこと・経験したこと・学んだことを書いてください(患者さんを特定できる情報は書かないでください)" oninput="d_.body=this.value">${escapeHtml(d.body)}</textarea>
 
-      ${HAS_SPEECH ? `<div class="mic-btn ${S.recording?'recording':''}" onclick="toggleMic()">
-        ${S.recording ? `<span class="mic-dot"></span>音声を認識中… ${IS_DESKTOP?'クリック':'タップ'}で停止` : `🎙 音声で本文を入力`}
-      </div>` : ''}
 
       ${(d.sections||[]).map((x,i)=>{
         // 以前のバージョンで作った見出しつきのレポートを編集するときだけ表示される
@@ -1479,7 +1486,7 @@ function screenCreate(){
         </div>`;
       }).join('')}
 
-      <div class="field-label">疑問・困りごと<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></div>
+      <div class="field-label with-voice"><span>疑問・困りごと<span style="color:var(--ink-soft); font-weight:600;">(任意)</span></span>${voiceBtnHtml('f-question')}</div>
       <textarea id="f-question" style="min-height:90px;" placeholder="分からなかったこと、意見が欲しい点など、相手に聞きたいことがあれば書いてください" oninput="d_.question=this.value">${escapeHtml(d.question||'')}</textarea>
 
       <div class="field-label">資料・画像添付</div>
@@ -1522,67 +1529,148 @@ function screenCreate(){
 // convenience proxy so inline oninput can mutate the live draft object
 Object.defineProperty(window,'d_',{ get(){ return S.draft; } });
 
-let speechRecognizer = null;
-let micSafetyTimer = null;
-function toggleMic(){
+/* ============ 音声入力 ============
+   ・話し続けられる(ブラウザが無音などで止めても、停止ボタンを押すまで自動で再開。最長5分)
+   ・カーソルの位置に入る。話している途中の文字もその場で表示する
+   ・本文、疑問・困りごと、コメント欄で使える
+   ・「改行」「句点」「読点」と言うと、改行・。・、になる */
+const VOICE_MAX_MS = 5 * 60 * 1000;
+const VOICE_FIELDS = {
+  'f-body':     { label:'本文',         save:(v)=>{ if(S.draft) S.draft.body = v; } },
+  'f-question': { label:'疑問・困りごと', save:(v)=>{ if(S.draft) S.draft.question = v; } },
+  'chatInput':  { label:'コメント',       save:()=>{} }, // コメント欄は入力欄そのものが保存先
+};
+let voice = null; // 入力中の状態 { field, before, after, finals, interim, startedAt, rec }
+// 音声ボタンを押すと入力欄からフォーカスが外れるので、外れる直前のカーソル位置を覚えておく
+const lastCaret = {};
+document.addEventListener('focusout', (e)=>{
+  const t = e.target;
+  if(t && VOICE_FIELDS[t.id] && typeof t.selectionStart==='number') lastCaret[t.id] = { s:t.selectionStart, e:t.selectionEnd, len:t.value.length };
+});
+
+function voiceBtnHtml(field){
+  return `<button type="button" class="voice-btn" data-voice="${field}" onclick="toggleVoice('${field}')" aria-label="${escapeHtml(VOICE_FIELDS[field].label)}を音声で入力">${ic('mic')}<span class="voice-lbl">音声</span></button>`;
+}
+// 話した言葉の整え方(音声コマンド)
+function normalizeSpeech(t){
+  // 前後の空白(全角含む)だけを取り除く。改行は消さない
+  return String(t).replace(/[ \u3000]*改行[ \u3000]*/g, '\n').replace(/[ \u3000]*句点[ \u3000]*/g, '。').replace(/[ \u3000]*読点[ \u3000]*/g, '、');
+}
+function toggleVoice(field){
+  if(voice){
+    const same = voice.field === field;
+    stopVoice();
+    if(same) return;
+  }
+  startVoice(field);
+}
+function startVoice(field){
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if(!SR){
-    toast('お使いのブラウザは音声入力に対応していません(Android版Chromeを推奨します)');
+    toast(IS_DESKTOP ? 'このブラウザは音声入力に対応していません。Chrome・Edge・Safari でお試しください'
+                     : 'このブラウザでは音声入力ボタンが使えません。キーボードのマイクボタンで音声入力できます');
     return;
   }
-  if(S.recording){
-    stopMic();
-    return;
-  }
-  try{
-    speechRecognizer = new SR();
-  }catch(e){
-    toast('音声認識を開始できませんでした');
-    return;
-  }
-  speechRecognizer.lang = 'ja-JP';
-  speechRecognizer.continuous = false;   // 1文ずつ認識する安定モード(継続モードは固まりやすいため)
-  speechRecognizer.interimResults = false;
-  speechRecognizer.maxAlternatives = 1;
-
-  speechRecognizer.onresult = (event)=>{
-    let text = '';
-    for(let i=0; i<event.results.length; i++){
-      if(event.results[i].isFinal){ text += event.results[i][0].transcript; }
-    }
-    if(text && S.draft){
-      S.draft.body += (S.draft.body ? '\n' : '') + text;
-      const ta = document.getElementById('f-body');
-      if(ta) ta.value = S.draft.body;
-    }
-  };
-  speechRecognizer.onerror = (event)=>{
-    if(event.error === 'not-allowed'){ toast('マイクの使用が許可されていません。ブラウザの設定を確認してください'); stopMic(); }
-    else if(event.error !== 'no-speech' && event.error !== 'aborted'){ toast('音声認識でエラーが発生しました('+event.error+')'); stopMic(); }
-  };
-  speechRecognizer.onend = ()=>{
-    stopMic();
-  };
-  S.recording = true;
-  render();
-  toast('聞き取り中です。話し終えると自動で反映されます(もう一度タップでも終了できます)');
-  try{
-    speechRecognizer.start();
-  }catch(e){
-    stopMic();
-    toast('音声認識を開始できませんでした');
-    return;
-  }
-  // 8秒たっても終わらない場合は強制的に元に戻す(固まり対策)
-  micSafetyTimer = setTimeout(()=>{ stopMic(); }, 8000);
+  const el = document.getElementById(field);
+  if(!el) return;
+  const value = el.value;
+  // 入力欄にカーソルがあればその位置、直前まであればその位置、どちらでもなければ末尾に入れる
+  let s = value.length, e = value.length;
+  const lc = lastCaret[field];
+  if(document.activeElement === el && typeof el.selectionStart==='number'){ s = el.selectionStart; e = el.selectionEnd; }
+  else if(lc && lc.len === value.length){ s = lc.s; e = lc.e; }
+  // カーソルの前後で分けて、間に話した言葉を入れる(前の文字があれば改行や区切りは本人に任せる)
+  voice = { field, before:value.slice(0,s), after:value.slice(e), finals:'', interim:'', startedAt:Date.now(), rec:null };
+  if(!beginRecognition(SR)) return;
+  updateVoiceUI();
+  toast('話してください。終わったら「停止」を押してください');
 }
-function stopMic(){
-  if(micSafetyTimer){ clearTimeout(micSafetyTimer); micSafetyTimer=null; }
-  if(speechRecognizer){
-    try{ speechRecognizer.onend=null; speechRecognizer.onerror=null; speechRecognizer.stop(); }catch(e){}
-    speechRecognizer = null;
+function beginRecognition(SR){
+  let rec;
+  try{ rec = new SR(); }catch(e){ toast('音声入力を開始できませんでした'); voice = null; updateVoiceUI(); return false; }
+  rec.lang = 'ja-JP';
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.maxAlternatives = 1;
+  rec.onresult = (ev)=>{
+    if(!voice || voice.rec !== rec) return;
+    let interim = '';
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const t = ev.results[i][0].transcript;
+      if(ev.results[i].isFinal) voice.finals += normalizeSpeech(t);
+      else interim += t;
+    }
+    voice.interim = interim;
+    writeVoice();
+  };
+  rec.onerror = (ev)=>{
+    if(!voice || voice.rec !== rec) return;
+    if(ev.error === 'not-allowed' || ev.error === 'service-not-allowed'){
+      toast('マイクの使用が許可されていません。ブラウザの設定で、このサイトのマイクを許可してください');
+      stopVoice();
+    } else if(ev.error === 'audio-capture'){
+      toast('マイクが見つかりません。マイクの接続を確認してください');
+      stopVoice();
+    } else if(ev.error === 'network'){
+      toast('音声認識の通信に失敗しました。回線状況を確認してください');
+      stopVoice();
+    }
+    // no-speech(無音)・aborted は onend で自動的に再開する
+  };
+  rec.onend = ()=>{
+    if(!voice || voice.rec !== rec) return;
+    if(Date.now() - voice.startedAt > VOICE_MAX_MS){ toast('5分たったので音声入力を止めました'); stopVoice(); return; }
+    // 無音などでブラウザが止めた場合は、停止を押すまで続ける
+    if(!beginRecognition(SR)) return;
+  };
+  voice.rec = rec;
+  try{ rec.start(); }catch(e){ toast('音声入力を開始できませんでした'); voice = null; updateVoiceUI(); return false; }
+  return true;
+}
+// 入力欄に反映する(話している途中の文字も表示し、確定した文字だけを保存する)
+function writeVoice(){
+  if(!voice) return;
+  const el = document.getElementById(voice.field);
+  const shown = voice.before + voice.finals + voice.interim + voice.after;
+  VOICE_FIELDS[voice.field].save(voice.before + voice.finals + voice.after);
+  if(el){
+    el.value = shown;
+    const caret = (voice.before + voice.finals + voice.interim).length;
+    try{ el.setSelectionRange(caret, caret); }catch(e){}
+    if(el.scrollHeight > el.clientHeight && caret >= shown.length - voice.after.length) el.scrollTop = el.scrollHeight;
   }
-  if(S.recording){ S.recording = false; render(); }
+}
+function stopVoice(){
+  if(!voice) return;
+  const v = voice;
+  // 停止した時点で話しかけだった言葉も残す
+  v.finals += normalizeSpeech(v.interim);
+  v.interim = '';
+  writeVoice();
+  voice = null;
+  try{ v.rec.onresult = null; v.rec.onend = null; v.rec.onerror = null; v.rec.stop(); }catch(e){}
+  updateVoiceUI();
+}
+// ボタンの見た目と「音声入力中」の表示を切り替える(画面全体は作り直さない)
+function updateVoiceUI(){
+  document.querySelectorAll('.voice-btn').forEach(b=>{
+    const on = !!voice && b.dataset.voice === voice.field;
+    b.classList.toggle('recording', on);
+    const lbl = b.querySelector('.voice-lbl'); if(lbl) lbl.textContent = on ? '停止' : '音声';
+  });
+  let bar = document.getElementById('voice-status');
+  if(voice){
+    if(!bar){
+      bar = document.createElement('div');
+      bar.id = 'voice-status';
+      bar.className = 'voice-status';
+      bar.innerHTML = `<span class="mic-dot"></span><span class="voice-status-text"></span><button type="button" onclick="stopVoice()">停止</button>`;
+      document.body.appendChild(bar);
+    }
+    bar.querySelector('.voice-status-text').textContent = '音声入力中(' + VOICE_FIELDS[voice.field].label + ')';
+  } else if(bar){
+    bar.remove();
+  }
 }
 
 function addAttachment(){
@@ -1950,6 +2038,7 @@ function detailChat(r){
     </div>
     <div class="chat-input-row">
       <input type="text" id="chatInput" placeholder="${IS_DESKTOP ? 'コメント・アドバイスを送る(Enterで送信)' : 'コメント・アドバイスを送る'}" maxlength="2000" onkeydown="if(isEnter(event)) sendComment(${jsArg(r.id)})">
+      ${voiceBtnHtml('chatInput')}
       <button class="btn solid sm" onclick="sendComment(${jsArg(r.id)})">送信</button>
     </div>
   `;
@@ -2177,6 +2266,7 @@ function renderAiReview(rv){
 }
 
 async function sendComment(id){
+  if(voice && voice.field==='chatInput') stopVoice();
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if(!text || !window.fb) return;
@@ -2625,6 +2715,7 @@ const ICON_PATHS = {
   book:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H20v16H5.5A1.5 1.5 0 0 0 4 20.5Z"/><path d="M4 20.5A1.5 1.5 0 0 0 5.5 22H20"/>',
   help:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14"/><path d="M12 17.5v.01"/>',
   list:'<path d="M9 6h12M9 12h12M9 18h12"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+  mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3M9 21h6"/>',
 };
 function ic(name, cls){
   return `<svg class="ic ${cls||''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]||''}</svg>`;

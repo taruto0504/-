@@ -191,7 +191,9 @@
   window.alert = (m)=>toast(String(m).split('\n')[0]);
   const notInDemo = (what)=>()=>toast(`デモ版では${what}は使えません`);
   window.addAttachment = notInDemo('画像の添付');
-  window.toggleMic = notInDemo('音声入力');
+  // このページ(アーティファクト)ではマイクを使えないため、キーボードの音声入力を案内する
+  window.toggleVoice = ()=>toast(IS_DESKTOP ? 'デモページでは音声入力ボタンは使えません。本番のアプリ(Chrome・Edge・Safari)で使えます'
+                                             : 'デモページでは音声入力ボタンは使えません。キーボードのマイクボタンで音声入力できます');
   window.deleteAccount = notInDemo('アカウント削除');
   window.changeEmail = notInDemo('メールアドレスの変更');
   window.changePassword = notInDemo('パスワードの変更');
