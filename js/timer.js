@@ -457,6 +457,7 @@
     window.icon("trash") + " もう一度押すと削除",
     () => {
       state.events = [];
+      if (![state.rhythm, state.med].some((c) => c.running)) state.sessionFirstTimestamp = null;
       saveState();
       renderLog();
     },
@@ -563,6 +564,67 @@
     // e.g. the iOS app's WebView: the keyboard's own dictation still works.
     els.micBtn.style.display = "none";
   }
+
+  // --- 前回の記録が残っているときの確認 ---
+  // Records are kept on purpose (closing the app mid-CPA must not lose them),
+  // so on the first visit to the CPA tab after opening, ask whether to continue.
+  function hasCpaData() {
+    return (
+      state.events.length > 0 ||
+      [state.rhythm, state.med].some((c) => c.running || c.accumulatedMs > 0)
+    );
+  }
+
+  function startNewCpaSession() {
+    stopCompressionSound();
+    state = defaultState();
+    [els.rhythmCycle, els.medCycle].forEach((el) => el.classList.remove("is-due"));
+    saveState();
+    render();
+  }
+
+  function showResumeDialog() {
+    const last = state.events[0];
+    const running = [state.rhythm, state.med].some((c) => c.running);
+    const details = [
+      `記録 ${state.events.length}件` + (last ? `(最後の記録 ${formatClock(last.time)})` : ""),
+      state.sessionFirstTimestamp ? `開始 ${new Date(state.sessionFirstTimestamp).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}` : "",
+      running ? "タイマーが動作中です" : "",
+    ].filter(Boolean);
+
+    const overlay = document.createElement("div");
+    overlay.className = "consent-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "resume-title");
+    overlay.innerHTML = `
+      <div class="consent-box resume-box">
+        <div class="consent-head">
+          <span class="resume-icon">${window.icon("note")}</span>
+          <h2 id="resume-title">前回のCPA記録が残っています</h2>
+        </div>
+        <ul class="resume-details">${details.map((d) => `<li>${d}</li>`).join("")}</ul>
+        <p class="resume-hint">必要な記録は「続きから使う」を選んでコピーしてから消してください。</p>
+        <button class="btn-primary" id="resume-continue" type="button">続きから使う</button>
+        <button class="btn-secondary resume-new" id="resume-new" type="button">${window.icon("trash")} 消して新しく始める</button>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.querySelector("#resume-continue").addEventListener("click", close);
+    armTwoTapConfirm(overlay.querySelector("#resume-new"), window.icon("trash") + " もう一度押すと消去", () => {
+      startNewCpaSession();
+      close();
+    });
+  }
+
+  const hadDataOnOpen = hasCpaData();
+  let resumeAsked = false;
+  document.querySelector('.tab-btn[data-tab="cpa"]').addEventListener("click", () => {
+    if (resumeAsked || !hadDataOnOpen) return;
+    resumeAsked = true;
+    if (hasCpaData()) showResumeDialog();
+  });
 
   window.addEventListener("pagehide", stopCompressionSound);
 
