@@ -58,3 +58,19 @@ npm run sync
   `npx @capacitor/assets generate --ios --android --iconBackgroundColor '#0b6e99' --splashBackgroundColor '#0b6e99'`
   で作り直せます。
 - 現時点では、アプリを閉じている間・画面ロック中はタイマーのアラームが鳴りません(Web版と同じ)。
+
+## 広告の設定
+
+広告枠はホーム画面の一番下(注意書きの下)に1つあります。計算・タイマー・CPAの画面には出しません。
+設定は `js/ads.js` 先頭の `AD_CONFIG` で切り替えます。
+
+| mode | 内容 |
+|---|---|
+| `"off"` | 表示しない(初期設定) |
+| `"preview"` | 位置確認用のグレーの枠。URLに `?ads=preview` を付けても確認できる |
+| `"adsense"` | Google AdSense。審査後に `client`(ca-pub-…)と `slots.home` を入れる |
+| `"custom"` | 自分で用意したバナー画像とリンク(アフィリエイト等)。`custom.home` に画像URL・リンク先を入れる |
+
+- 枠の大きさは 320×50 固定です(1画面に収まるように)。
+- スマホアプリ内ではWeb用の広告は表示されません(AdSenseの規約でアプリ内表示は禁止)。アプリで広告を出す場合は AdMob を別途組み込みます。
+- 広告を出し始めるときは、利用規約 第6条(広告について)の内容と合っているか確認してください。

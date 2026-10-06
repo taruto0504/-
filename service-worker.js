@@ -1,4 +1,4 @@
-const CACHE_NAME = "medical-support-tool-v17";
+const CACHE_NAME = "medical-support-tool-v18";
 const ASSETS = [
   "index.html",
   "drip-oxygen.html",
@@ -10,6 +10,7 @@ const ASSETS = [
   "js/icons.js",
   "js/native.js",
   "js/consent.js",
+  "js/ads.js",
   "js/audio-unlock.js",
   "js/drip-oxygen.js",
   "js/timer.js",

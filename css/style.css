@@ -114,8 +114,8 @@ main {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin: -12px -16px 18px;
-  padding: calc(26px + var(--safe-top)) 20px 24px;
+  margin: -12px -16px 14px;
+  padding: calc(20px + var(--safe-top)) 20px 18px;
   background: var(--gradient-brand);
   color: #fff;
   border-radius: 0 0 22px 22px;
@@ -153,7 +153,7 @@ main {
 .menu-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .menu-card {
@@ -163,7 +163,7 @@ main {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
-  padding: 16px 14px;
+  padding: 14px 14px;
   text-decoration: none;
   color: var(--color-text);
   box-shadow: var(--shadow-card);
@@ -230,8 +230,8 @@ main {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  margin-top: 18px;
-  padding: 12px 14px;
+  margin-top: 12px;
+  padding: 10px 12px;
   border-radius: 12px;
   background: #fff8ec;
   border: 1px solid #f2dcb4;
@@ -1596,4 +1596,53 @@ button {
   width: 100%;
   margin-top: 8px;
   color: var(--color-danger);
+}
+
+/* Ad slot (js/ads.js): fixed 320x50 so the page layout never jumps */
+.ad-slot {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.ad-slot ins.ad-box {
+  vertical-align: top;
+}
+
+.ad-slot[hidden] {
+  display: none;
+}
+
+.ad-label {
+  max-width: 320px;
+  margin: 0 auto 3px;
+  text-align: left;
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.ad-box {
+  display: block;
+  width: 320px;
+  max-width: 100%;
+  height: 50px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.ad-box img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ad-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #b8c6d4;
+  border-radius: 6px;
+  background: #e9eff5;
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
