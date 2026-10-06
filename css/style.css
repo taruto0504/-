@@ -21,6 +21,8 @@
 
 * {
   box-sizing: border-box;
+  /* Disables iOS double-tap zoom, which otherwise swallows the second tap of quick taps (e.g. two-tap confirms). Pinch zoom still works. */
+  touch-action: manipulation;
 }
 
 html, body {

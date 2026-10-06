@@ -612,7 +612,8 @@
 
     const close = () => overlay.remove();
     overlay.querySelector("#resume-continue").addEventListener("click", close);
-    armTwoTapConfirm(overlay.querySelector("#resume-new"), window.icon("trash") + " もう一度押すと消去", () => {
+    // This dialog is already the confirmation, so one tap is enough here.
+    overlay.querySelector("#resume-new").addEventListener("click", () => {
       startNewCpaSession();
       close();
     });
