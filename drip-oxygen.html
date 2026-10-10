@@ -136,11 +136,14 @@
           <path d="M75 9 L82 8" stroke="#0a6cb4" stroke-width="1" stroke-dasharray="2 1.5"/>
           <circle cx="88" cy="8" r="6.5" fill="#0a6cb4"/><text x="88" y="11" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff" font-family="sans-serif">3</text>
         </svg>
-        <ol class="o2-guide-list">
-          <li><span class="step-badge">1</span><span><b>内容積</b>:ボンベの肩の刻印「V」の数字(例:V3.4 → 3.4L)</span></li>
-          <li><span class="step-badge">2</span><span><b>圧力</b>:圧力計の針が指す値(MPa)。ボンベの刻印「FP14.7」は満タン時の値なので使いません</span></li>
-          <li><span class="step-badge">3</span><span><b>流量</b>:流量計で設定している値(L/分)</span></li>
-        </ol>
+        <div class="o2-guide-text">
+          <ol class="o2-guide-list">
+            <li><span class="step-badge">1</span><span><b>内容積</b>:肩の刻印「V」の数字(V3.4 → 3.4L)</span></li>
+            <li><span class="step-badge">2</span><span><b>圧力</b>:圧力計の針が指す値(MPa)</span></li>
+            <li><span class="step-badge">3</span><span><b>流量</b>:流量計で設定している値(L/分)</span></li>
+          </ol>
+        </div>
+        <p class="o2-guide-note"><b>刻印の見方</b>:V=内容積(L)/FP=満タン時の圧力(今の圧力ではないので計算に使わない)/TP=耐圧試験圧力/W=重さ(kg)</p>
       </div>
       <div class="hint" id="o2-hint" hidden>計算式: ボンベ残量(L) = 内容積(L) × 圧力計指示値(MPa) × 9.8 ／ 使用可能時間(分) = 残量(L) ÷ 酸素流量(L/分)<br>※実際の残量は温度や誤差により変動します。安全のため早めのボンベ交換を心がけてください。</div>
     </div>
