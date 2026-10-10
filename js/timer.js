@@ -110,6 +110,17 @@
     if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     return audioCtx;
   }
+  // A context created or interrupted without a tap stays silent (e.g. after reopening the app),
+  // so wake it on any touch; alarms that fire later by timer can then be heard.
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      const ctx = ensureAudioCtx();
+      if (ctx.state !== "running") ctx.resume();
+    },
+    true
+  );
+
   function withRunningAudioCtx(callback) {
     const ctx = ensureAudioCtx();
     if (ctx.state === "suspended") {
@@ -151,6 +162,8 @@
 
   function compressionScheduler() {
     const ctx = ensureAudioCtx();
+    // After background throttling, skip missed beats instead of playing them all at once.
+    if (nextCompressionBeatTime < ctx.currentTime) nextCompressionBeatTime = ctx.currentTime + 0.05;
     while (nextCompressionBeatTime < ctx.currentTime + 0.12) {
       playTone(ctx, 500, nextCompressionBeatTime, 0.06, "square");
       nextCompressionBeatTime += COMPRESSION_BEAT_SEC;
@@ -286,7 +299,12 @@
     }
   }
 
+  // render() runs every second; rebuilding the list each time would swallow taps on ✕, so only redraw on change.
+  let renderedLogKey = null;
   function renderLog() {
+    const key = state.events.length + "|" + state.events.map((ev) => ev.time).join(",");
+    if (key === renderedLogKey) return;
+    renderedLogKey = key;
     if (state.events.length === 0) {
       els.logList.innerHTML = '<div class="empty-log">まだ記録がありません</div>';
       return;
@@ -487,6 +505,7 @@
   let recognition = null;
   let isListening = false;
   let stoppingIntentionally = false;
+  let typedBeforeMic = "";
 
   if (SpeechRecognitionImpl) {
     recognition = new SpeechRecognitionImpl();
@@ -505,7 +524,7 @@
           interim += result[0].transcript;
         }
       }
-      els.noteInput.value = interim;
+      els.noteInput.value = interim || typedBeforeMic;
     });
 
     recognition.addEventListener("end", () => {
@@ -541,6 +560,7 @@
       } else {
         stoppingIntentionally = false;
         isListening = true;
+        typedBeforeMic = els.noteInput.value;
         try {
           recognition.start();
           els.micBtn.classList.add("is-listening");
@@ -611,7 +631,11 @@
     document.body.appendChild(overlay);
 
     const close = () => overlay.remove();
-    overlay.querySelector("#resume-continue").addEventListener("click", close);
+    overlay.querySelector("#resume-continue").addEventListener("click", () => {
+      // The metronome cannot restart by itself after reopening; this tap allows it.
+      if (state.rhythm.running) startCompressionSound();
+      close();
+    });
     // This dialog is already the confirmation, so one tap is enough here.
     overlay.querySelector("#resume-new").addEventListener("click", () => {
       startNewCpaSession();

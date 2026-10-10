@@ -47,8 +47,10 @@
   // so later programmatic beeps (e.g. an alarm firing from setInterval) can still play.
   function primeAudioCtx() {
     const ctx = ensureAudioCtx();
-    if (ctx.state === "suspended") ctx.resume();
+    if (ctx.state !== "running") ctx.resume();
   }
+  // Wake audio on any touch, so an alarm that fires later by timer is heard even after reopening the app.
+  document.addEventListener("pointerdown", primeAudioCtx, true);
   function playTone(ctx, freq, time, duration, type, peakGain) {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -213,6 +215,7 @@
   }
 
   let alarmIntervalId = null;
+  let alarmRinging = false;
   function startBeepAlarm() {
     playAlarmBurst();
     alarmIntervalId = setInterval(() => {
@@ -224,6 +227,7 @@
   function startAlarm() {
     stopAlarm();
     stopPreview();
+    alarmRinging = true;
     vibrate([300, 120, 300, 120, 300, 120, 300]);
     if (customSound) {
       playCustomSound().catch(() => {
@@ -237,6 +241,7 @@
     }
   }
   function stopAlarm() {
+    alarmRinging = false;
     if (alarmIntervalId) {
       clearInterval(alarmIntervalId);
       alarmIntervalId = null;
@@ -418,8 +423,11 @@
     renderCountdown();
   });
 
+  const ALARM_LATE_LIMIT_MS = 60 * 1000;
+  let cdRemainingMsAtFinish = 0;
   function renderCountdown() {
     let remaining = cdRemainingMs();
+    cdRemainingMsAtFinish = remaining;
     if (remaining <= 0 && cd.running) {
       remaining = 0;
       cd.running = false;
@@ -427,7 +435,8 @@
       cd.accumulatedMs = cd.durationMs;
       if (!cd.finished) {
         cd.finished = true;
-        startAlarm();
+        // Finished while the app was closed/suspended long ago: show it, but don't start ringing out of the blue.
+        if (-cdRemainingMsAtFinish <= ALARM_LATE_LIMIT_MS) startAlarm();
       }
       saveState();
     }
@@ -471,7 +480,7 @@
       playAlarmBurst();
       return;
     }
-    if (cd.finished) return;
+    if (alarmRinging) return;
     previewing = true;
     renderSoundSetting();
     playCustomSound().catch(() => {
@@ -500,7 +509,7 @@
 
   function useSoundRecord(record) {
     setCustomSound(record);
-    if (cd.finished) startAlarm();
+    if (alarmRinging) startAlarm();
     renderSoundSetting();
     return soundDbRequest("readwrite", (store) => store.put(record, SOUND_KEY)).then(
       () => showPresetMsg("アラーム音を変更しました。", false),
@@ -554,7 +563,7 @@
   soundEls.useDefault.addEventListener("click", () => {
     stopPreview();
     clearCustomSound();
-    if (cd.finished) startAlarm();
+    if (alarmRinging) startAlarm();
     renderSoundSetting();
     soundDbRequest("readwrite", (store) => store.delete(SOUND_KEY)).catch(() => {});
     showPresetMsg("アラーム音を標準に戻しました。", false);
@@ -563,13 +572,11 @@
   renderSoundSetting();
 
   if (cd.durationMs > 0) writeInputsFromDuration(cd.durationMs);
-  if (cd.finished) startAlarm();
 
   soundDbRequest("readonly", (store) => store.get(SOUND_KEY))
     .then((record) => {
       if (!record || !record.data) return;
       setCustomSound(record);
-      if (cd.finished) startAlarm();
       renderSoundSetting();
     })
     .catch(() => {});

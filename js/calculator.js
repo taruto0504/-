@@ -8,6 +8,8 @@
   let previous = null;
   let operator = null;
   let justEvaluated = false;
+  // True right after an operator is pressed, until the next number is typed.
+  let awaitingOperand = false;
 
   const OPS = {
     "+": (a, b) => a + b,
@@ -29,6 +31,7 @@
   }
 
   function inputDigit(d) {
+    awaitingOperand = false;
     if (justEvaluated) {
       current = d;
       justEvaluated = false;
@@ -42,7 +45,8 @@
   }
 
   function inputDecimal() {
-    if (justEvaluated) {
+    if (justEvaluated || awaitingOperand) {
+      awaitingOperand = false;
       current = "0.";
       justEvaluated = false;
       render();
@@ -55,18 +59,30 @@
   }
 
   function chooseOperator(op) {
+    // Pressing another operator right away just replaces it (5 ÷ × 2 = 10, not an error).
+    if (operator && awaitingOperand) {
+      operator = op;
+      render();
+      return;
+    }
     if (operator && !justEvaluated) {
       evaluate();
+    }
+    if (!isFinite(parseFloat(current))) {
+      clearAll();
+      return;
     }
     previous = parseFloat(current);
     operator = op;
     justEvaluated = false;
+    awaitingOperand = true;
     current = "0";
     render();
   }
 
   function evaluate() {
-    if (operator === null || previous === null) return;
+    // "=" before the second number is typed would compute with 0 (5 ÷ = → error); ignore it.
+    if (operator === null || previous === null || awaitingOperand) return;
     const a = previous;
     const b = parseFloat(current);
     const result = OPS[operator](a, b);
@@ -78,6 +94,7 @@
   }
 
   function clearAll() {
+    awaitingOperand = false;
     current = "0";
     previous = null;
     operator = null;
@@ -96,6 +113,7 @@
 
   function percent() {
     const val = parseFloat(current);
+    if (!isFinite(val)) return;
     current = formatDisplay(val / 100);
     render();
   }

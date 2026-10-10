@@ -14,6 +14,7 @@
   });
 
   // --- 点滴滴下数計算 ---
+  const MAX_SOUND_DROPS_PER_MIN = 300;
   const dripResult = document.getElementById("drip-result");
   const dripResultMain = document.getElementById("drip-result-main");
   const dripResultSub = document.getElementById("drip-result-sub");
@@ -46,7 +47,7 @@
       const minutes = parseFloat(document.getElementById("drip-minutes").value) || 0;
       totalMinutes = hours * 60 + minutes;
 
-      if (!volume || volume <= 0 || totalMinutes <= 0) {
+      if (!volume || volume <= 0 || hours < 0 || minutes < 0 || totalMinutes <= 0) {
         showDripError("指示総量と投与時間(0より大きい値)を入力してください。");
         return;
       }
@@ -75,8 +76,11 @@
         ? "<br>投与時間の目安: 約 " + formatDuration(totalMinutes)
         : "");
 
-    dripSoundBtn.style.display = "flex";
+    // Above ~5 drops/s the beeps blur into one tone (and absurd inputs could flood the audio scheduler).
+    const soundable = dropsPerMin <= MAX_SOUND_DROPS_PER_MIN;
+    dripSoundBtn.style.display = soundable ? "flex" : "none";
     dripSoundBtn.dataset.dropsPerMin = String(dropsPerMin);
+    if (!soundable) dripResultSub.innerHTML += "<br>※ 速すぎるため音は鳴らせません";
   });
 
   function showDripError(message) {
@@ -87,9 +91,11 @@
     dripSoundBtn.style.display = "none";
   }
 
+  // Round once to whole minutes first, so 119.6 min becomes 2時間0分 rather than 1時間60分.
   function formatDuration(totalMinutes) {
-    const h = Math.floor(totalMinutes / 60);
-    const m = Math.round(totalMinutes % 60);
+    const rounded = Math.round(totalMinutes);
+    const h = Math.floor(rounded / 60);
+    const m = rounded % 60;
     return h > 0 ? `${h}時間${m}分` : `${m}分`;
   }
 
@@ -113,6 +119,8 @@
   }
 
   function beepScheduler() {
+    // After the page was throttled in the background, skip missed beats instead of playing them all at once.
+    if (nextBeepTime < audioCtx.currentTime) nextBeepTime = audioCtx.currentTime + 0.05;
     while (nextBeepTime < audioCtx.currentTime + 0.1) {
       playBeep(nextBeepTime);
       nextBeepTime += beepIntervalSec;
@@ -196,12 +204,10 @@
 
     const remainingLiters = innerVolume * pressure * 9.8;
     const minutes = remainingLiters / flow;
-    const h = Math.floor(minutes / 60);
-    const m = Math.round(minutes % 60);
 
     o2Result.classList.toggle("warning", minutes < 30);
     o2Result.style.display = "block";
-    o2ResultMain.textContent = h > 0 ? h + "時間" + m + "分" : formatNum(minutes) + "分";
+    o2ResultMain.textContent = minutes >= 60 ? formatDuration(minutes) : formatNum(minutes) + "分";
     o2ResultSub.innerHTML =
       "ボンベ残量: 約 " + formatNum(remainingLiters) + " L<br>" +
       (minutes < 30 ? window.icon("alert") + " 残量が少なくなっています。早めに交換を検討してください。" : "");
@@ -212,4 +218,19 @@
     const rounded = Math.round(n * 10) / 10;
     return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
   }
+
+  // A result left on screen after the inputs change would show numbers for the old inputs,
+  // so hide it (and stop the pace sound) until 計算する is pressed again.
+  document.querySelectorAll("#tab-drip input").forEach((input) => {
+    input.addEventListener("input", () => {
+      stopDripSound();
+      dripResult.style.display = "none";
+      dripSoundBtn.style.display = "none";
+    });
+  });
+  document.querySelectorAll("#tab-oxygen input").forEach((input) => {
+    input.addEventListener("input", () => {
+      o2Result.style.display = "none";
+    });
+  });
 })();
