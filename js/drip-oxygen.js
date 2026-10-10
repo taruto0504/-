@@ -183,6 +183,24 @@
   const o2ResultMain = document.getElementById("o2-result-main");
   const o2ResultSub = document.getElementById("o2-result-sub");
 
+  // The guide fills the free space before a result is shown and steps aside for it;
+  // the 見方 button overrides that either way.
+  const o2Guide = document.getElementById("o2-guide");
+  const o2GuideToggle = document.getElementById("o2-guide-toggle");
+  const o2Hint = document.getElementById("o2-hint");
+  let guidePinned = null;
+  function updateO2Guide() {
+    const show = guidePinned !== null ? guidePinned : o2Result.style.display === "none";
+    o2Guide.hidden = !show;
+    // Only one of guide / formula note at a time, so the tab still fits one screen.
+    o2Hint.hidden = show;
+    o2GuideToggle.setAttribute("aria-expanded", String(show));
+  }
+  o2GuideToggle.addEventListener("click", () => {
+    guidePinned = o2Guide.hidden;
+    updateO2Guide();
+  });
+
   document.getElementById("o2-calc-btn").addEventListener("click", () => {
     const selectedType = document.querySelector('input[name="o2-type"]:checked').value;
     let innerVolume;
@@ -199,6 +217,8 @@
       o2Result.classList.add("warning");
       o2ResultMain.textContent = "入力エラー";
       o2ResultSub.textContent = "内容積・圧力計の値・酸素流量(いずれも0より大きい値)を入力してください。";
+      guidePinned = null;
+      updateO2Guide();
       return;
     }
 
@@ -209,8 +229,10 @@
     o2Result.style.display = "block";
     o2ResultMain.textContent = minutes >= 60 ? formatDuration(minutes) : formatNum(minutes) + "分";
     o2ResultSub.innerHTML =
-      "ボンベ残量: 約 " + formatNum(remainingLiters) + " L<br>" +
-      (minutes < 30 ? window.icon("alert") + " 残量が少なくなっています。早めに交換を検討してください。" : "");
+      "ボンベ残量: 約 " + formatNum(remainingLiters) + " L" +
+      (minutes < 30 ? "<br>" + window.icon("alert") + " 残量が少なくなっています。早めに交換を検討してください。" : "");
+    guidePinned = null;
+    updateO2Guide();
   });
 
   function formatNum(n) {
@@ -231,6 +253,7 @@
   document.querySelectorAll("#tab-oxygen input").forEach((input) => {
     input.addEventListener("input", () => {
       o2Result.style.display = "none";
+      updateO2Guide();
     });
   });
 })();

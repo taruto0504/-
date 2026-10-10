@@ -1646,3 +1646,84 @@ button {
   color: var(--color-text-muted);
   font-size: 12px;
 }
+
+/* Oxygen: "where to read each value" guide */
+.step-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: 1px;
+  flex-shrink: 0;
+}
+
+.guide-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--color-primary);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.guide-toggle[aria-expanded="true"] {
+  background: var(--color-accent);
+  border-color: #c9ddf1;
+}
+
+.o2-guide {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 6px 10px 6px 4px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg);
+}
+
+.o2-guide[hidden],
+.hint[hidden] {
+  display: none;
+}
+
+.o2-guide-img {
+  width: 84px;
+  height: 105px;
+  flex-shrink: 0;
+}
+
+.o2-guide-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--color-text);
+}
+
+.o2-guide-list li {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.o2-guide-list li + li {
+  margin-top: 5px;
+}
+
+.o2-guide-list .step-badge {
+  margin-top: 2px;
+}

@@ -78,9 +78,9 @@
   <!-- 酸素ボンベ残量計算 -->
   <section id="tab-oxygen" class="tab-panel drip-compact">
     <div class="card">
-      <h2><svg class="ic"><use href="#i-oxygen"/></svg>酸素ボンベ 残量・使用可能時間</h2>
+      <h2><svg class="ic"><use href="#i-oxygen"/></svg>酸素ボンベ 残量・使用可能時間<button class="guide-toggle" id="o2-guide-toggle" type="button" aria-controls="o2-guide" aria-expanded="true"><svg class="ic"><use href="#i-info"/></svg>見方</button></h2>
 
-      <label>ボンベの種類</label>
+      <label>ボンベの種類 <span class="step-badge">1</span></label>
       <div class="radio-group">
         <label><input type="radio" name="o2-type" value="3.4" checked><span>500L用<br>(内容積 3.4L)</span></label>
         <label><input type="radio" name="o2-type" value="10.2"><span>1500L用<br>(内容積 10.2L)</span></label>
@@ -88,23 +88,61 @@
       </div>
 
       <div id="o2-custom-volume-wrap" style="display:none;">
-        <label for="o2-custom-volume">内容積 (L)</label>
+        <label for="o2-custom-volume">内容積 (L) <span class="step-badge">1</span></label>
         <input type="number" id="o2-custom-volume" inputmode="decimal" placeholder="例: 10" min="0">
       </div>
 
-      <label for="o2-pressure">圧力計の指示値 (MPa)</label>
+      <label for="o2-pressure">圧力計の指示値 (MPa) <span class="step-badge">2</span></label>
       <input type="number" id="o2-pressure" inputmode="decimal" placeholder="例: 9.5" min="0" step="0.1">
 
-      <label for="o2-flow">酸素流量 (L/分)</label>
+      <label for="o2-flow">酸素流量 (L/分) <span class="step-badge">3</span></label>
       <input type="number" id="o2-flow" inputmode="decimal" placeholder="例: 5" min="0" step="0.5">
 
       <button class="btn-primary" id="o2-calc-btn">計算する</button>
 
       <div class="result-box" id="o2-result" style="display:none;">
-        <div class="result-main"><span id="o2-result-main">-</span><span class="unit">分</span></div>
+        <div class="result-main"><span id="o2-result-main">-</span></div>
         <div class="result-sub" id="o2-result-sub"></div>
       </div>
-      <div class="hint">計算式: ボンベ残量(L) = 内容積(L) × 圧力計指示値(MPa) × 9.8 ／ 使用可能時間(分) = 残量(L) ÷ 酸素流量(L/分)<br>※実際の残量は温度や誤差により変動します。安全のため早めのボンベ交換を心がけてください。</div>
+      <div class="o2-guide" id="o2-guide">
+        <svg class="o2-guide-img" viewBox="0 0 96 120" role="img" aria-label="酸素ボンベと調整器の図。①ボンベ肩の刻印、②圧力計、③流量計">
+          <!-- flowmeter outlet tube -->
+          <path d="M72 19 q7 4 7 11 t3 12" fill="none" stroke="#7fbf9a" stroke-width="2.4" stroke-linecap="round"/>
+          <!-- regulator -->
+          <rect x="31" y="18" width="34" height="11" rx="2.5" fill="#c3ccd5" stroke="#6b7682" stroke-width="1"/>
+          <rect x="21" y="21" width="12" height="5" fill="#c3ccd5" stroke="#6b7682" stroke-width="1"/>
+          <!-- pressure gauge (②) -->
+          <circle cx="17" cy="20" r="10" fill="#fff" stroke="#4a545e" stroke-width="1.6"/>
+          <path d="M10.5 24 A7.5 7.5 0 1 1 23.5 24" fill="none" stroke="#9aa5b0" stroke-width="1"/>
+          <path d="M17 20 L21.5 14.5" stroke="#d23c3c" stroke-width="1.6" stroke-linecap="round"/>
+          <circle cx="17" cy="20" r="1.3" fill="#4a545e"/>
+          <!-- flowmeter dial (③) -->
+          <circle cx="66" cy="13" r="8.5" fill="#e6edf3" stroke="#4a545e" stroke-width="1.6"/>
+          <path d="M66 13 L66 7" stroke="#0a6cb4" stroke-width="1.8" stroke-linecap="round"/>
+          <circle cx="66" cy="13" r="1.3" fill="#4a545e"/>
+          <!-- valve / neck -->
+          <rect x="42" y="29" width="12" height="11" fill="#8f99a3" stroke="#5f6a75" stroke-width="1"/>
+          <!-- cylinder (medical oxygen cylinders are black) -->
+          <path d="M30 116 a6 6 0 0 1 -6 -6 V62 C24 49 36 40 44 40 H52 C60 40 72 49 72 62 V110 a6 6 0 0 1 -6 6 Z" fill="#2b3036"/>
+          <path d="M30 60 C32 50 40 45 46 44" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="3" stroke-linecap="round"/>
+          <!-- shoulder stamp (①) -->
+          <text x="48" y="58" text-anchor="middle" font-size="9" font-weight="700" fill="#fff" font-family="sans-serif">V3.4</text>
+          <text x="48" y="67" text-anchor="middle" font-size="5.5" fill="#c9d1d9" font-family="sans-serif">FP14.7</text>
+          <!-- number badges with leader lines -->
+          <path d="M80 58 H61" stroke="#0a6cb4" stroke-width="1" stroke-dasharray="2 1.5"/>
+          <circle cx="86" cy="58" r="6.5" fill="#0a6cb4"/><text x="86" y="61" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff" font-family="sans-serif">1</text>
+          <path d="M10 41 L14 29" stroke="#0a6cb4" stroke-width="1" stroke-dasharray="2 1.5"/>
+          <circle cx="9" cy="46" r="6.5" fill="#0a6cb4"/><text x="9" y="49" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff" font-family="sans-serif">2</text>
+          <path d="M75 9 L82 8" stroke="#0a6cb4" stroke-width="1" stroke-dasharray="2 1.5"/>
+          <circle cx="88" cy="8" r="6.5" fill="#0a6cb4"/><text x="88" y="11" text-anchor="middle" font-size="8.5" font-weight="700" fill="#fff" font-family="sans-serif">3</text>
+        </svg>
+        <ol class="o2-guide-list">
+          <li><span class="step-badge">1</span><span><b>内容積</b>:ボンベの肩の刻印「V」の数字(例:V3.4 → 3.4L)</span></li>
+          <li><span class="step-badge">2</span><span><b>圧力</b>:圧力計の針が指す値(MPa)。満タンで約14.7</span></li>
+          <li><span class="step-badge">3</span><span><b>流量</b>:流量計で設定している値(L/分)</span></li>
+        </ol>
+      </div>
+      <div class="hint" id="o2-hint" hidden>計算式: ボンベ残量(L) = 内容積(L) × 圧力計指示値(MPa) × 9.8 ／ 使用可能時間(分) = 残量(L) ÷ 酸素流量(L/分)<br>※実際の残量は温度や誤差により変動します。安全のため早めのボンベ交換を心がけてください。</div>
     </div>
   </section>
 </main>
