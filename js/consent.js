@@ -2,7 +2,7 @@
   "use strict";
 
   // Bump the version when the terms change so everyone has to agree again.
-  const CONSENT_KEY = "termsAccepted_v2";
+  const CONSENT_KEY = "termsAccepted_v3";
 
   function hasConsent() {
     try {

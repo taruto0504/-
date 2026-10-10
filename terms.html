@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0f74bf">
 <title>利用規約・免責事項 | 医療サポートツール</title>
@@ -64,6 +65,7 @@
     <ol>
       <li>本アプリの記録・メモは端末内にのみ保存され、開発者に送信されることはありません。</li>
       <li>患者の氏名など、個人を特定できる情報は入力しないでください。入力した情報の管理は利用者の責任となります。</li>
+      <li>メモの音声入力を使うと、音声はブラウザ・OSの提供元(Google、Appleなど)のサーバーで文字に変換される場合があります。音声入力では個人を特定できる内容を話さないでください。</li>
     </ol>
   </section>
 
@@ -82,7 +84,8 @@
     </ol>
   </section>
 
-  <p class="terms-date">制定日:2026年10月5日 / 改定日:2026年10月6日</p>
+  <p class="terms-date">制定日:2026年10月5日 / 改定日:2026年10月10日</p>
 </main>
+<script src="js/sw-register.js"></script>
 </body>
 </html>

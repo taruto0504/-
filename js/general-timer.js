@@ -724,7 +724,7 @@
       .map(
         (lap) => `
       <div class="lap-item">
-        <span class="lap-index">Lap ${lap.index}</span>
+        <span class="lap-index">Lap ${Number(lap.index) || 0}</span>
         <span>${formatMs(lap.splitMs)}<span style="color:var(--color-text-muted); margin-left:8px;">(合計 ${formatMs(lap.totalMs)})</span></span>
       </div>`
       )
