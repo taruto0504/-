@@ -92,9 +92,9 @@ jobs:
             sleep 30
             adb shell pidof jp.labsight.labsight && echo "APP_RUNNING" || echo "APP_NOT_RUNNING"
             adb exec-out screencap -p > screen.png
-            adb logcat -d > logcat.txt
-            echo "===== LOGCAT (filtered) =====" && grep -iE "flutter|AndroidRuntime|FATAL|labsight|Exception|Error" logcat.txt | grep -v "GoogleApiManager" | tail -200 || true
-            echo "===== SCREENSHOT_BASE64_BEGIN =====" && convert screen.png -resize 360x -quality 60 screen.jpg && base64 -w 0 screen.jpg && echo && echo "===== SCREENSHOT_BASE64_END ====="
+            echo "===== APP LOG =====" && adb logcat -d -s flutter:V AndroidRuntime:E DEBUG:V | tail -100
+            echo "===== UI TEXT =====" && adb shell uiautomator dump /sdcard/ui.xml >/dev/null && adb shell cat /sdcard/ui.xml | grep -oE '(text|content-desc)="[^"]+"' | head -60 || true
+            echo "===== SCREENSHOT_BASE64_BEGIN =====" && python3 -c "import base64;print(base64.b64encode(open('screen.png','rb').read()).decode())" && echo "===== SCREENSHOT_BASE64_END ====="
 
   ios-smoke:
     name: iOS 起動テスト（シミュレーター）
