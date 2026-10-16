@@ -108,10 +108,15 @@ jobs:
           flutter-version: 3.47.7
           cache: true
       - run: flutter pub get
-      - run: flutter build ios --simulator --debug
+      - run: sudo softwareupdate --install-rosetta --agree-to-license || true
+        working-directory: .
+      - name: シミュレーター用ビルド
+        run: |
+          flutter build ios --simulator --debug --verbose > build.log 2>&1 || { grep -E "error:|Error|ld: |not found" build.log | grep -v "^\[" | tail -60; tail -40 build.log; exit 1; }
       - name: シミュレーターで起動
         run: |
           UDID=$(xcrun simctl list devices available -j | python3 -c "import json,sys;d=json.load(sys.stdin)['devices'];print([x['udid'] for k,v in d.items() if 'iOS' in k for x in v if 'iPhone' in x['name']][-1])")
+          lipo -info build/ios/iphonesimulator/Runner.app/Runner || true
           echo "UDID=$UDID"
           xcrun simctl boot "$UDID"
           xcrun simctl bootstatus "$UDID" -b
