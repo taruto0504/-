@@ -4,6 +4,7 @@
   const DB = window.DRUG_DB;
   const byId = new Map(DB.drugs.map((d) => [d.id, d]));
   const PMDA_SEARCH_URL = "https://www.pmda.go.jp/PmdaSearch/iyakuSearch/";
+  const keggSearchUrl = (q) => "https://www.kegg.jp/medicus-bin/search_drug?display=med&search_keyword=" + encodeURIComponent(q);
 
   // Tabs
   const tabBtns = document.querySelectorAll(".tab-btn");
@@ -72,6 +73,7 @@
   function attachSuggest(input, list, onPick, onNoMatch) {
     let items = [];
     let active = -1;
+    let blurTimer = null;
 
     function close() {
       list.hidden = true;
@@ -120,7 +122,11 @@
       active = -1;
       render();
     });
-    input.addEventListener("focus", render);
+    // Re-focusing quickly must cancel the close scheduled by the previous blur.
+    input.addEventListener("focus", () => {
+      clearTimeout(blurTimer);
+      render();
+    });
     input.addEventListener("keydown", (e) => {
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         if (!items.length) return;
@@ -142,7 +148,9 @@
       e.preventDefault();
       pick(items[Number(li.dataset.i)].drug);
     });
-    input.addEventListener("blur", () => setTimeout(close, 150));
+    input.addEventListener("blur", () => {
+      blurTimer = setTimeout(close, 150);
+    });
     input.addEventListener("change", commitTyped);
   }
 
@@ -184,6 +192,7 @@
           : `<section class="drug-sec sec-contra"><h3>禁忌(抜粋)</h3><p class="drug-none">登録なし。添付文書の「禁忌」を確認してください。</p></section>`}
         ${list("注意・取り扱い", drug.notes, "sec-note")}
         ${isRef ? "" : sourceBlock(drug.source)}
+        <a class="drug-more" href="${escapeHtml(keggSearchUrl(drug.name.replace(/\(.*\)/, "")))}" target="_blank" rel="noopener">${window.icon("chevron-right")} KEGGで他の製品・添付文書の全文を見る</a>
       </div>`;
     detail.hidden = false;
     detail.querySelector(".drug-body").scrollTop = 0;
@@ -193,7 +202,8 @@
   function showNoMatch(text) {
     detail.hidden = true;
     empty.hidden = false;
-    msg.innerHTML = `「${escapeHtml(text)}」は登録されていません。<a href="${PMDA_SEARCH_URL}" target="_blank" rel="noopener">PMDAの添付文書検索</a>で確認してください。`;
+    requestAnimationFrame(fitDetail);
+    msg.innerHTML = `「${escapeHtml(text)}」はアプリに未登録です。<a href="${escapeHtml(keggSearchUrl(text))}" target="_blank" rel="noopener">KEGGで「${escapeHtml(text)}」を検索</a> / <a href="${PMDA_SEARCH_URL}" target="_blank" rel="noopener">PMDAの添付文書検索</a>`;
   }
 
   attachSuggest(q, document.getElementById("drug-q-list"), showDrug, showNoMatch);
@@ -202,6 +212,7 @@
       detail.hidden = true;
       empty.hidden = false;
       msg.textContent = "";
+      fitDetail();
     }
   });
 
@@ -217,15 +228,21 @@
     showDrug(drug);
   });
 
-  // The detail scrolls inside its box so the page itself stays one screen.
+  // The detail (or the drug list) scrolls inside its box so the page itself stays one screen.
+  function fitBox(box, min) {
+    box.style.maxHeight = "";
+    const rest = document.body.scrollHeight - box.offsetHeight;
+    box.style.maxHeight = Math.max(min, Math.floor(window.innerHeight - rest) - 2) + "px";
+  }
   function fitDetail() {
-    const body = detail.querySelector(".drug-body");
-    if (!body || detail.hidden) return;
-    body.style.maxHeight = "";
-    const rest = document.body.scrollHeight - body.offsetHeight;
-    body.style.maxHeight = Math.max(140, Math.floor(window.innerHeight - rest)) + "px";
+    if (!document.getElementById("tab-search").classList.contains("active")) return;
+    if (!detail.hidden) fitBox(detail.querySelector(".drug-body"), 140);
+    else if (!empty.hidden) fitBox(document.getElementById("drug-chips"), 80);
   }
   window.addEventListener("resize", fitDetail);
+  window.addEventListener("load", fitDetail);
+  // The Android app reports the status/navigation bar sizes a moment later, as styles on <html>.
+  new MutationObserver(fitDetail).observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
 
   // ---- 配合変化 ----
   const picked = { a: null, b: null };
@@ -234,8 +251,17 @@
   const label = document.getElementById("compat-label");
   let reasonHtml = "";
 
+  // An explicit record wins; otherwise a "do not mix with other drugs" statement in either insert means ×.
   function findCompat(a, b) {
-    return DB.compat.find((c) => (c.pair[0] === a.id && c.pair[1] === b.id) || (c.pair[0] === b.id && c.pair[1] === a.id));
+    const rec = DB.compat.find((c) => (c.pair[0] === a.id && c.pair[1] === b.id) || (c.pair[0] === b.id && c.pair[1] === a.id));
+    if (rec) return rec;
+    const ruled = [a, b].find((d, i) => d.mixRule && !d.mixRule.except.includes((i === 0 ? b : a).id));
+    if (!ruled) return null;
+    return {
+      result: "x",
+      reason: `${ruled.name}:${ruled.mixRule.reason}`,
+      source: ruled.mixRule.source || ruled.source,
+    };
   }
 
   function renderCompat() {
@@ -317,4 +343,5 @@
       }
     });
   });
+  fitDetail();
 })();
