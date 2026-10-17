@@ -27,7 +27,6 @@
     if (rest.length) listDrugs.push({ id: "L:" + name, name, listOnly: true, groups: rest });
   });
   const allDrugs = [...DB.drugs, ...listDrugs];
-  const byId = new Map(allDrugs.map((d) => [d.id, d]));
   const collator = new Intl.Collator("ja");
 
   // Tabs
@@ -314,20 +313,9 @@
   });
 
   document.querySelector(".drug-hint").textContent =
-    `詳しい情報がある薬(タップで表示)。ほか${listDrugs.length.toLocaleString("ja-JP")}成分の医療用医薬品も、成分名・販売名で検索できます。`;
-  document.getElementById("drug-chips").innerHTML = DB.drugs
-    .filter((d) => d.type !== "group" && d.type !== "fluid")
-    .map((d) => `<button type="button" class="drug-chip" data-id="${escapeHtml(d.id)}">${escapeHtml(d.name)}</button>`)
-    .join("");
-  document.getElementById("drug-chips").addEventListener("click", (e) => {
-    const btn = e.target.closest(".drug-chip");
-    if (!btn) return;
-    const drug = byId.get(btn.dataset.id);
-    q.value = drug.name;
-    showDrug(drug);
-  });
+    `成分名・販売名を1文字から入力してください。医療用医薬品${LIST.items.length.toLocaleString("ja-JP")}成分(厚生労働省の薬価基準収載品目リスト)から探せます。`;
 
-  // The detail (or the drug list) scrolls inside its box so the page itself stays one screen.
+  // The detail scrolls inside its box so the page itself stays one screen.
   function fitBox(box, min) {
     box.style.maxHeight = "";
     const rest = document.body.scrollHeight - box.offsetHeight;
@@ -336,7 +324,6 @@
   function fitDetail() {
     if (!document.getElementById("tab-search").classList.contains("active")) return;
     if (!detail.hidden) fitBox(detail.querySelector(".drug-body"), 140);
-    else if (!empty.hidden) fitBox(document.getElementById("drug-chips"), 80);
   }
   window.addEventListener("resize", fitDetail);
   window.addEventListener("load", fitDetail);

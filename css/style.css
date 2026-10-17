@@ -1964,29 +1964,9 @@ button {
 
 .drug-hint {
   margin: 12px 0 6px;
+  line-height: 1.5;
   font-size: 12px;
   color: var(--color-text-muted);
-}
-
-.drug-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.drug-chip {
-  padding: 7px 11px;
-  border: 1px solid var(--color-border);
-  border-radius: 999px;
-  background: #fff;
-  color: var(--color-text);
-  font-size: 12.5px;
-}
-
-.drug-chip:active {
-  background: var(--color-accent);
 }
 
 .drug-detail {
