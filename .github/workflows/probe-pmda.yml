@@ -1,0 +1,45 @@
+name: PMDA ページ構造の確認
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/probe-pmda.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 取得
+        run: |
+          mkdir out && cd out
+          UA="Mozilla/5.0 (medical-support-tool data check)"
+          curl -sSL -A "$UA" -D general.headers "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/1119402" -o general.html || true
+          grep -oE 'href="[^"]+"' general.html | sort -u > general.links || true
+          first=$(grep -oE 'href="[^"]*(ResultDataSetPDF|ResultDataSetXML|iyakuDetail/[0-9A-Za-z_]+)[^"]*"' general.html | head -5 | sed 's/href="//;s/"$//')
+          echo "$first" > first.txt
+          i=0
+          for u in $first; do
+            i=$((i+1))
+            case "$u" in http*) url="$u";; /*) url="https://www.pmda.go.jp$u";; *) url="https://www.pmda.go.jp/PmdaSearch/iyakuDetail/$u";; esac
+            sleep 2
+            curl -sSL -A "$UA" -D "p$i.headers" "$url" -o "p$i.body" || true
+            echo "$url" > "p$i.url"
+          done
+          curl -sSL -A "$UA" "https://www.pmda.go.jp/robots.txt" -o robots.txt || true
+          ls -la
+
+      - name: pmda-probe ブランチに保存
+        working-directory: out
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q
+          git checkout -q -b pmda-probe
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "probe"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pmda-probe
