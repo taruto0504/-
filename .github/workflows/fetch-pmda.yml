@@ -29,8 +29,8 @@ jobs:
       - name: 取得済みのデータを読み込む
         run: |
           mkdir data
-          if git fetch -q origin pmda-data; then
-            git show origin/pmda-data:pmda.jsonl > data/pmda.jsonl
+          if git fetch --no-tags --depth=1 origin pmda-data; then
+            git show FETCH_HEAD:pmda.jsonl > data/pmda.jsonl
           fi
           wc -l data/pmda.jsonl || true
 
