@@ -1,0 +1,58 @@
+name: PMDA 添付文書データの取得
+
+# scripts/fetch-pmda.py で PMDA の添付文書(電子添文)の主要項目を取得し、pmda-data ブランチに保存する。
+# 1回の実行は約5時間まで。終わらなかった分は続きから自動で再実行する。
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/fetch-pmda.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: fetch-pmda
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: pip install beautifulsoup4 lxml
+
+      - name: 取得済みのデータを読み込む
+        run: |
+          mkdir data
+          if git fetch -q origin pmda-data; then
+            git show origin/pmda-data:pmda.jsonl > data/pmda.jsonl
+          fi
+          wc -l data/pmda.jsonl || true
+
+      - name: 取得
+        run: python3 scripts/fetch-pmda.py --list js/drug-list.js --out data/pmda.jsonl --delay 1.0 --budget 17400 --limit 30
+
+      - name: pmda-data ブランチに保存
+        working-directory: data
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          wc -l pmda.jsonl
+          git init -q
+          git checkout -q -b pmda-data
+          git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "PMDA 添付文書データ $(date -u +%Y-%m-%dT%H:%MZ) $(cat status.txt)"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pmda-data
+
+      - name: 終わっていなければ続きを実行
+        if: hashFiles('data/status.txt') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if grep -q partial data/status.txt; then
+            gh workflow run fetch-pmda.yml --ref "${GITHUB_REF_NAME}"
+          fi
