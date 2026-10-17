@@ -15,6 +15,7 @@
 <script src="js/icons.js"></script>
 <script src="js/native.js"></script>
 <script src="js/consent.js"></script>
+<script src="js/profile.js"></script>
 <main>
   <div class="home-hero">
     <img class="home-logo" src="icons/icon.svg" alt="">
@@ -22,35 +23,30 @@
       <h1>医療サポートツール</h1>
       <p>現場で使う計算・記録を、ひとつのアプリに</p>
     </div>
+    <button class="profile-btn" id="profile-btn" type="button" aria-label="職種・年数の設定"><svg class="ic"><use href="#i-user"/></svg></button>
   </div>
 
   <div class="section-label">メニュー</div>
-  <nav class="menu-list">
-    <a class="menu-card" href="drip-oxygen.html">
+  <nav class="menu-grid">
+    <a class="menu-tile" href="drip-oxygen.html">
       <div class="icon"><svg class="ic"><use href="#i-drip"/></svg></div>
-      <div class="label">
-        <span class="title">点滴・酸素ボンベ計算</span>
-        <span class="desc">滴下数計算 / ボンベ残量・使用可能時間</span>
-      </div>
-      <div class="chevron"><svg class="ic"><use href="#i-chevron-right"/></svg></div>
+      <span class="title">点滴・酸素</span>
+      <span class="desc">滴下数 / ボンベ残量</span>
     </a>
-
-    <a class="menu-card" href="timer.html">
+    <a class="menu-tile" href="timer.html">
       <div class="icon tone-teal"><svg class="ic"><use href="#i-heart-pulse"/></svg></div>
-      <div class="label">
-        <span class="title">タイマー・CPA記録</span>
-        <span class="desc">CPA記録 / カウントダウンタイマー / ストップウォッチ</span>
-      </div>
-      <div class="chevron"><svg class="ic"><use href="#i-chevron-right"/></svg></div>
+      <span class="title">タイマー・CPA</span>
+      <span class="desc">CPA記録 / タイマー</span>
     </a>
-
-    <a class="menu-card" href="calculator.html">
+    <a class="menu-tile" href="drugs.html">
+      <div class="icon tone-purple-bg"><svg class="ic"><use href="#i-pill"/></svg></div>
+      <span class="title">薬検索・配合変化</span>
+      <span class="desc">添付文書の要点 / 〇×</span>
+    </a>
+    <a class="menu-tile" href="calculator.html">
       <div class="icon tone-indigo"><svg class="ic"><use href="#i-calculator"/></svg></div>
-      <div class="label">
-        <span class="title">電卓</span>
-        <span class="desc">四則演算の簡易計算機</span>
-      </div>
-      <div class="chevron"><svg class="ic"><use href="#i-chevron-right"/></svg></div>
+      <span class="title">電卓</span>
+      <span class="desc">四則演算</span>
     </a>
   </nav>
 
@@ -62,6 +58,7 @@
   <div class="ad-slot" data-ad-slot="home" hidden></div>
 </main>
 <script src="js/ads.js"></script>
+<script src="js/home.js"></script>
 <script src="js/sw-register.js"></script>
 </body>
 </html>

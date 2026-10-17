@@ -2,7 +2,7 @@
   "use strict";
 
   // Bump the version when the terms change so everyone has to agree again.
-  const CONSENT_KEY = "termsAccepted_v3";
+  const CONSENT_KEY = "termsAccepted_v4";
 
   function hasConsent() {
     try {
@@ -20,6 +20,7 @@
     }
   }
 
+  window.MSTConsent = { has: hasConsent };
   if (hasConsent()) return;
 
   const icon = window.icon || (() => "");
@@ -53,6 +54,7 @@
         <li>計算結果・記録・アラームの正確性や動作は保証されません。必ずご自身で確認してください。</li>
         <li>投与・処置などの判断は、医師の指示・施設の基準・添付文書等に基づき、<strong>利用者ご自身の責任</strong>で行ってください。</li>
         <li>本アプリの利用により生じたいかなる損害についても、<strong>開発者は責任を負いません</strong>。</li>
+        <li>薬の情報は添付文書の抜粋です。使用前に必ず最新の添付文書を確認してください。</li>
         <li>患者を特定できる個人情報は入力しないでください。</li>
       </ul>
       <a class="consent-link" href="terms.html">${icon("note")} 利用規約・免責事項(全文)を読む</a>
@@ -72,5 +74,6 @@
     saveConsent();
     overlay.remove();
     document.documentElement.classList.remove("consent-open");
+    window.dispatchEvent(new Event("consentaccepted"));
   });
 })();

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.gstatic.com https://*.doubleclick.net https://*.adtrafficquality.google; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob:; connect-src 'self' https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net https://*.adtrafficquality.google; frame-src https://*.googlesyndication.com https://*.doubleclick.net https://*.google.com; object-src 'none'; base-uri 'self'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f74bf">
+<title>薬検索・配合変化 | 医療サポートツール</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<script src="js/icons.js"></script>
+<script src="js/native.js"></script>
+<script src="js/consent.js"></script>
+<script src="js/profile.js"></script>
+<header class="app-header">
+  <a class="back-btn" href="index.html" aria-label="戻る"><svg class="ic"><use href="#i-chevron-left"/></svg></a>
+  <h1><svg class="ic"><use href="#i-pill"/></svg>薬検索・配合変化</h1>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="search">薬検索</button>
+    <button class="tab-btn" data-tab="compat">配合変化</button>
+  </div>
+
+  <!-- 薬検索 -->
+  <section id="tab-search" class="tab-panel active">
+    <div class="card drug-card">
+      <div class="suggest-wrap">
+        <input type="text" id="drug-q" placeholder="薬名・別名を入力(1文字から)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="drug-q-list">
+        <ul class="suggest-list" id="drug-q-list" role="listbox" hidden></ul>
+      </div>
+      <div class="drug-msg" id="drug-msg"></div>
+
+      <div id="drug-empty">
+        <p class="drug-hint">登録されている薬(タップで表示)</p>
+        <div class="drug-chips" id="drug-chips"></div>
+      </div>
+
+      <article class="drug-detail" id="drug-detail" hidden></article>
+    </div>
+  </section>
+
+  <!-- 配合変化 -->
+  <section id="tab-compat" class="tab-panel">
+    <div class="card compat-card">
+      <label for="compat-a">薬A</label>
+      <div class="suggest-wrap">
+        <input type="text" id="compat-a" placeholder="薬名・別名(1文字から)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="compat-a-list">
+        <ul class="suggest-list" id="compat-a-list" role="listbox" hidden></ul>
+      </div>
+      <div class="compat-sym">×</div>
+      <label for="compat-b">薬B</label>
+      <div class="suggest-wrap">
+        <input type="text" id="compat-b" placeholder="薬名・別名(1文字から)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="compat-b-list">
+        <ul class="suggest-list" id="compat-b-list" role="listbox" hidden></ul>
+      </div>
+      <div class="compat-sym compat-eq">=</div>
+
+      <button class="compat-result" id="compat-result" type="button" aria-haspopup="dialog" disabled>
+        <span class="compat-mark" id="compat-mark">?</span>
+        <span class="compat-label" id="compat-label">2つの薬を選んでください</span>
+      </button>
+      <p class="compat-legend">〇=配合可の記載あり / ×=配合不可の記載あり / ー=情報なし(不明)。添付文書に記載がある組み合わせのみ判定します。</p>
+    </div>
+  </section>
+</main>
+
+<script src="js/drug-data.js"></script>
+<script src="js/drugs.js"></script>
+<script src="js/sw-register.js"></script>
+</body>
+</html>
