@@ -224,16 +224,95 @@
     return `<section class="drug-sec ${cls || ""}"><h3>${title}</h3><ul>${items.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul></section>`;
   }
 
+  // ---- 添付文書の記載(PMDA から自動取得。data/drug-info/{YJ上3桁}.json を必要な分だけ読む) ----
+  const chunkCache = new Map();
+  function loadChunk(prefix) {
+    if (!chunkCache.has(prefix)) {
+      const p = fetch(`data/drug-info/${prefix}.json`)
+        // 404: this build has no insert data at all (false), as opposed to a failed download (null)
+        .then((r) => (r.ok ? r.json() : r.status === 404 ? false : Promise.reject(new Error(String(r.status)))))
+        .catch(() => {
+          chunkCache.delete(prefix); // offline: try again next time
+          return null;
+        });
+      chunkCache.set(prefix, p);
+    }
+    return chunkCache.get(prefix);
+  }
+  // resolves to the record, null when PMDA has nothing for it, undefined when it could not be loaded,
+  // or false when the app has no insert data
+  async function loadInfo(yj) {
+    const chunk = await loadChunk(yj.slice(0, 3));
+    if (chunk === false) return false;
+    return chunk ? chunk[yj] || null : undefined;
+  }
+
+  const INS_SECTIONS = [
+    ["warn", "警告", "ins-warn"],
+    ["contra", "禁忌", "ins-contra"],
+    ["ind", "効能又は効果", ""],
+    ["dose", "用法及び用量", ""],
+    ["app", "適用上の注意", ""],
+  ];
+  const insertPdfUrl = (id) => "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/ResultDataSetPDF/" + encodeURIComponent(id);
+
+  function insLines(lines) {
+    return lines.map((l) => `<p${/^〈.*〉$/.test(l) ? ' class="ins-sub"' : ""}>${escapeHtml(l)}</p>`).join("");
+  }
+
+  function insertHtml(info, curated) {
+    if (info === undefined) return `<p class="ins-msg">通信できないため、添付文書の記載を表示できません。下の「PMDAでこの製剤の添付文書を見る」から確認してください。</p>`;
+    if (!info || !INS_SECTIONS.some(([k]) => info[k])) return `<p class="ins-msg">この製剤の添付文書の記載を取り込めませんでした。下の「PMDAでこの製剤の添付文書を見る」から確認してください。</p>`;
+    const name = (info.repNames && info.repNames[0]) || "";
+    const sections = INS_SECTIONS.filter(([k]) => info[k])
+      .map(([k, title, cls]) => {
+        // Warnings and contraindications stay open; for curated drugs the summary above already covers them.
+        const open = !curated && (k === "warn" || k === "contra" || k === "ind");
+        return `<details class="ins-sec ${cls}"${open ? " open" : ""}><summary>${title}</summary>${insLines(info[k])}</details>`;
+      })
+      .join("");
+    return `<p class="ins-src">${escapeHtml(name || "代表製品")} の添付文書${info.rev ? `(${escapeHtml(info.rev)})` : ""}より</p>
+      ${sections}
+      <p class="ins-note">PMDAの電子添文から自動で取り込み、項目を抜き出して表示しています。同じ成分でも製品により記載が異なることがあります。使用前に必ず最新の添付文書を確認してください。${info.rep ? ` <a href="${escapeHtml(insertPdfUrl(info.rep))}" target="_blank" rel="noopener">この添付文書(PDF)</a>` : ""}</p>`;
+  }
+
+  // Each product gets a link to its own insert when PMDA lists it under the same name.
+  function linkProducts(groupEl, info) {
+    if (!info || !info.ins) return;
+    const byName = new Map();
+    info.ins.forEach(([id, names]) => names.forEach((n) => byName.set(normalize(n), id)));
+    groupEl.querySelectorAll(".prod-list li[data-name]").forEach((li) => {
+      const id = byName.get(normalize(li.dataset.name));
+      if (!id || li.querySelector(".prod-doc")) return;
+      li.insertAdjacentHTML("beforeend", `<a class="prod-doc" href="${escapeHtml(insertPdfUrl(id))}" target="_blank" rel="noopener">添付文書</a>`);
+    });
+  }
+
+  let showToken = 0;
+  function fillInserts(drug) {
+    const token = ++showToken;
+    detail.querySelectorAll(".prod-group[data-yj]").forEach((groupEl) => {
+      loadInfo(groupEl.dataset.yj).then((info) => {
+        if (token !== showToken) return; // another drug is on screen now
+        if (info === false) return groupEl.querySelector(".ins").remove();
+        groupEl.querySelector(".ins").innerHTML = insertHtml(info, !drug.listOnly);
+        linkProducts(groupEl, info);
+      });
+    });
+  }
+
   function productSection(drug) {
     if (!drug.groups || !drug.groups.length) return "";
     const groups = drug.groups
       .map(
-        (g) => `<div class="prod-group">
-          <p class="prod-head">${escapeHtml(KUBUN_LABEL[g.kubun])}${className(g.yj) ? ` ・ ${escapeHtml(className(g.yj))}` : ""}</p>
+        (g) => `<div class="prod-group" data-yj="${escapeHtml(g.yj)}">
+          <p class="prod-kind">${escapeHtml(KUBUN_LABEL[g.kubun])}${className(g.yj) ? ` ・ ${escapeHtml(className(g.yj))}` : ""}</p>
+          <div class="ins"><p class="ins-msg">添付文書の記載を読み込み中…</p></div>
+          <p class="prod-head">製品と規格</p>
           <ul class="prod-list">${g.products
             .map(
               ([product, spec], i) =>
-                `<li${i >= PRODUCT_LIMIT ? " hidden" : ""}>${escapeHtml(product)}${spec ? `<span class="prod-spec">${escapeHtml(spec)}</span>` : ""}</li>`
+                `<li data-name="${escapeHtml(product)}"${i >= PRODUCT_LIMIT ? " hidden" : ""}>${escapeHtml(product)}${spec ? `<span class="prod-spec">${escapeHtml(spec)}</span>` : ""}</li>`
             )
             .join("")}</ul>
           ${g.products.length > PRODUCT_LIMIT ? `<button type="button" class="prod-more">ほか${g.products.length - PRODUCT_LIMIT}製品を表示</button>` : ""}
@@ -241,8 +320,8 @@
         </div>`
       )
       .join("");
-    return `<section class="drug-sec sec-prod"><h3>製品と規格</h3>${groups}
-      <p class="prod-note">製品により効能・効果や用法・用量が異なることがあります。出典: <a href="${escapeHtml(LIST.source.url)}" target="_blank" rel="noopener">${escapeHtml(LIST.source.label)}</a></p>
+    return `<section class="drug-sec sec-prod"><h3>添付文書の記載・製品</h3>${groups}
+      <p class="prod-note">製品・規格の出典: <a href="${escapeHtml(LIST.source.url)}" target="_blank" rel="noopener">${escapeHtml(LIST.source.label)}</a>。添付文書の記載の出典: PMDA 医療用医薬品の添付文書情報。</p>
     </section>`;
   }
 
@@ -255,7 +334,6 @@
       </div>
       ${classes.length ? `<p class="drug-row"><b>薬効分類</b>${escapeHtml(classes.join("、"))}</p>` : ""}
       <div class="drug-body">
-        <section class="drug-sec sec-contra"><h3>効能・効果・禁忌</h3><p class="drug-none">この薬は詳しい情報がまだ登録されていません。効能・効果、禁忌、用法・用量は「PMDAでこの製剤の添付文書を見る」から確認してください。</p></section>
         ${productSection(drug)}
         <a class="drug-more" href="${escapeHtml(keggSearchUrl(drug.name))}" target="_blank" rel="noopener">${window.icon("chevron-right")} KEGGで添付文書の全文を見る</a>
       </div>`;
@@ -287,6 +365,7 @@
     detail.hidden = false;
     detail.querySelector(".drug-body").scrollTop = 0;
     fitDetail();
+    fillInserts(drug);
   }
 
   function showNoMatch(text) {
@@ -336,6 +415,29 @@
   const mark = document.getElementById("compat-mark");
   const label = document.getElementById("compat-label");
   let reasonHtml = "";
+  let compatToken = 0;
+
+  // Lines of 「適用上の注意」 that talk about mixing, from each injectable form of the drug.
+  const MIX_RE = /混合|配合|混注|希釈|溶解|側管|同一(の)?(輸液|ライン|経路|ルート)/;
+  const NO_MIX_RE = /他の?(薬剤|注射剤|注射液|薬|輸液|製剤|医薬品|ワクチン)[^。]*?(混合|配合|混注)[^。]*?(しない|避け|てはならない)/;
+  // Diluent fluids (血液代用剤・糖類剤): "do not mix with other drugs" usually still allows dilution in them.
+  const isFluid = (d) => d.type === "fluid" || (d.groups || []).some((g) => ["331", "323"].includes(g.yj.slice(0, 3)));
+  const injectable = (d) => (d.groups || []).some((g) => g.kubun === "注");
+
+  async function mixInfo(drug) {
+    const infos = await Promise.all((drug.groups || []).filter((g) => g.kubun === "注").map((g) => loadInfo(g.yj)));
+    const lines = [];
+    infos.forEach((info) => info && info.app && info.app.forEach((l) => MIX_RE.test(l) && !lines.includes(l) && lines.push(l)));
+    return { lines, failed: infos.includes(undefined), absent: infos.length > 0 && infos.every((i) => i === false) };
+  }
+
+  function mixHtml(drug, m) {
+    if (!injectable(drug)) return "";
+    const body = m.lines.length
+      ? insLines(m.lines)
+      : `<p>${m.failed ? "通信できないため表示できません。" : "調製・配合に関する記載はありません。"}</p>`;
+    return `<details class="ins-sec"><summary>${escapeHtml(drug.name)}</summary>${body}</details>`;
+  }
 
   // An explicit record wins; otherwise a "do not mix with other drugs" statement in either insert means ×.
   function findCompat(a, b) {
@@ -380,8 +482,29 @@
       label.textContent = "情報なし — タップで詳細";
       resultBtn.classList.add("is-none");
       const unknown = [a, b].filter((d) => d.listOnly).map((d) => `「${escapeHtml(d.name)}」`).join("と");
-      reasonHtml = `<h3>ー 情報なし</h3><p>${unknown ? `${unknown}は、配合変化の情報がまだ登録されていません。` : "この組み合わせは登録されている添付文書の記載にありません。"}配合してよいかは不明のため、配合変化表や薬剤師に確認してください。</p>${notes}`;
+      reasonHtml = `<h3>ー 情報なし</h3><p>${unknown ? `${unknown}は、配合変化の情報がまだ登録されていません。` : "この組み合わせは登録されている添付文書の記載にありません。"}配合してよいかは不明のため、下の添付文書の記載も参考に、配合変化表や薬剤師に確認してください。</p>${notes}`;
     }
+    if (rec) return;
+    // An insert that says "do not mix with other drugs" (without listed exceptions) also means ×.
+    const token = ++compatToken;
+    Promise.all([mixInfo(a), mixInfo(b)]).then(([ma, mb]) => {
+      if (token !== compatToken) return;
+      const hit = [
+        [a, ma, b],
+        [b, mb, a],
+      ]
+        .map(([d, m, other]) => {
+          if (isFluid(other)) return null;
+          const line = m.lines.find((l) => NO_MIX_RE.test(l) && !l.includes("除く"));
+          return line ? { d, line } : null;
+        })
+        .find(Boolean);
+      if (!hit) return;
+      mark.textContent = "×";
+      label.textContent = "配合不可の記載あり — タップで理由";
+      resultBtn.className = "compat-result is-ng";
+      reasonHtml = `<h3 class="tone-danger">× 配合不可の記載あり</h3><p>${escapeHtml(hit.d.name)}の添付文書(適用上の注意)に「${escapeHtml(hit.line)}」と記載されています。</p><p class="compat-note">${window.icon("alert")} 添付文書の記載から自動で判定しています。製品により記載が異なることがあるため、使用する製品の添付文書を確認してください。</p>${notes}`;
+    });
   }
 
   // The reason opens as a popup so the compatibility screen itself always fits one screen.
@@ -395,8 +518,16 @@
     overlay.innerHTML = `<div class="consent-box compat-reason" id="compat-reason">
         <p class="compat-pair">${escapeHtml(a.name)} × ${escapeHtml(b.name)}</p>
         ${reasonHtml}
+        ${injectable(a) || injectable(b) ? `<div class="compat-ins"><p class="compat-ins-title">添付文書「適用上の注意」の調製・配合に関する記載</p><p class="ins-msg">読み込み中…</p></div>` : ""}
         <button class="btn-secondary compat-close" type="button">閉じる</button>
       </div>`;
+    const insBox = overlay.querySelector(".compat-ins");
+    if (insBox) {
+      Promise.all([mixInfo(a), mixInfo(b)]).then(([ma, mb]) => {
+        if (ma.absent || mb.absent) return insBox.remove();
+        insBox.querySelector(".ins-msg").outerHTML = mixHtml(a, ma) + mixHtml(b, mb);
+      });
+    }
     const close = () => {
       overlay.remove();
       resultBtn.focus();

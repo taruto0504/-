@@ -2279,3 +2279,101 @@ button {
 .prod-note a {
   color: var(--color-primary);
 }
+
+/* 添付文書の記載(PMDA から自動取得) */
+.prod-kind {
+  margin: 0 0 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.ins-src {
+  margin: 0 0 4px;
+  font-size: 11.5px;
+  color: var(--color-text-muted);
+}
+
+.ins-msg {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--color-text-muted);
+}
+
+.ins-sec {
+  margin: 4px 0;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-surface);
+}
+
+.ins-sec summary {
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.ins-sec[open] summary {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ins-sec p {
+  margin: 0;
+  padding: 3px 10px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.ins-sec p:last-child {
+  padding-bottom: 8px;
+}
+
+.ins-sec .ins-sub {
+  padding-top: 6px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+}
+
+.ins-sec.ins-warn,
+.ins-sec.ins-contra {
+  border-color: #f0c4c4;
+  background: #fdf1f0;
+}
+
+.ins-sec.ins-warn summary,
+.ins-sec.ins-contra summary {
+  color: var(--color-danger);
+}
+
+.ins-note {
+  margin: 6px 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-muted);
+}
+
+.ins-note a,
+.prod-doc {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.prod-doc {
+  margin-left: 6px;
+  font-size: 11.5px;
+}
+
+.compat-ins {
+  margin-top: 10px;
+}
+
+.compat-reason .compat-ins-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}

@@ -1,4 +1,4 @@
-import { cpSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -7,11 +7,12 @@ const out = join(root, "www");
 
 // service-worker.js is left out on purpose: inside the app its cache-first
 // strategy would keep serving old files after an app update.
-const entries = ["index.html", "drip-oxygen.html", "timer.html", "calculator.html", "terms.html", "drugs.html", "manifest.json", "css", "js", "icons"];
+const entries = ["index.html", "drip-oxygen.html", "timer.html", "calculator.html", "terms.html", "drugs.html", "manifest.json", "css", "js", "icons", "data"];
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out);
 for (const entry of entries) {
+  if (!existsSync(join(root, entry))) continue; // data/ appears once the PMDA insert data is built
   cpSync(join(root, entry), join(out, entry), { recursive: true });
 }
 // The web pages carry a Content-Security-Policy, but Capacitor injects its bridge as an
