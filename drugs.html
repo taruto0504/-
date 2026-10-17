@@ -31,7 +31,7 @@
   <section id="tab-search" class="tab-panel active">
     <div class="card drug-card">
       <div class="suggest-wrap">
-        <input type="text" id="drug-q" placeholder="薬名・別名を入力(1文字から)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="drug-q-list">
+        <input type="text" id="drug-q" placeholder="薬名・販売名を入力(1文字から)" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="drug-q-list">
         <ul class="suggest-list" id="drug-q-list" role="listbox" hidden></ul>
       </div>
       <div class="drug-msg" id="drug-msg"></div>
@@ -70,6 +70,7 @@
   </section>
 </main>
 
+<script src="js/drug-list.js"></script>
 <script src="js/drug-data.js"></script>
 <script src="js/drugs.js"></script>
 <script src="js/sw-register.js"></script>

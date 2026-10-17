@@ -82,6 +82,22 @@ npm run sync
 - `compat`(配合変化)には、添付文書などに**記載がある組み合わせだけ**を登録します。登録のない組み合わせは画面上「ー 情報なし」と表示されます(推測で〇にしないでください)。
 - 検索は、ひらがな・カタカナ・半角/全角・長音(ー)の違いを区別しません。読み方は `kana`、別名・販売名は `aliases` に追加します。
 
+### 医療用医薬品の一覧(厚生労働省 薬価基準収載品目リスト)
+
+- 成分名・販売名・規格の一覧は `js/drug-list.js` です(自動生成。直接編集しない)。詳しい情報がない薬は、PMDAの添付文書ページへのリンクを表示します。
+- 薬価改定(毎年4月など)や新薬の収載があったら、次の手順で更新します。
+  1. `.github/workflows/fetch-drug-sources.yml` の `YAKKA_PAGE` を厚生労働省の最新ページのURLにする(年度が変わるとURLが変わります)
+  2. GitHub の「Actions」→「薬価基準データの取得」→「Run workflow」で実行(`source-data` ブランチに元データが保存されます)
+  3. 手元で変換する
+     ```sh
+     pip install openpyxl pypdf
+     git fetch origin source-data
+     mkdir -p /tmp/src && git archive origin/source-data | tar -x -C /tmp/src
+     python3 scripts/build-drug-list.py /tmp/src
+     ```
+  4. `service-worker.js` の `CACHE_NAME` の番号を1つ上げてコミット
+- `js/drug-data.js` の `yj`(薬価基準収載医薬品コードの上7桁)で、詳しい情報がある薬とその製品を結び付けています。
+
 ## 職種・年数の統計
 
 - 初回利用時に職種と資格取得からの年数を選んでもらい、端末に保存しています(`js/profile.js`)。
