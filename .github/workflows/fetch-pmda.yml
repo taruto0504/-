@@ -34,7 +34,7 @@ jobs:
           wc -l data/pmda.jsonl || true
 
       - name: 取得
-        run: python3 scripts/fetch-pmda.py --list js/drug-list.js --out data/pmda.jsonl --delay 1.0 --budget 17400 --limit 30
+        run: python3 scripts/fetch-pmda.py --list js/drug-list.js --out data/pmda.jsonl --delay 1.0 --budget 17400
 
       - name: pmda-data ブランチに保存
         working-directory: data
