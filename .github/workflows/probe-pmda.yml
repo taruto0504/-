@@ -18,19 +18,13 @@ jobs:
         run: |
           mkdir out && cd out
           UA="Mozilla/5.0 (medical-support-tool data check)"
-          curl -sSL -A "$UA" -D general.headers "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/1119402" -o general.html || true
-          grep -oE 'href="[^"]+"' general.html | sort -u > general.links || true
-          first=$(grep -oE 'href="[^"]*(ResultDataSetPDF|ResultDataSetXML|iyakuDetail/[0-9A-Za-z_]+)[^"]*"' general.html | head -5 | sed 's/href="//;s/"$//')
-          echo "$first" > first.txt
-          i=0
-          for u in $first; do
-            i=$((i+1))
-            case "$u" in http*) url="$u";; /*) url="https://www.pmda.go.jp$u";; *) url="https://www.pmda.go.jp/PmdaSearch/iyakuDetail/$u";; esac
-            sleep 2
-            curl -sSL -A "$UA" -D "p$i.headers" "$url" -o "p$i.body" || true
-            echo "$url" > "p$i.url"
-          done
-          curl -sSL -A "$UA" "https://www.pmda.go.jp/robots.txt" -o robots.txt || true
+          curl -sSL -A "$UA" "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/112268_1119402A1022_2_07" -o propofol.html
+          sleep 2
+          curl -sSL -A "$UA" "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/2171022" -o amlo-general.html
+          sleep 2
+          id=$(grep -oE 'detailDisp\("PmdaSearch", "[^"]+"' amlo-general.html | head -1 | sed 's/.*", "//;s/"$//')
+          echo "$id" > amlo-id.txt
+          curl -sSL -A "$UA" "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/$id" -o amlo.html
           ls -la
 
       - name: pmda-probe ブランチに保存
