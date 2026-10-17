@@ -230,7 +230,7 @@
     o2ResultMain.textContent = minutes >= 60 ? formatDuration(minutes) : formatNum(minutes) + "分";
     o2ResultSub.innerHTML =
       "ボンベ残量: 約 " + formatNum(remainingLiters) + " L" +
-      (minutes < 30 ? "<br>" + window.icon("alert") + " 残量が少なくなっています。早めに交換を検討してください。" : "");
+      (minutes < 30 ? "<br>" + window.icon("alert") + " 残りわずかです。早めに交換してください。" : "");
     guidePinned = null;
     updateO2Guide();
   });

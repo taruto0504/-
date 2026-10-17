@@ -101,7 +101,8 @@
   function findExact(text, idx) {
     const q = normalize(text);
     if (!q) return null;
-    const hit = idx.find(({ keys }) => keys.some((k) => k.norm === q));
+    // A drug's own name beats another drug's alias or product name.
+    const hit = idx.find(({ keys }) => keys[0].norm === q) || idx.find(({ keys }) => keys.some((k) => k.norm === q));
     return hit ? hit.drug : null;
   }
 
