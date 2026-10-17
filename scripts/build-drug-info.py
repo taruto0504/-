@@ -45,8 +45,11 @@ def main(src):
             info["repNames"] = next((r[1] for r in rows if r[0] == rec["rep"]), [])
             info["rev"] = clean_rev(rec.get("rev"))
         for k in KEYS:
-            if rec.get(k):
-                info[k] = rec[k]
+            # drop leftovers of empty table cells from older fetches
+            lines = [re.sub(r"(\s*/)+$", "", l).strip() for l in rec.get(k) or []]
+            lines = [l for l in lines if l and not re.fullmatch(r"[\s/|・、。.,-]+", l)]
+            if lines:
+                info[k] = lines
         if not any(k in info for k in KEYS):
             empty += 1
         chunks.setdefault(yj[:3], {})[yj] = info

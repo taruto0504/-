@@ -67,21 +67,37 @@ def general_rows(html):
     return rows
 
 
+def flatten_tables(el):
+    """Each table row becomes one line, its non-empty cells joined with " / " (inner tables first)."""
+    for table in reversed(el.find_all("table")):
+        rows = []
+        caption = table.find("caption")
+        if caption and caption.get_text(strip=True):
+            rows.append(caption.get_text(" ", strip=True))
+        for tr in table.find_all("tr"):
+            if tr.find_parent("table") is not table:
+                continue
+            cells = [re.sub(r"\s+", " ", c.get_text(" ", strip=True)) for c in tr.find_all(["td", "th"], recursive=False)]
+            cells = [c for c in cells if c]
+            if cells:
+                rows.append(" / ".join(cells))
+        table.replace_with(NavigableString("\n" + "\n".join(rows) + "\n"))
+
+
 def to_lines(el):
     """Section HTML -> list of text lines (one per list item / paragraph / table row)."""
     for ref in el.select("a.HeaderRef, a.CommentRefNum, script, style"):
         ref.decompose()
     for br in el.find_all("br"):
         br.replace_with(NavigableString("\n"))
-    for td in el.find_all(["td", "th"]):
-        td.append(NavigableString(" / "))
+    flatten_tables(el)
     for tag in el.find_all(BLOCK):
         tag.insert_before(NavigableString("\n"))
         tag.insert_after(NavigableString("\n"))
     lines = []
     for line in el.get_text("").split("\n"):
-        line = re.sub(r"\s+", " ", nfkc(line)).strip().rstrip("/").strip()
-        if line:
+        line = re.sub(r"\s+", " ", nfkc(line)).strip()
+        if line and not re.fullmatch(r"[\s/|・、。.,-]+", line):
             lines.append(line)
     return lines
 
@@ -136,6 +152,7 @@ def main():
     ap.add_argument("--delay", type=float, default=1.0)
     ap.add_argument("--budget", type=float, default=5 * 3600)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--only", help="file with YJ7 codes to fetch again (one per line), even if already fetched")
     args = ap.parse_args()
 
     src = open(args.list, encoding="utf-8").read()
@@ -150,7 +167,11 @@ def main():
                     done.add(json.loads(line)["yj"])
                 except (ValueError, KeyError):
                     pass
-    todo = [g for g in groups if g[0] not in done]
+    if args.only:
+        only = {line.strip() for line in open(args.only) if line.strip()}
+        todo = [g for g in dict.fromkeys(groups) if g[0] in only]
+    else:
+        todo = [g for g in groups if g[0] not in done]
     if args.limit:
         todo = todo[: args.limit]
     print(f"{len(groups)} 製剤 / 取得済み {len(done)} / 今回 {len(todo)}", flush=True)

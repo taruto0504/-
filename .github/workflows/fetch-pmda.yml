@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - '.github/workflows/fetch-pmda.yml'
+      - 'scripts/pmda-refetch.txt'
 
 permissions:
   contents: write
@@ -34,7 +35,11 @@ jobs:
           wc -l data/pmda.jsonl || true
 
       - name: 取得
-        run: python3 scripts/fetch-pmda.py --list js/drug-list.js --out data/pmda.jsonl --delay 1.0 --budget 17400
+        # scripts/pmda-refetch.txt があれば、そこに書いた製剤(YJコード上7桁)だけを取り直す
+        run: |
+          ONLY=""
+          if [ -f scripts/pmda-refetch.txt ]; then ONLY="--only scripts/pmda-refetch.txt"; fi
+          python3 scripts/fetch-pmda.py --list js/drug-list.js --out data/pmda.jsonl --delay 1.0 --budget 17400 $ONLY
 
       - name: pmda-data ブランチに保存
         working-directory: data
