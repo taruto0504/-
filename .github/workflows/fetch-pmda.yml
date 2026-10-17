@@ -28,21 +28,21 @@ jobs:
 
       - name: 取得済みのデータを読み込む
         run: |
-          mkdir data
+          mkdir pmda-work
           if git fetch --no-tags --depth=1 origin pmda-data; then
-            git show FETCH_HEAD:pmda.jsonl > data/pmda.jsonl
+            git show FETCH_HEAD:pmda.jsonl > pmda-work/pmda.jsonl
           fi
-          wc -l data/pmda.jsonl || true
+          wc -l pmda-work/pmda.jsonl || true
 
       - name: 取得
         # scripts/pmda-refetch.txt があれば、そこに書いた製剤(YJコード上7桁)だけを取り直す
         run: |
           ONLY=""
           if [ -f scripts/pmda-refetch.txt ]; then ONLY="--only scripts/pmda-refetch.txt"; fi
-          python3 scripts/fetch-pmda.py --list js/drug-list.js --out data/pmda.jsonl --delay 1.0 --budget 17400 $ONLY
+          python3 scripts/fetch-pmda.py --list js/drug-list.js --out pmda-work/pmda.jsonl --delay 1.0 --budget 17400 $ONLY
 
       - name: pmda-data ブランチに保存
-        working-directory: data
+        working-directory: pmda-work
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -54,10 +54,10 @@ jobs:
           git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pmda-data
 
       - name: 終わっていなければ続きを実行
-        if: hashFiles('data/status.txt') != ''
+        if: hashFiles('pmda-work/status.txt') != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if grep -q partial data/status.txt; then
+          if grep -q partial pmda-work/status.txt; then
             gh workflow run fetch-pmda.yml --ref "${GITHUB_REF_NAME}"
           fi
