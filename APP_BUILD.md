@@ -98,6 +98,20 @@ npm run sync
   4. `service-worker.js` の `CACHE_NAME` の番号を1つ上げてコミット
 - `js/drug-data.js` の `yj`(薬価基準収載医薬品コードの上7桁)で、詳しい情報がある薬とその製品を結び付けています。
 
+### 添付文書の記載(PMDA から自動取得)
+
+- `data/drug-info/{YJコード上3桁}.json` に、製剤ごとの代表製品の添付文書から「警告・禁忌・効能又は効果・用法及び用量・適用上の注意(注射薬のみ)」を入れています(自動生成。直接編集しない)。薬を開いたときに必要なファイルだけ読み込みます。
+- 更新手順(薬価基準リストを更新したあとや、添付文書の改訂を反映したいとき)
+  1. GitHub の「Actions」→「PMDA 添付文書データの取得」→「Run workflow」。続きから取得するので、全件取り直すときは `pmda-data` ブランチを削除してから実行します(全件で約5時間。1秒に1件ずつ取得します)
+  2. 終わったら手元で変換する
+     ```sh
+     git fetch origin pmda-data
+     git show origin/pmda-data:pmda.jsonl > /tmp/pmda.jsonl
+     python3 scripts/build-drug-info.py /tmp/pmda.jsonl
+     ```
+  3. `service-worker.js` の `CACHE_NAME` の番号を1つ上げてコミット
+- 配合変化では、適用上の注意に「他の薬剤と混合しないこと」等の記載(「〜を除く」のような例外のないもの)がある薬を、輸液以外との組み合わせで × と自動判定します。
+
 ## 職種・年数の統計
 
 - 初回利用時に職種と資格取得からの年数を選んでもらい、端末に保存しています(`js/profile.js`)。
