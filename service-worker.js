@@ -1,4 +1,4 @@
-const CACHE_NAME = "medical-support-tool-v31";
+const CACHE_NAME = "medical-support-tool-v32";
 const ASSETS = [
   "index.html",
   "drip-oxygen.html",
@@ -6,6 +6,9 @@ const ASSETS = [
   "calculator.html",
   "terms.html",
   "drugs.html",
+  "vital-assess.html",
+  "vital.html",
+  "ecg.html",
   "manifest.json",
   "css/style.css",
   "js/icons.js",
@@ -23,6 +26,12 @@ const ASSETS = [
   "js/timer.js",
   "js/general-timer.js",
   "js/calculator.js",
+  "js/va-common.js",
+  "js/va-home.js",
+  "js/va-vital-engine.js",
+  "js/va-vital.js",
+  "js/va-ecg-engine.js",
+  "js/va-ecg.js",
   "icons/icon.svg",
   "icons/icon-192.png",
   "icons/icon-512.png",
