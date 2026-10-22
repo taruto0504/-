@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-23",
+  "version": "2026-10-24",
   "standardRate": 30,
   "selfBurdenYen": 2000,
   "validation": {
@@ -101,17 +101,17 @@
     { "unit": "泊", "kind": "stay", "base": "泊", "factor": 1, "aliases": ["泊"] }
   ],
   "sites": [
-    { "id": "anaf", "icon": "ANA", "name": "ANAのふるさと納税", "kana": "えーえぬえーのふるさとのうぜい", "operator": "ANAあきんど", "url": null, "candidateUrl": "https://furusato.ana.co.jp/" },
-    { "id": "aupay", "icon": "au", "name": "au PAY ふるさと納税", "kana": "えーゆーぺいふるさとのうぜい", "operator": "KDDI", "url": null, "candidateUrl": "https://furusato.wowma.jp/" },
-    { "id": "amazon", "icon": "a", "name": "Amazonふるさと納税", "kana": "あまぞんふるさとのうぜい", "operator": "Amazon", "url": null, "candidateUrl": null },
-    { "id": "kabu", "icon": "K&", "name": "KABU&ふるさと納税", "kana": "かぶあんどふるさとのうぜい", "operator": "カブ&ピース", "url": null, "candidateUrl": null },
-    { "id": "jal", "icon": "JAL", "name": "JALふるさと納税", "kana": "じゃるふるさとのうぜい", "operator": "JALUX", "url": null, "candidateUrl": "https://furusato.jal.co.jp/" },
-    { "id": "saison", "icon": "セ", "name": "セゾンのふるさと納税", "kana": "せぞんのふるさとのうぜい", "operator": "クレディセゾン", "url": null, "candidateUrl": "https://furusato.saisoncard.co.jp/" },
+    { "id": "anaf", "icon": "ANA", "name": "ANAのふるさと納税", "kana": "えーえぬえーのふるさとのうぜい", "operator": "ANAあきんど", "url": "https://furusato.ana.co.jp/" },
+    { "id": "aupay", "icon": "au", "name": "au PAY ふるさと納税", "kana": "えーゆーぺいふるさとのうぜい", "operator": "KDDI", "url": "https://furusato.wowma.jp/" },
+    { "id": "amazon", "icon": "a", "name": "Amazonふるさと納税", "kana": "あまぞんふるさとのうぜい", "operator": "Amazon", "url": "https://www.amazon.co.jp/fmc/furusato" },
+    { "id": "kabu", "icon": "K&", "name": "KABU&ふるさと納税", "kana": "かぶあんどふるさとのうぜい", "operator": "カブ&ピース", "url": "https://kabuand.com/furusato" },
+    { "id": "jal", "icon": "JAL", "name": "JALふるさと納税", "kana": "じゃるふるさとのうぜい", "operator": "JALUX", "url": "https://furusato.jal.co.jp/" },
+    { "id": "saison", "icon": "セ", "name": "セゾンのふるさと納税", "kana": "せぞんのふるさとのうぜい", "operator": "クレディセゾン", "url": "https://furusato.saisoncard.co.jp/" },
     { "id": "satofull", "icon": "さ", "name": "さとふる", "kana": "さとふる", "operator": "さとふる", "url": "https://www.satofull.jp/" },
     { "id": "furunavi", "icon": "な", "name": "ふるなび", "kana": "ふるなび", "operator": "アイモバイル", "url": "https://furunavi.jp/" },
     { "id": "choice", "icon": "チ", "name": "ふるさとチョイス", "kana": "ふるさとちょいす", "operator": "トラストバンク", "url": "https://www.furusato-tax.jp/" },
-    { "id": "furupo", "icon": "ぽ", "name": "ふるぽ", "kana": "ふるぽ", "operator": "JTB", "url": null, "candidateUrl": "https://furu-po.com/" },
-    { "id": "yahoo", "icon": "Y!", "name": "Yahoo!ふるさと納税", "kana": "やふーふるさとのうぜい", "operator": "LINEヤフー", "url": null, "candidateUrl": "https://furusato.yahoo.co.jp/" },
+    { "id": "furupo", "icon": "ぽ", "name": "ふるぽ", "kana": "ふるぽ", "operator": "JTB", "url": "https://furu-po.com/" },
+    { "id": "yahoo", "icon": "Y!", "name": "Yahoo!ふるさと納税", "kana": "やふーふるさとのうぜい", "operator": "LINEヤフー", "url": "https://shopping.yahoo.co.jp/promotion/event/y-furusato/" },
     { "id": "rakuten", "icon": "楽", "name": "楽天ふるさと納税", "kana": "らくてんふるさとのうぜい", "operator": "楽天グループ", "url": "https://event.rakuten.co.jp/furusato/" }
   ],
   "contactUrl": null

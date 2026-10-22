@@ -84,7 +84,7 @@ npm run open:ios       # または npm run open:android
 - [ ] 判定のしきい値（40% / 30% / 20%）
 - [ ] 対応するAIサービスの範囲と、標準モデル名（`js/ai.js` の `PROVIDERS`）
 - [ ] 無料／有料（広告・買い切り）の方針
-- [ ] サイト一覧のURL：ふるさとチョイス・楽天・さとふる・ふるなび以外は「URL確認中」で無効。確認できたら `candidateUrl` を `url` に移す（`candidateUrl` は未確認の候補）
+- [x] サイト一覧のURL：12サイトとも公式URLを確認済み（2026-10-24）
 - [ ] 各社のロゴの利用可否（許可が取れるまで文字アイコン）
 - [ ] 問い合わせフォームのURL（`contactUrl`）
 - [ ] アプリ版の配信先URL（`js/config.js` の `REMOTE_URL`）
