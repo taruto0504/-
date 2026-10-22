@@ -1,0 +1,26 @@
+name: ふるさと還元チェッカーのテスト
+
+# 計算・単位換算・読み取り結果の解釈の例題集を実行する。
+# 設定ファイル（基準値・しきい値・単位の換算表）を変えた時も、このテストに通ってから配信する。
+
+on:
+  push:
+    paths:
+      - 'furusato/**'
+      - '.github/workflows/furusato-test.yml'
+  pull_request:
+    paths:
+      - 'furusato/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: furusato
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test

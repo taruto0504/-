@@ -1,0 +1,118 @@
+{
+  "version": "2026-10-23",
+  "standardRate": 30,
+  "selfBurdenYen": 2000,
+  "validation": {
+    "minDonationYen": 1000,
+    "maxAmountYen": 100000000,
+    "maxRatePercent": 100,
+    "minRatePercent": 3
+  },
+  "grades": [
+    {
+      "id": "high",
+      "min": 40,
+      "label": "還元率 高め",
+      "color": "green",
+      "advice": "市場価格に対して還元率が高めです。在庫や受付期限も確認しましょう。"
+    },
+    {
+      "id": "upper",
+      "min": 30,
+      "label": "還元率 やや高め",
+      "color": "teal",
+      "advice": "国の基準ライン（30%）以上の還元率です。"
+    },
+    {
+      "id": "standard",
+      "min": 20,
+      "label": "還元率 標準的",
+      "color": "yellow",
+      "advice": "平均的な還元率です。好みや使い道で選びましょう。"
+    },
+    {
+      "id": "modest",
+      "min": null,
+      "label": "還元率 控えめ",
+      "color": "gray",
+      "advice": "還元率は控えめです。品質・内容・応援したい地域など、還元率以外の魅力もあわせて検討しましょう。"
+    }
+  ],
+  "notes": {
+    "shipping": "通販価格に送料を足して計算しています。通販側が送料無料になる条件（まとめ買いなど）がないかも確認しましょう。",
+    "subscription": "定期便は1回あたりの量と届く間隔も確認しましょう。保存場所や食べきれる量かも大切です。",
+    "bulk": "量が多めです。冷凍庫などの保存場所と、使い切れるかを確認しましょう。",
+    "approx": "内容量に「約」などの表記があるため、単価は目安です。",
+    "voucher": "利用券は額面を市場価格として計算しています。有効期限や使えるお店も確認しましょう。"
+  },
+  "bulkThresholds": {
+    "g": 5000,
+    "ml": 10000,
+    "count": 50
+  },
+  "kinds": {
+    "weight": { "label": "重さ", "perUnits": [{ "amount": 100, "label": "100g" }, { "amount": 1000, "label": "1kg" }] },
+    "volume": { "label": "容量", "perUnits": [{ "amount": 100, "label": "100ml" }, { "amount": 1000, "label": "1L" }] },
+    "count": { "label": "個数" },
+    "package": { "label": "包装" },
+    "meal": { "label": "食事量" },
+    "period": { "label": "期間・回数" },
+    "length": { "label": "長さ" },
+    "area": { "label": "面積" },
+    "voucher": { "label": "利用券" },
+    "stay": { "label": "宿泊" }
+  },
+  "units": [
+    { "unit": "mg", "kind": "weight", "base": "g", "factor": 0.001, "aliases": ["mg", "ミリグラム", "㎎"] },
+    { "unit": "g", "kind": "weight", "base": "g", "factor": 1, "aliases": ["g", "グラム"] },
+    { "unit": "kg", "kind": "weight", "base": "g", "factor": 1000, "aliases": ["kg", "キログラム", "キロ", "㎏"] },
+    { "unit": "t", "kind": "weight", "base": "g", "factor": 1000000, "aliases": ["t", "トン"] },
+    { "unit": "斤", "kind": "weight", "base": "g", "factor": 600, "aliases": ["斤"], "note": "1斤＝600gで換算" },
+    { "unit": "貫", "kind": "weight", "base": "g", "factor": 3750, "aliases": ["貫"], "note": "1貫＝3,750gで換算" },
+    { "unit": "合", "kind": "weight", "base": "g", "factor": 150, "aliases": ["合"], "note": "米1合＝150gで換算" },
+    { "unit": "ml", "kind": "volume", "base": "ml", "factor": 1, "aliases": ["ml", "mℓ", "ミリリットル", "㎖", "cc", "シーシー"] },
+    { "unit": "dl", "kind": "volume", "base": "ml", "factor": 100, "aliases": ["dl", "デシリットル", "㎗"] },
+    { "unit": "L", "kind": "volume", "base": "ml", "factor": 1000, "aliases": ["l", "ℓ", "リットル", "リッター"] },
+    { "unit": "升", "kind": "volume", "base": "ml", "factor": 1800, "aliases": ["升"], "note": "酒1升＝1,800mlで換算" },
+    { "unit": "個", "kind": "count", "base": "個", "factor": 1, "aliases": ["個", "コ", "ケ"] },
+    { "unit": "本", "kind": "count", "base": "本", "factor": 1, "aliases": ["本"] },
+    { "unit": "枚", "kind": "count", "base": "枚", "factor": 1, "aliases": ["枚"] },
+    { "unit": "尾", "kind": "count", "base": "尾", "factor": 1, "aliases": ["尾"] },
+    { "unit": "匹", "kind": "count", "base": "匹", "factor": 1, "aliases": ["匹"] },
+    { "unit": "玉", "kind": "count", "base": "玉", "factor": 1, "aliases": ["玉"] },
+    { "unit": "杯", "kind": "count", "base": "杯", "factor": 1, "aliases": ["杯"] },
+    { "unit": "羽", "kind": "count", "base": "羽", "factor": 1, "aliases": ["羽"] },
+    { "unit": "房", "kind": "count", "base": "房", "factor": 1, "aliases": ["房"] },
+    { "unit": "パック", "kind": "package", "base": "パック", "factor": 1, "aliases": ["パック", "pack"] },
+    { "unit": "袋", "kind": "package", "base": "袋", "factor": 1, "aliases": ["袋"] },
+    { "unit": "箱", "kind": "package", "base": "箱", "factor": 1, "aliases": ["箱"] },
+    { "unit": "缶", "kind": "package", "base": "缶", "factor": 1, "aliases": ["缶"] },
+    { "unit": "瓶", "kind": "package", "base": "瓶", "factor": 1, "aliases": ["瓶", "びん", "ビン"] },
+    { "unit": "セット", "kind": "package", "base": "セット", "factor": 1, "aliases": ["セット", "set"] },
+    { "unit": "ケース", "kind": "package", "base": "ケース", "factor": 1, "aliases": ["ケース"] },
+    { "unit": "人前", "kind": "meal", "base": "人前", "factor": 1, "aliases": ["人前", "人分"] },
+    { "unit": "食", "kind": "meal", "base": "人前", "factor": 1, "aliases": ["食"], "note": "1食＝1人前で換算" },
+    { "unit": "回", "kind": "period", "base": "回", "factor": 1, "aliases": ["回"] },
+    { "unit": "か月", "kind": "period", "base": "か月", "factor": 1, "aliases": ["か月", "ヶ月", "カ月", "ケ月", "ヵ月", "ヵ月", "ケ月", "箇月"] },
+    { "unit": "cm", "kind": "length", "base": "cm", "factor": 1, "aliases": ["cm", "センチメートル", "センチ", "㎝"] },
+    { "unit": "m", "kind": "length", "base": "cm", "factor": 100, "aliases": ["m", "メートル"] },
+    { "unit": "畳", "kind": "area", "base": "畳", "factor": 1, "aliases": ["畳"] },
+    { "unit": "円分", "kind": "voucher", "base": "円分", "factor": 1, "aliases": ["円分"] },
+    { "unit": "泊", "kind": "stay", "base": "泊", "factor": 1, "aliases": ["泊"] }
+  ],
+  "sites": [
+    { "id": "anaf", "icon": "ANA", "name": "ANAのふるさと納税", "kana": "えーえぬえーのふるさとのうぜい", "operator": "ANAあきんど", "url": null, "candidateUrl": "https://furusato.ana.co.jp/" },
+    { "id": "aupay", "icon": "au", "name": "au PAY ふるさと納税", "kana": "えーゆーぺいふるさとのうぜい", "operator": "KDDI", "url": null, "candidateUrl": "https://furusato.wowma.jp/" },
+    { "id": "amazon", "icon": "a", "name": "Amazonふるさと納税", "kana": "あまぞんふるさとのうぜい", "operator": "Amazon", "url": null, "candidateUrl": null },
+    { "id": "kabu", "icon": "K&", "name": "KABU&ふるさと納税", "kana": "かぶあんどふるさとのうぜい", "operator": "カブ&ピース", "url": null, "candidateUrl": null },
+    { "id": "jal", "icon": "JAL", "name": "JALふるさと納税", "kana": "じゃるふるさとのうぜい", "operator": "JALUX", "url": null, "candidateUrl": "https://furusato.jal.co.jp/" },
+    { "id": "saison", "icon": "セ", "name": "セゾンのふるさと納税", "kana": "せぞんのふるさとのうぜい", "operator": "クレディセゾン", "url": null, "candidateUrl": "https://furusato.saisoncard.co.jp/" },
+    { "id": "satofull", "icon": "さ", "name": "さとふる", "kana": "さとふる", "operator": "さとふる", "url": "https://www.satofull.jp/" },
+    { "id": "furunavi", "icon": "な", "name": "ふるなび", "kana": "ふるなび", "operator": "アイモバイル", "url": "https://furunavi.jp/" },
+    { "id": "choice", "icon": "チ", "name": "ふるさとチョイス", "kana": "ふるさとちょいす", "operator": "トラストバンク", "url": "https://www.furusato-tax.jp/" },
+    { "id": "furupo", "icon": "ぽ", "name": "ふるぽ", "kana": "ふるぽ", "operator": "JTB", "url": null, "candidateUrl": "https://furu-po.com/" },
+    { "id": "yahoo", "icon": "Y!", "name": "Yahoo!ふるさと納税", "kana": "やふーふるさとのうぜい", "operator": "LINEヤフー", "url": null, "candidateUrl": "https://furusato.yahoo.co.jp/" },
+    { "id": "rakuten", "icon": "楽", "name": "楽天ふるさと納税", "kana": "らくてんふるさとのうぜい", "operator": "楽天グループ", "url": "https://event.rakuten.co.jp/furusato/" }
+  ],
+  "contactUrl": null
+}

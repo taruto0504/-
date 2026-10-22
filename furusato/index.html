@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' https://api.anthropic.com https://api.openai.com https://generativelanguage.googleapis.com; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f6f50">
+<meta name="description" content="寄附額と市場価格を入れるだけで、ふるさと納税の返礼品の還元率と単価が分かる判定ツール">
+<title>ふるさと還元チェッカー</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<header class="app-header">
+  <button class="back-btn" id="back-btn" type="button" hidden>‹ 戻る</button>
+  <h1 id="page-title">ふるさと還元チェッカー</h1>
+</header>
+
+<main>
+  <!-- 入力（ホーム） -->
+  <section class="view" id="view-home" data-title="ふるさと還元チェッカー" data-tab="home">
+    <form id="calc-form" novalidate autocomplete="off">
+      <div class="card">
+        <div class="field" id="f-donation">
+          <label for="donation">寄附額</label>
+          <div class="input-wrap"><input id="donation" name="donation" inputmode="numeric" enterkeyhint="next" placeholder="例 30,000" aria-describedby="donation-hint"><span class="suffix">円</span></div>
+          <div class="hint" id="donation-hint">ふるさと納税サイトに載っている寄附金額</div>
+        </div>
+        <div class="field" id="f-market">
+          <label for="market">市場価格</label>
+          <div class="input-wrap"><input id="market" name="market" inputmode="numeric" enterkeyhint="done" placeholder="例 12,000"><span class="suffix">円</span></div>
+          <div class="hint">同じ商品をネット通販で見た時の販売価格（ポイントは含めません）</div>
+        </div>
+
+        <details class="more" id="more">
+          <summary>送料・定期便・内容量（任意）</summary>
+
+          <label class="check"><input type="checkbox" id="has-shipping"> 通販価格は送料別</label>
+          <div class="sub-options" id="shipping-box" hidden>
+            <div class="field" id="f-shipping">
+              <label for="shipping" id="shipping-label">送料</label>
+              <div class="input-wrap"><input id="shipping" inputmode="numeric" placeholder="例 800"><span class="suffix">円</span></div>
+            </div>
+          </div>
+
+          <label class="check"><input type="checkbox" id="is-sub"> 定期便</label>
+          <div class="sub-options" id="sub-box" hidden>
+            <div class="field" id="f-times">
+              <label for="times">お届けの回数</label>
+              <div class="input-wrap"><input id="times" inputmode="numeric" placeholder="例 3"><span class="suffix">回</span></div>
+            </div>
+            <div class="field">
+              <span class="label">市場価格・送料・内容量は</span>
+              <div class="radio-row">
+                <label><input type="radio" name="market-per" value="delivery" checked> 1回分</label>
+                <label><input type="radio" name="market-per" value="total"> 全回分の合計</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="field" id="f-quantity">
+            <label for="quantity">内容量（単価を出す時）</label>
+            <div class="input-wrap"><input id="quantity" placeholder="例 300g×4パック、500ml×24本、約1.2kg"></div>
+            <div class="hint">g・kg・ml・L・個・本・枚・パック・合・人前など。「×」の掛け算もそのまま書けます</div>
+            <div id="unit-pick" class="sub-options" hidden>
+              <label for="unit-select" class="small">単位を選んでください</label>
+              <select id="unit-select" class="plain"></select>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card">
+        <h2>写真・スクリーンショットから読み取る</h2>
+        <p class="small muted" style="margin-top:0">金額と内容量の数字だけを端末の中で読み取ります。画像は外部に送りません。</p>
+        <div class="btn-row">
+          <label class="btn" for="pick-images">🖼 画像を選ぶ</label>
+          <label class="btn" for="take-photo">📷 撮影する</label>
+        </div>
+        <input type="file" id="pick-images" accept="image/*" multiple hidden>
+        <input type="file" id="take-photo" accept="image/*" capture="environment" hidden>
+      </div>
+
+      <div id="form-errors"></div>
+      <div class="bottom-bar">
+        <button class="btn primary block" type="submit">還元率を計算</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 結果 -->
+  <section class="view" id="view-result" data-title="計算結果" data-tab="home" data-back="home">
+    <div id="result-body"></div>
+    <div class="bottom-bar">
+      <div class="btn-row four">
+        <button class="btn" type="button" id="btn-advice">詳しく</button>
+        <button class="btn" type="button" id="btn-save">保存</button>
+        <button class="btn" type="button" id="btn-share">シェア</button>
+        <a class="btn primary" href="#sites">寄附しに<br>行く</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- アドバイス -->
+  <section class="view" id="view-advice" data-title="アドバイス" data-tab="home" data-back="result">
+    <div id="advice-body"></div>
+  </section>
+
+  <!-- 読み取り確認 -->
+  <section class="view" id="view-ocr" data-title="読み取り結果の確認" data-tab="home" data-back="home">
+    <div id="ocr-progress" class="card" hidden>
+      <p style="margin-top:0"><span class="spinner"></span> <span id="ocr-status">読み取っています…</span></p>
+      <div class="progress"><div id="ocr-bar"></div></div>
+    </div>
+    <div id="ocr-body"></div>
+  </section>
+
+  <!-- 履歴・比較 -->
+  <section class="view" id="view-history" data-title="履歴・比較" data-tab="history">
+    <div class="card">
+      <div class="field" style="margin:0">
+        <label for="hist-sort">並べ方</label>
+        <select id="hist-sort" class="plain">
+          <option value="new">新しい順</option>
+          <option value="rate">還元率の高い順</option>
+          <option value="unit">単価の安い順（同じ単位どうし）</option>
+        </select>
+      </div>
+    </div>
+    <div id="history-body"></div>
+  </section>
+
+  <!-- サイト一覧 -->
+  <section class="view" id="view-sites" data-title="ふるさと納税サイト" data-tab="sites">
+    <div class="card">
+      <p class="small" style="margin-top:0">タップするとサイトを開きます。並び順は五十音順で、提携や広告の有無では変わりません。</p>
+      <div class="radio-row">
+        <label><input type="radio" name="site-order" value="kana" checked> 五十音順</label>
+        <label><input type="radio" name="site-order" value="custom"> 自分で並べる</label>
+      </div>
+    </div>
+    <div id="sites-body"></div>
+    <p class="disclaimer">リンク先の内容や取引について、このアプリは責任を負いません。サイト名・運営会社名は桐生市・川崎市・横浜市の公表資料によります。</p>
+  </section>
+
+  <!-- 設定 -->
+  <section class="view" id="view-settings" data-title="設定" data-tab="settings">
+    <form class="card" id="ai-form" autocomplete="off">
+      <h2>AIアドバイス</h2>
+      <p class="small muted" style="margin-top:0">自分のAPIキーで、選んだAIから詳しいアドバイスをもらえます。送るのは金額・還元率などの数字だけです。キーはこの端末の中に暗号化して保存し、運営側には送りません。AIの利用料は自己負担です。</p>
+      <div class="field">
+        <label for="ai-provider">AIサービス</label>
+        <select id="ai-provider" class="plain">
+          <option value="">使わない</option>
+        </select>
+      </div>
+      <div id="ai-detail" hidden>
+        <div class="field">
+          <label for="ai-key">APIキー</label>
+          <input id="ai-key" class="plain" type="password" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="field">
+          <label for="ai-model">モデル名</label>
+          <input id="ai-model" class="plain" spellcheck="false">
+          <div class="hint">空欄なら標準のモデルを使います</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" type="submit">保存</button>
+        <button class="btn danger" type="button" id="ai-clear">キーを削除</button>
+      </div>
+      <p class="small" id="ai-msg" role="status"></p>
+    </form>
+
+    <div class="card">
+      <h2>表示</h2>
+      <div class="field">
+        <span class="label">文字の大きさ</span>
+        <div class="radio-row" id="opt-size">
+          <label><input type="radio" name="size" value="normal" checked> 標準</label>
+          <label><input type="radio" name="size" value="large"> 大</label>
+          <label><input type="radio" name="size" value="xlarge"> 特大</label>
+        </div>
+      </div>
+      <div class="field">
+        <span class="label">画面の色</span>
+        <div class="radio-row" id="opt-theme">
+          <label><input type="radio" name="theme" value="auto" checked> 端末に合わせる</label>
+          <label><input type="radio" name="theme" value="light"> ライト</label>
+          <label><input type="radio" name="theme" value="dark"> ダーク</label>
+        </div>
+      </div>
+      <div class="field" style="margin:0">
+        <span class="label">サイトの開き方</span>
+        <div class="radio-row" id="opt-open">
+          <label><input type="radio" name="open" value="inapp" checked> アプリ内ブラウザ</label>
+          <label><input type="radio" name="open" value="external"> 外部ブラウザ</label>
+        </div>
+        <div class="hint">アプリ内ブラウザはスマホアプリ版で使えます</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>判定の基準</h2>
+      <div id="criteria-body"></div>
+    </div>
+
+    <div class="card">
+      <ul class="list-links">
+        <li><a href="#about-disclaimer">注意事項・免責</a></li>
+        <li><a href="#about-rules">還元率と国のルール</a></li>
+        <li><a href="#about-neutral">収益と中立性の方針</a></li>
+        <li><a href="#about-contact">お問い合わせ（自治体・事業者の方も）</a></li>
+      </ul>
+    </div>
+    <p class="center small muted" id="version-line"></p>
+  </section>
+
+  <section class="view prose" id="view-about-disclaimer" data-title="注意事項・免責" data-tab="settings" data-back="settings">
+    <div class="card" id="disclaimer-text">
+      <p style="margin-top:0">判定とアドバイスは参考情報です。寄附先の判断や税額を保証するものではありません。最終的な判断はご自身で行ってください。</p>
+      <ul>
+        <li>還元率は、入力された市場価格に基づく目安です。通販価格はセールや時期で変わります。</li>
+        <li>写真・スクリーンショットから読み取った数字は、確認画面でご自身で確かめてから計算してください。</li>
+        <li>国の「3割基準」は自治体が返礼品を調達する費用の基準で、市場価格で計算した還元率とは別物です。市場価格での還元率が30%を超えても、基準違反という意味ではありません。</li>
+        <li>控除額・自己負担額は年収や家族構成で変わります。税額は税務署や専門家にご確認ください。「自己負担2,000円を差し引いた差額」は、年間の控除上限の範囲内で寄附した場合の参考値です。</li>
+        <li>AIの回答は誤りを含むことがあります。AIの利用料はご自身の負担です。</li>
+        <li>外部サイトへのリンク先の内容・取引について、このアプリは責任を負いません。</li>
+        <li>表示は還元率の高さを示すだけで、返礼品の品質や自治体・事業者の良し悪しを評価するものではありません。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="view prose" id="view-about-rules" data-title="還元率と国のルール" data-tab="settings" data-back="settings">
+    <div class="card">
+      <h2 style="margin-top:0">このアプリの還元率</h2>
+      <p class="formula">還元率(%) = 市場価格 ÷ 寄附額 × 100</p>
+      <p>金額は円の整数のまま計算し、最後に1回だけ小数第1位に四捨五入します。結果は逆算で検算し、合わない時は表示しません。判定の境目は「以上」で上の段です（例：30.0%ちょうどは「やや高め」）。</p>
+      <h2>国のルール（総務省告示）</h2>
+      <ul>
+        <li><strong>3割基準</strong>：返礼品の調達費用は寄附額の3割以下（税込）。このアプリでは還元率30%を「標準還元率」として並べて表示します。</li>
+        <li><strong>5割基準</strong>：送料・手数料などを含む募集経費の総額は寄附額の5割以下。判定には使いません。</li>
+        <li><strong>ポイント付与の禁止（2025年10月〜）</strong>：ポータルサイト独自のポイント付与は原則禁止。ポイントは計算に含めません。</li>
+        <li>2026年10月からは返礼品の経費や地場産品の基準が厳しくなり、内容量や寄附額が変わることがあります。同じ品でも還元率が変わるため、寄附の前に確かめるのがおすすめです。</li>
+      </ul>
+      <p class="small muted">参考：<a href="https://jitsumu-guide.com/furusato-tax-2026-reform-guide/" target="_blank" rel="noopener">返礼品の3割・5割基準の解説</a>、<a href="https://article.ejinzai.jp/column/furusato-tax-amendment-2026/" target="_blank" rel="noopener">2026年10月改正の解説</a></p>
+    </div>
+  </section>
+
+  <section class="view prose" id="view-about-neutral" data-title="収益と中立性の方針" data-tab="settings" data-back="settings">
+    <div class="card">
+      <p style="margin-top:0">還元率の判定と並び順は、収益の有無に一切左右させません。</p>
+      <ul>
+        <li>提携の有無に関係なく、すべて同じ計算式・同じしきい値で判定します。</li>
+        <li>サイト一覧は五十音順の固定、または利用者が自分で並べ替えた順で表示し、提携先を上位に出しません。</li>
+        <li>広告やアフィリエイトリンクを載せる場合は「広告」「PR」と明記します。</li>
+        <li>AIアドバイスには、特定のサイトや提携先を勧める指示を入れていません。</li>
+        <li>アプリ側から特定の自治体・事業者名を挙げたランキングは作りません。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="view prose" id="view-about-contact" data-title="お問い合わせ" data-tab="settings" data-back="settings">
+    <div class="card" id="contact-body"></div>
+  </section>
+</main>
+
+<nav class="tabbar" aria-label="メインメニュー">
+  <a href="#home" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>ホーム</a>
+  <a href="#history" data-tab="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"/></svg>履歴</a>
+  <a href="#sites" data-tab="sites"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>サイト</a>
+  <a href="#settings" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>設定</a>
+</nav>
+
+<dialog id="dlg">
+  <div class="dlg-body" id="dlg-body"></div>
+  <div class="dlg-actions" id="dlg-actions"></div>
+</dialog>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
