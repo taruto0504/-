@@ -1,6 +1,6 @@
 name: Project YUI のテスト
 
-# 型チェック・テスト・ビルドが通ることを確かめる
+# 型チェック・テスト・ビルドが通ること、公開用の app/ がソースから作り直されていることを確かめる
 
 on:
   push:
@@ -25,3 +25,5 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: app/ が最新か
+        run: git diff --exit-code --stat -- app || (echo "yui/ で npm run build して app/ もコミットしてください" && exit 1)
