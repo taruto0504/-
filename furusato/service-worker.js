@@ -1,5 +1,5 @@
 // Web版のオフライン対応。画面の部品は先に保存し、読み取り（OCR）の部品は初めて使った時に保存する。
-const VERSION = "furusato-v1";
+const VERSION = "furusato-v2";
 const SHELL = [
   "./",
   "index.html",

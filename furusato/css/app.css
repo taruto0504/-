@@ -281,3 +281,18 @@ dialog h2 { margin-top: 0; font-size: 1.1rem; }
 .prose h2 { font-size: 1rem; margin: 18px 0 6px; }
 .prose ul { padding-left: 1.2em; }
 .badge-pr { display: inline-block; font-size: .7rem; border: 1px solid var(--muted); color: var(--muted); border-radius: 4px; padding: 0 4px; }
+
+/* 市場価格が分からない時 */
+.price-mode { margin: 4px 0 14px; }
+.price-mode .radio-row label { padding: 6px 10px; font-size: .88rem; }
+.est-row { display: grid; grid-template-columns: minmax(0, 1.2fr) auto minmax(0, 1fr) auto; align-items: center; gap: 6px; }
+.est-row > * { min-width: 0; }
+.est-sep { color: var(--muted); font-size: .9rem; white-space: nowrap; }
+.est-badge { display: inline-block; font-size: .78rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1.5px dashed currentColor; color: var(--warn-ink); background: var(--warn-bg); vertical-align: middle; }
+.rate-hero.estimated .rate { opacity: .85; }
+.reverse-row { padding: 10px 0; border-top: 1px solid var(--line); }
+.reverse-row:first-of-type { border-top: 0; }
+.reverse-row .head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.reverse-row .price { display: block; margin-top: 4px; font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.reverse-row.standard { background: var(--surface-2); margin: 0 -16px; padding: 10px 16px; }
+.btn-row#result-actions:not(.four) { grid-template-columns: 1fr; }

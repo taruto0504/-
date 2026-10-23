@@ -13,8 +13,8 @@ const GRADE_COLORS = {
 
 export function shareText(result) {
   const lines = [
-    `寄附額 ${formatYen(result.donation)} ／ 市場価格 ${formatYen(result.marketTotal)}`,
-    `還元率 ${result.rateText}%（${result.grade.label}）`,
+    `寄附額 ${formatYen(result.donation)} ／ 市場価格${result.estimated ? "（似た商品の単価からの推定）" : ""} ${formatYen(result.marketTotal)}`,
+    `還元率 ${result.rateText}%${result.estimated ? "（推定）" : ""}（${result.grade.label}）`,
     `標準還元率 ${result.standardRate}% → 標準より ${result.diffText}ポイント`,
   ];
   if (result.unit) lines.push(`単価 ${result.unit.prices.map((p) => `${p.label}あたり ${p.yen.toLocaleString("ja-JP")}円`).join("・")}`);
@@ -41,7 +41,7 @@ export function drawCard(result) {
   g.textAlign = "center";
   g.fillStyle = "#5b6760";
   g.font = font(600, 40);
-  g.fillText("ふるさと納税 還元率", W / 2, 170);
+  g.fillText(result.estimated ? "ふるさと納税 還元率（推定）" : "ふるさと納税 還元率", W / 2, 170);
 
   g.fillStyle = "#1c2420";
   g.font = font(800, 200);
@@ -86,7 +86,7 @@ export function drawCard(result) {
   g.font = font(500, 40);
   g.fillStyle = "#1c2420";
   g.fillText(`寄附額 ${formatYen(result.donation)}`, W / 2, 790);
-  g.fillText(`市場価格 ${formatYen(result.marketTotal)}`, W / 2, 850);
+  g.fillText(`市場価格${result.estimated ? "（推定）" : ""} ${formatYen(result.marketTotal)}`, W / 2, 850);
 
   g.font = font(400, 30);
   g.fillStyle = "#5b6760";

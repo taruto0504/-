@@ -34,10 +34,32 @@
           <div class="hint">同じ商品をネット通販で見た時の販売価格（ポイントは含めません）</div>
         </div>
 
+        <div class="field" id="f-estimate" hidden>
+          <span class="label">似た商品の価格</span>
+          <div class="est-row">
+            <div class="input-wrap"><input id="est-price" inputmode="numeric" placeholder="例 198" aria-label="似た商品の価格"><span class="suffix">円</span></div>
+            <span class="est-sep">／</span>
+            <div class="input-wrap"><input id="est-per" value="100g" aria-label="その価格の量"></div>
+            <span class="est-sep">あたり</span>
+          </div>
+          <div class="hint">スーパーのチラシや別の通販で見た、同じ種類の商品の価格。返礼品の内容量を掛けて市場価格を見積もります（結果は「推定」と表示）</div>
+        </div>
+
+        <div class="hint" id="reverse-hint" hidden>寄附額から「還元率40%・30%・20%になる市場価格」を逆算します。内容量を入れると「100gあたり何円以上の価値なら何%」も出ます。</div>
+
+        <div class="price-mode" role="radiogroup" aria-label="市場価格の入れ方">
+          <span class="small muted">市場価格の入れ方（見つからない時は推定・逆算）</span>
+          <div class="radio-row">
+            <label><input type="radio" name="price-mode" value="market" checked> 入力する</label>
+            <label><input type="radio" name="price-mode" value="estimate"> 似た商品の単価で推定</label>
+            <label><input type="radio" name="price-mode" value="reverse"> 逆算する</label>
+          </div>
+        </div>
+
         <details class="more" id="more">
           <summary>送料・定期便・内容量（任意）</summary>
 
-          <label class="check"><input type="checkbox" id="has-shipping"> 通販価格は送料別</label>
+          <label class="check" id="shipping-check"><input type="checkbox" id="has-shipping"> 通販価格は送料別</label>
           <div class="sub-options" id="shipping-box" hidden>
             <div class="field" id="f-shipping">
               <label for="shipping" id="shipping-label">送料</label>
@@ -94,7 +116,7 @@
   <section class="view" id="view-result" data-title="計算結果" data-tab="home" data-back="home">
     <div id="result-body"></div>
     <div class="bottom-bar">
-      <div class="btn-row four">
+      <div class="btn-row four" id="result-actions">
         <button class="btn" type="button" id="btn-advice">詳しく</button>
         <button class="btn" type="button" id="btn-save">保存</button>
         <button class="btn" type="button" id="btn-share">シェア</button>

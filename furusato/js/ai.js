@@ -17,6 +17,7 @@ const SYSTEM_PROMPT = [
   "・還元率以外の魅力（品質、使い道、応援したい地域、届く時期や保存のしやすさ）にも触れる",
   "・特定のふるさと納税サイトやお店を勧めない",
   "・控除額や税金について断定しない（年収や家族構成で変わるため）",
+  "・市場価格が推定値の時は、推定であることと、品質や産地の違いで価格が変わることに触れる",
   "・市場価格ベースの還元率は、自治体の調達費用の基準（3割）とは別物であることを必要に応じて補足する",
 ].join("\n");
 
@@ -30,6 +31,10 @@ export function buildFacts(result) {
     標準との差_ポイント: result.diffTenths / 10,
     判定: result.grade.label,
   };
+  if (result.estimated) {
+    facts.市場価格の出し方 = "同じ商品の価格が見つからず、似た商品の単価から見積もった推定値";
+    facts.もとにした単価 = `${result.estimated.price}円／${result.estimated.perDisplay}`;
+  }
   if (result.shipping > 0) facts.うち送料_円 = result.shipping * (result.perDelivery ? result.times : 1);
   if (result.times > 1) {
     facts.定期便_回数 = result.times;

@@ -58,6 +58,7 @@ export function gradeFor(rateTenths, config) {
  * }
  */
 export function calculate(input, config) {
+  if (input.estimate) return calculateEstimated(input, config);
   const errors = [];
   const warnings = [];
   const v = config.validation;
@@ -173,6 +174,139 @@ export function calculate(input, config) {
   if (quantity) result.unit = unitPrices(quantity, result, config);
   result.notes = notesFor(result, quantity, config);
   return result;
+}
+
+// 内容量の検証（推定・逆算で共通）
+function requireQuantity(input, config, purpose) {
+  if (!input.quantity || String(input.quantity).trim() === "") {
+    return { error: { field: "quantity", message: `内容量：${purpose}には内容量が必要です` } };
+  }
+  const q = input.quantityParsed ?? parseQuantity(input.quantity, config);
+  if (!q.ok) return { error: { field: "quantity", message: `内容量：${q.message}`, quantity: q } };
+  return { quantity: q };
+}
+
+/**
+ * 市場価格が見つからない時：似た商品の単価から市場価格を見積もって還元率を出す。
+ * input.estimate = { price: "198", per: "100g" }（似た商品の 100g あたり 198円）
+ * 結果には estimated が付き、画面・履歴・シェアで「推定」と区別して表示する。
+ */
+function calculateEstimated(input, config) {
+  const errors = [];
+  const priceP = parseYen(input.estimate.price);
+  if (!priceP.ok) errors.push({ field: "estimate", message: `似た商品の価格：${priceP.message}` });
+  else if (priceP.value === 0) errors.push({ field: "estimate", message: "似た商品の価格：0円では計算できません" });
+  const perText = String(input.estimate.per ?? "").trim() || "100g";
+  const per = parseQuantity(perText, config);
+  if (!per.ok) errors.push({ field: "estimate", message: `似た商品の量：${per.message}` });
+  const { quantity, error } = requireQuantity(input, config, "推定");
+  if (error) errors.push(error);
+  if (!errors.length && per.base !== quantity.base) {
+    errors.push({ field: "estimate", message: `似た商品の量（${per.base}）と返礼品の内容量（${quantity.base}）の単位の種類が違います` });
+  }
+  const donationP = parseYen(input.donation);
+  if (!donationP.ok) errors.push({ field: "donation", message: `寄附額：${donationP.message}` });
+  if (errors.length) return { ok: false, errors, warnings: [] };
+
+  // 市場価格（推定）＝ 似た商品の単価 × 返礼品の内容量 ÷ 単価の量
+  const raw = (priceP.value * quantity.amount) / per.amount;
+  const market = Math.max(1, Math.round(Math.round(raw * 1e6) / 1e6));
+  // 検算：推定した市場価格から単価に戻すと、丸め（0.5円）の幅に収まるか
+  if (Math.abs(market * per.amount - priceP.value * quantity.amount) > 0.5 * per.amount + 1e-6 && market > 1) {
+    return { ok: false, errors: [{ field: null, message: "推定の検算が合わなかったため、結果を表示できません" }], warnings: [] };
+  }
+  // 内容量に回数が書いてあれば全回分の量なので、推定した価格も全回分になる
+  const marketPer = quantity.deliveries ? "total" : input.marketPer;
+  const scope = Number(input.times) > 1 ? (marketPer === "total" ? "（全回分）" : "（1回分）") : "";
+  const formula = `似た商品の単価 ${formatYen(priceP.value)}（${per.display}あたり）× ${formatNumber(quantity.amount)}${quantity.base} ÷ ${formatNumber(per.amount)}${per.base} ≒ ${formatYen(market)}（推定の市場価格${scope}）`;
+
+  const r = calculate({ ...input, estimate: null, market: String(market), shipping: "", marketPer, quantityParsed: quantity }, config);
+  for (const w of r.warnings ?? []) if (w.field === "market") w.field = "estimate";
+  if (!r.ok) return r;
+  r.estimated = { input: { price: priceP.value, per: perText }, price: priceP.value, perDisplay: per.display, market, formula };
+  r.formulas.unshift(formula);
+  r.notes.unshift(config.notes.estimated);
+  return r;
+}
+
+/**
+ * 市場価格が分からない時：寄附額（と内容量）から、還元率の各段階になる市場価格・単価を逆算する。
+ * 例：寄附額 30,000円・1.2kg → 40%以上になるのは市場価格 12,000円以上（100gあたり 1,000円以上）
+ */
+export function reverseCalculate(input, config) {
+  const errors = [];
+  const warnings = [];
+  const donationP = parseYen(input.donation);
+  if (!donationP.ok) errors.push({ field: "donation", message: `寄附額：${donationP.message}` });
+  else if (donationP.value === 0) errors.push({ field: "donation", message: "寄附額：0円では計算できません" });
+  else if (donationP.value > config.validation.maxAmountYen) errors.push({ field: "donation", message: `寄附額：${formatYen(config.validation.maxAmountYen)}を超える金額は扱えません` });
+  const times = input.times === undefined || input.times === null || input.times === "" ? 1 : Number(normalizeText(input.times));
+  if (!Number.isInteger(times) || times < 1 || times > 120) errors.push({ field: "times", message: "定期便の回数は1〜120の整数で入力してください" });
+  let quantity = null;
+  if (input.quantity && String(input.quantity).trim() !== "") {
+    const q = requireQuantity(input, config, "逆算");
+    if (q.error) errors.push(q.error);
+    else quantity = q.quantity;
+  }
+  if (errors.length) return { ok: false, errors, warnings };
+
+  const donation = donationP.value;
+  if (donation < config.validation.minDonationYen) warnings.push({ field: "donation", message: `寄附額が${formatYen(config.validation.minDonationYen)}未満です。この金額で合っていますか？` });
+  if (warnings.length && !input.confirmed) return { ok: false, needsConfirm: true, errors: [], warnings };
+
+  // 内容量は全回分にそろえる（1回分で入れた定期便は回数を掛ける）
+  let total = null;
+  const formulas = [];
+  if (quantity) {
+    total = quantity.amount;
+    if (times > 1 && !quantity.deliveries && input.marketPer !== "total") {
+      total = Math.round(quantity.amount * times * 1e9) / 1e9;
+      formulas.push(`1回分 ${formatNumber(quantity.amount)}${quantity.base} × ${times}回 ＝ ${formatNumber(total)}${quantity.base}`);
+    }
+  }
+  const unitInfo = quantity ? { ...quantity, amount: total } : null;
+
+  // 段階の境目（しきい値）と標準還元率
+  const targets = config.grades.filter((g) => g.min !== null).map((g) => ({ min: g.min, grade: g }));
+  if (!targets.some((t) => t.min === config.standardRate)) {
+    targets.push({ min: config.standardRate, grade: gradeFor(Math.round(config.standardRate * 10), config) });
+    targets.sort((a, b) => b.min - a.min);
+  }
+  const rows = [];
+  for (const t of targets) {
+    const T = Math.round(t.min * 10); // 0.1% 単位
+    // 市場価格 × 1000 ≥ 寄附額 × T となる最小の整数（円）
+    const market = Math.ceil((donation * T) / 1000);
+    // 検算：この価格で T 以上、1円安いと T 未満
+    if (market * 1000 < donation * T || (market > 0 && (market - 1) * 1000 >= donation * T)) {
+      return { ok: false, errors: [{ field: null, message: "逆算の検算が合わなかったため、結果を表示できません" }], warnings };
+    }
+    const row = { min: t.min, grade: t.grade, standard: t.min === config.standardRate, market };
+    formulas.push(`還元率${t.min}%：寄附額 ${formatYen(donation)} × ${t.min} ÷ 100 ＝ ${formatYen(market)}`);
+    if (times > 1) row.perTime = Math.ceil(market / times);
+    if (unitInfo) {
+      row.unitPrices = perUnitsFor(unitInfo, config).map((pu) => {
+        const yen = Math.ceil(((market * pu.amount) / total) * 10 - 1e-9) / 10;
+        return { label: pu.label, yen };
+      });
+      const first = row.unitPrices[0];
+      formulas.push(`　単価：${formatYen(market)} ÷ ${formatNumber(total)}${unitInfo.base} × ${formatNumber(perUnitsFor(unitInfo, config)[0].amount)} ≒ ${formatNumber(first.yen, 1)}円（${first.label}あたり）`);
+    }
+    rows.push(row);
+  }
+  const notes = [config.notes.reverse];
+  if (quantity?.approx) notes.push(config.notes.approx);
+  return {
+    ok: true,
+    mode: "reverse",
+    donation,
+    times,
+    standardRate: config.standardRate,
+    unit: unitInfo ? { base: unitInfo.base, kind: unitInfo.kind, amount: total, approx: unitInfo.approx, display: `${unitInfo.approx ? "約" : ""}${describeAmount(total, unitInfo.base)}`, steps: [...quantity.steps], conversionNotes: quantity.notes } : null,
+    rows,
+    formulas,
+    notes,
+  };
 }
 
 // 単価と「寄附1万円あたりの量」

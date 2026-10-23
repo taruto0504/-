@@ -1,4 +1,4 @@
-import { calculate, formatYen, quantityRecord } from "./calc.js";
+import { calculate, reverseCalculate, formatYen, quantityRecord } from "./calc.js";
 import { parseQuantity, quantityFromValue, normalizeText, describeAmount } from "./units.js";
 import { extractNumbers, combineImages } from "./ocr-parse.js";
 import { loadConfig } from "./config.js";
@@ -27,7 +27,7 @@ function route() {
   if (name === "ocr" && !ocrItems.length && $("#ocr-progress").hidden) name = "home";
   for (const v of $$(".view")) v.classList.toggle("active", v.id === `view-${name}`);
   const view = $(`#view-${name}`);
-  $("#page-title").textContent = view.dataset.title;
+  $("#page-title").textContent = name === "result" && current?.mode === "reverse" ? "市場価格の目安" : view.dataset.title;
   const back = $("#back-btn");
   back.hidden = !view.dataset.back;
   back.onclick = () => (location.hash = view.dataset.back);
@@ -101,10 +101,13 @@ function formInput(confirmed = false) {
     const value = q.value ?? Number(normalizeText(quantityText).match(/\d+(?:\.\d+)?/)?.[0]);
     quantityParsed = quantityFromValue(value, unit, config);
   }
+  const mode = priceMode();
   return {
+    mode,
     donation: $("#donation").value,
-    market: $("#market").value,
-    shipping: hasShipping ? $("#shipping").value : "",
+    market: mode === "market" ? $("#market").value : "",
+    estimate: mode === "estimate" ? { price: $("#est-price").value, per: $("#est-per").value } : null,
+    shipping: hasShipping && mode === "market" ? $("#shipping").value : "",
     times: isSub ? $("#times").value : 1,
     marketPer: $('input[name="market-per"]:checked').value,
     quantity: quantityText,
@@ -131,6 +134,7 @@ function showFieldErrors(errors) {
   if (qErr && ["unknown-unit", "no-unit"].includes(qErr.quantity?.reason)) showUnitPicker();
   if (errors.length) {
     if (errors.some((e) => ["shipping", "times", "quantity"].includes(e.field))) $("#more").open = true;
+    if (errors.some((e) => e.field === "quantity") && priceMode() !== "market") $("#quantity").focus();
     const first = $(".field.error input") ?? $("#form-errors");
     first?.focus?.();
     first?.scrollIntoView({ block: "center" });
@@ -142,9 +146,13 @@ function showUnitPicker() {
   $("#more").open = true;
 }
 
+function priceMode() {
+  return $('input[name="price-mode"]:checked').value;
+}
+
 async function submitCalc(confirmed = false) {
   const input = formInput(confirmed);
-  const r = calculate(input, config);
+  const r = input.mode === "reverse" ? reverseCalculate(input, config) : calculate(input, config);
   if (r.needsConfirm) {
     const ok = await dialog(
       `<h2>この金額で合っていますか？</h2><ul>${r.warnings.map((w) => `<li>${esc(w.message)}</li>`).join("")}</ul>`,
@@ -188,10 +196,36 @@ function gaugeHtml(r) {
   </div>`;
 }
 
+// 市場価格が分からない時の逆算結果
+function reverseHtml(r) {
+  let html = `<div class="card"><h2>還元率ごとの市場価格の目安</h2>
+    <p class="small muted" style="margin-top:0">寄附額 ${formatYen(r.donation)}${r.times > 1 ? `（定期便 ${r.times}回）` : ""}${r.unit ? `・内容量 ${esc(r.unit.display)}` : ""}の返礼品が、それぞれの還元率になる市場価格です。</p>
+    ${r.rows
+      .map(
+        (row) => `<div class="reverse-row ${row.standard ? "standard" : ""}">
+        <div class="head">${gradeChip(row.grade)} <strong>${row.min}%</strong>${row.standard ? `<span class="small muted">（標準還元率）</span>` : ""}</div>
+        <span class="price">${formatYen(row.market)}<span class="small">以上</span></span>
+        ${row.unitPrices ? `<div class="small">${row.unitPrices.map((u) => `${esc(u.label)}あたり <strong>${u.yen.toLocaleString("ja-JP", { maximumFractionDigits: 1 })}円</strong>以上`).join("・")}</div>` : ""}
+        ${row.perTime ? `<div class="small muted">1回あたり 約${formatYen(row.perTime)}以上</div>` : ""}
+      </div>`,
+      )
+      .join("")}
+  </div>`;
+  html += `<div class="card"><h2>見方</h2><ul class="notes">${r.notes.map((n) => `<li>${esc(n)}</li>`).join("")}
+    <li>市場価格が分かったら、入れ方を「入力する」に切り替えると還元率そのものを計算できます。</li></ul></div>`;
+  html += `<div class="card"><h2>計算の内訳</h2>
+    ${[...(r.unit?.steps ?? []), ...r.formulas].map((f) => `<div class="formula">${esc(f)}</div>`).join("")}
+    <p class="small muted" style="margin-bottom:0">金額は切り上げ（この価格以上なら必ずその還元率以上）です。</p></div>`;
+  html += `<p class="disclaimer">表示は還元率の目安で、返礼品の品質や自治体・事業者の良し悪しを評価するものではありません。<a href="#about-disclaimer">注意事項</a></p>`;
+  return html;
+}
+
 function resultHtml(r) {
+  if (r.mode === "reverse") return reverseHtml(r);
+  const est = Boolean(r.estimated);
   const diffWord = r.diffTenths > 0 ? "標準より" : r.diffTenths < 0 ? "標準より" : "標準と同じ";
-  let html = `<div class="card rate-hero">
-    <div class="small muted">この返礼品の還元率</div>
+  let html = `<div class="card rate-hero ${est ? "estimated" : ""}">
+    <div class="small muted">この返礼品の還元率${est ? ` <span class="est-badge">推定</span>` : ""}</div>
     <div class="rate">${esc(r.rateText)}<small>%</small></div>
     ${gradeChip(r.grade)}
     <div class="compare">
@@ -204,7 +238,8 @@ function resultHtml(r) {
 
   html += `<div class="card"><h2>金額</h2><dl class="kv">
     <dt>寄附額</dt><dd>${formatYen(r.donation)}</dd>
-    <dt>市場価格${r.shipping || r.perDelivery ? "（合計）" : ""}</dt><dd>${formatYen(r.marketTotal)}</dd>
+    <dt>市場価格${est ? "（推定）" : ""}${r.shipping || r.perDelivery ? "（合計）" : ""}</dt><dd>${formatYen(r.marketTotal)}</dd>
+    ${est ? `<dt>もとにした単価</dt><dd>${formatYen(r.estimated.price)}／${esc(r.estimated.perDisplay)}</dd>` : ""}
     ${r.shipping ? `<dt>うち送料</dt><dd>${formatYen(r.shipping * (r.perDelivery ? r.times : 1))}</dd>` : ""}
     ${r.perTime ? `<dt>1回あたりの寄附額</dt><dd>約${formatYen(r.perTime.donation)}</dd><dt>1回あたりの価値</dt><dd>約${formatYen(r.perTime.market)}</dd>` : ""}
   </dl></div>`;
@@ -228,12 +263,17 @@ function resultHtml(r) {
     <div class="formula">${esc(r.selfBurden.formula)}</div>
   </div>`;
 
+  if (est) html = `<div class="warn small">⚠ ${esc(config.notes.estimated)}</div>` + html;
   html += `<p class="disclaimer">表示は還元率の高さを示す参考値で、返礼品の品質や自治体・事業者の良し悪しを評価するものではありません。3割基準は自治体の調達費用の基準で、市場価格での還元率とは別物です。<a href="#about-disclaimer">注意事項</a></p>`;
   return html;
 }
 
 function renderResult() {
   $("#result-body").innerHTML = resultHtml(current);
+  // 逆算の結果は還元率が1つに決まらないので、保存・シェア・アドバイスは出さない
+  const reverse = current.mode === "reverse";
+  for (const id of ["#btn-advice", "#btn-save", "#btn-share"]) $(id).hidden = reverse;
+  $("#result-actions").classList.toggle("four", !reverse);
 }
 
 /* ---------- アドバイス ---------- */
@@ -495,6 +535,7 @@ function fillForm(v) {
   $("#times").value = Number(v.times) > 1 ? v.times : "";
   $(`input[name="market-per"][value="${v.marketPer ?? "delivery"}"]`).checked = true;
   $("#quantity").value = v.quantity ?? "";
+  $('input[name="price-mode"][value="market"]').checked = true;
   syncOptionBoxes();
 }
 
@@ -505,7 +546,13 @@ function historyRecord(r) {
   return {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     at: new Date().toISOString(),
-    input: { donation: r.donation, market: r.marketInput, shipping: r.shipping, times: r.times, marketPer: r.perDelivery ? "delivery" : "total", quantity: r.unit ? quantityRecord(r.unit) : "" },
+    input: {
+      donation: r.donation,
+      ...(r.estimated ? { estimate: r.estimated.input } : { market: r.marketInput, shipping: r.shipping }),
+      times: r.times,
+      marketPer: r.perDelivery ? "delivery" : "total",
+      quantity: r.unit ? quantityRecord(r.unit) : "",
+    },
     rateTenths: r.rateTenths,
     unitPrice: r.unit ? { base: r.unit.base, label: r.unit.prices[0].label, yen: r.unit.prices[0].yen } : null,
   };
@@ -518,10 +565,15 @@ function sortResults(list, by) {
   return copy;
 }
 
+// 推定の市場価格で出した結果は、並べた時も分かるように印を付ける
+function estMark(r) {
+  return r.estimated ? ` <span class="est-badge">推定</span>` : "";
+}
+
 function rankListHtml(sorted, by, name) {
   if (!sorted.length) return `<p class="small muted">計算できた項目がまだありません。</p>`;
   if (by !== "unit") {
-    return sorted.map((x, i) => `<div class="hist-item" style="padding:6px 0"><span><span class="rank">${i + 1}</span>${esc(name(x))}</span><span><strong>${esc(x.r.rateText)}%</strong> ${gradeChip(x.r.grade)}</span></div>`).join("");
+    return sorted.map((x, i) => `<div class="hist-item" style="padding:6px 0"><span><span class="rank">${i + 1}</span>${esc(name(x))}</span><span><strong>${esc(x.r.rateText)}%</strong>${estMark(x.r)} ${gradeChip(x.r.grade)}</span></div>`).join("");
   }
   // 単価は同じ単位どうしだけを並べる（重さと個数などは比べない）
   const groups = new Map();
@@ -532,7 +584,7 @@ function rankListHtml(sorted, by, name) {
   }
   return [...groups]
     .map(([base, xs]) => `<div class="group-title">${base ? `単位：${esc(base)}（${esc(xs[0].r.unit.prices[0].label)}あたりの単価）` : "内容量なし（還元率だけで比較）"}</div>` +
-      xs.map((x, i) => `<div class="hist-item" style="padding:6px 0"><span><span class="rank">${i + 1}</span>${esc(name(x))}</span><span>${x.r.unit ? `<strong>${x.r.unit.prices[0].yen.toLocaleString("ja-JP")}円</strong> ／ ` : ""}${esc(x.r.rateText)}%</span></div>`).join(""))
+      xs.map((x, i) => `<div class="hist-item" style="padding:6px 0"><span><span class="rank">${i + 1}</span>${esc(name(x))}</span><span>${x.r.unit ? `<strong>${x.r.unit.prices[0].yen.toLocaleString("ja-JP")}円</strong> ／ ` : ""}${esc(x.r.rateText)}%${estMark(x.r)}</span></div>`).join(""))
     .join("");
 }
 
@@ -554,9 +606,9 @@ function renderHistory() {
   html += sorted
     .map(
       (x, i) => `<div class="card hist-item">
-      <span class="big">${by === "rate" ? `<span class="rank">${i + 1}</span>` : ""}${esc(x.r.rateText)}%</span>
+      <span class="big">${by === "rate" ? `<span class="rank">${i + 1}</span>` : ""}${esc(x.r.rateText)}%${estMark(x.r)}</span>
       <span>${gradeChip(x.r.grade)}</span>
-      <div class="meta">#${x.n}・${date(x.h.at)}<br>寄附額 ${formatYen(x.r.donation)} ／ 市場価格 ${formatYen(x.r.marketTotal)}・標準より ${esc(x.r.diffText)}ポイント
+      <div class="meta">#${x.n}・${date(x.h.at)}<br>寄附額 ${formatYen(x.r.donation)} ／ 市場価格${x.r.estimated ? "（推定）" : ""} ${formatYen(x.r.marketTotal)}・標準より ${esc(x.r.diffText)}ポイント
         ${x.r.unit ? `<br>${esc(x.r.unit.display)}・${esc(x.r.unit.prices[0].label)}あたり ${x.r.unit.prices[0].yen.toLocaleString("ja-JP")}円` : ""}</div>
       <div class="hist-actions"><button class="btn small" type="button" data-open="${x.h.id}">結果を見る</button><button class="btn small danger" type="button" data-del="${x.h.id}">削除</button></div>
     </div>`,
@@ -723,12 +775,19 @@ async function initSettings() {
 /* ---------- 起動 ---------- */
 
 function syncOptionBoxes() {
-  $("#shipping-box").hidden = !$("#has-shipping").checked;
+  const mode = priceMode();
+  $("#f-market").hidden = mode !== "market";
+  $("#f-estimate").hidden = mode !== "estimate";
+  $("#reverse-hint").hidden = mode !== "reverse";
+  // 送料は通販の価格に足すものなので、推定・逆算では使わない
+  $("#shipping-check").hidden = mode !== "market";
+  $("#shipping-box").hidden = !$("#has-shipping").checked || mode !== "market";
   $("#sub-box").hidden = !$("#is-sub").checked;
   const per = $('input[name="market-per"]:checked').value === "delivery" && $("#is-sub").checked;
   $("#shipping-label").textContent = per ? "送料（1回分）" : "送料";
-  $('label[for="quantity"]').textContent = per ? "内容量（1回分・単価を出す時）" : "内容量（単価を出す時）";
-  if ($("#is-sub").checked || $("#has-shipping").checked || $("#quantity").value) $("#more").open = true;
+  const need = mode === "estimate" ? "推定に必要" : mode === "reverse" ? "単価の目安を出す時" : "単価を出す時";
+  $('label[for="quantity"]').textContent = per ? `内容量（1回分・${need}）` : `内容量（${need}）`;
+  if ($("#is-sub").checked || $("#has-shipping").checked || $("#quantity").value || mode === "estimate") $("#more").open = true;
 }
 
 async function firstLaunch() {
@@ -756,7 +815,8 @@ async function main() {
 
   for (const id of ["donation", "market", "shipping"]) bindYenInput($(`#${id}`));
   $("#times").addEventListener("input", (e) => (e.target.value = normalizeText(e.target.value).replace(/[^\d]/g, "")));
-  for (const el of ["#has-shipping", "#is-sub", ...$$('input[name="market-per"]')]) (typeof el === "string" ? $(el) : el).addEventListener("change", syncOptionBoxes);
+  bindYenInput($("#est-price"));
+  for (const el of ["#has-shipping", "#is-sub", ...$$('input[name="market-per"]'), ...$$('input[name="price-mode"]')]) (typeof el === "string" ? $(el) : el).addEventListener("change", syncOptionBoxes);
   $("#quantity").addEventListener("input", () => {
     $("#unit-pick").hidden = true;
     $("#unit-select").value = "";
@@ -767,6 +827,12 @@ async function main() {
       .map(([kind, k]) => `<optgroup label="${esc(k.label)}">${config.units.filter((u) => u.kind === kind).map((u) => `<option value="${esc(u.unit)}">${esc(u.unit)}</option>`).join("")}</optgroup>`)
       .join("");
 
+  // 直し始めた欄のエラー表示は消す
+  $("#calc-form").addEventListener("input", (e) => {
+    const field = e.target.closest(".field");
+    field?.classList.remove("error");
+    for (const el of field ? $$(".field-error", field) : []) el.remove();
+  });
   $("#calc-form").addEventListener("submit", (e) => {
     e.preventDefault();
     document.activeElement?.blur?.();
