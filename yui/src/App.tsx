@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChatPanel, type LogMessage } from "./components/ChatPanel";
 import { Clock } from "./components/Clock";
+import { GuidePanel } from "./components/GuidePanel";
 import { RichText } from "./components/RichText";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { streamChat, trimHistory, type Usage } from "./lib/ai";
@@ -31,7 +32,8 @@ export function App() {
   const [busy, setBusy] = useState(false);
   const [bubble, setBubble] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState<false | "ai" | true>(false);
+  const [guideOpen, setGuideOpen] = useState<ProviderId | null>(null);
   const [vrm, setVrm] = useState({ has: false, name: load("vrmName", { v: "" }).v, error: "" });
   const abort = useRef<AbortController | null>(null);
   const bubbleTimer = useRef(0);
@@ -99,7 +101,7 @@ export function App() {
       say(
         loaded[a.provider]
           ? greeting(new Date(), p.userCall)
-          : `はじめまして、${p.name}だよ。右上の ⚙ から、使うAIとAPIキーを設定してね`,
+          : `はじめまして、${p.name}だよ。右上の ? でAPIキーの取り方を見て、⚙ から設定してね`,
         loaded[a.provider] ? undefined : 20000,
       );
     })();
@@ -123,6 +125,14 @@ export function App() {
   const onChatHeight = useCallback((px: number) => stage.current?.setReserveBottom((px + 8) / innerHeight), []);
 
   const send = async (text: string) => {
+    // まだAIにつながっていない時は、キャラクターが取り方のマニュアルを開いて案内する
+    if (!keys[ai.provider]) {
+      stage.current?.setMood("happy");
+      setTimeout(() => stage.current?.setMood("idle"), 2000);
+      say(`まだAIにつながってないの。APIキーの取り方を見せるね。迷ったら、無料枠のある Gemini からがおすすめだよ`);
+      setGuideOpen(Object.values(keys).some(Boolean) ? ai.provider : "gemini");
+      return;
+    }
     const now = Date.now();
     const history: LogMessage[] = [...messages, { role: "user", content: text, at: now }];
     setMessages([...history, { role: "assistant", content: "", at: now }]);
@@ -192,6 +202,9 @@ export function App() {
       <canvas ref={canvas} className="stage" />
       {display.clock && <Clock corner={display.clockCorner} seconds={display.seconds} />}
       <div className="top-actions">
+        <button className="icon-btn glow" onClick={() => setGuideOpen(ai.provider)} aria-label="APIキーの取り方">
+          ?
+        </button>
         <button className="icon-btn glow" onClick={() => setSettingsOpen(true)} aria-label="設定">
           ⚙
         </button>
@@ -234,7 +247,25 @@ export function App() {
           onVrm={onVrm}
           onResetUsage={() => setUsage({ input: 0, output: 0 })}
           onClearChat={() => setMessages([])}
+          onGuide={(provider) => {
+            setSettingsOpen(false);
+            setGuideOpen(provider);
+          }}
+          initialTab={settingsOpen === "ai" ? "ai" : undefined}
           onClose={() => setSettingsOpen(false)}
+        />
+      )}
+      {guideOpen && (
+        <GuidePanel
+          initial={guideOpen}
+          configured={keys}
+          onSetup={(provider) => {
+            setAi((a) => ({ ...a, provider }));
+            setGuideOpen(null);
+            setSettingsOpen("ai");
+            say("コピーしたキーを「APIキー」の欄に貼って、保存を押してね");
+          }}
+          onClose={() => setGuideOpen(null)}
         />
       )}
     </>

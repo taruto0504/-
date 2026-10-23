@@ -71,3 +71,16 @@ describe("会話の送り方", () => {
     expect(estimateYen({ input: 10, output: 10 }, null, 100)).toBeNull();
   });
 });
+
+import { GUIDES } from "../src/lib/guides";
+import { PROVIDERS } from "../src/lib/ai";
+
+describe("APIキーの取り方マニュアル", () => {
+  it("すべてのAIにマニュアルがあり、リンクは https で、最後は貼り付けの手順を含む", () => {
+    expect(GUIDES.map((g) => g.id).sort()).toEqual(Object.keys(PROVIDERS).sort());
+    for (const g of GUIDES) {
+      for (const s of g.steps) if (s.link) expect(s.link.url).toMatch(/^https:\/\//);
+      expect(g.steps.some((s) => s.title.includes("このアプリに貼る"))).toBe(true);
+    }
+  });
+});

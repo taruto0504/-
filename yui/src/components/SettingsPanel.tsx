@@ -26,7 +26,9 @@ interface Props {
   onVrm: (file: File | null) => void;
   onResetUsage: () => void;
   onClearChat: () => void;
+  onGuide: (provider: ProviderId) => void;
   onClose: () => void;
+  initialTab?: TabId;
 }
 
 const TABS = [
@@ -35,6 +37,7 @@ const TABS = [
   { id: "character", label: "キャラ" },
   { id: "display", label: "表示" },
 ] as const;
+type TabId = (typeof TABS)[number]["id"];
 
 const CORNERS: { id: Corner; label: string }[] = [
   { id: "top-left", label: "左上" },
@@ -44,7 +47,7 @@ const CORNERS: { id: Corner; label: string }[] = [
 ];
 
 export function SettingsPanel(props: Props) {
-  const [tab, setTab] = useState<(typeof TABS)[number]["id"]>(props.keys[props.ai.provider] ? "persona" : "ai");
+  const [tab, setTab] = useState<TabId>(props.initialTab ?? (props.keys[props.ai.provider] ? "persona" : "ai"));
   return (
     <div className="overlay" onClick={props.onClose}>
       <div className="settings glass" role="dialog" aria-label="設定" onClick={(e) => e.stopPropagation()}>
@@ -72,7 +75,7 @@ export function SettingsPanel(props: Props) {
   );
 }
 
-function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage }: Props) {
+function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage, onGuide }: Props) {
   const p = PROVIDERS[ai.provider];
   const [draft, setDraft] = useState(keys[ai.provider]);
   const [shown, setShown] = useState(false);
@@ -110,6 +113,9 @@ function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage }: Props) {
           ))}
         </datalist>
       </label>
+      <button type="button" className="text-link" onClick={() => onGuide(ai.provider)}>
+        📖 {p.label} の APIキーの取り方を見る
+      </button>
       <label className="field">
         <span>APIキー</span>
         <div className="row">
