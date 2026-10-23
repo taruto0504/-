@@ -4,7 +4,7 @@ import { Clock } from "./components/Clock";
 import { GuidePanel } from "./components/GuidePanel";
 import { RichText } from "./components/RichText";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { FALLBACK_MODELS, ModelNotFoundError, RETIRED, listModels, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
+import { FALLBACK_MODELS, ModelNotFoundError, RETIRED, listModels, testConnection, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
 import { breakLine, greeting, timedLine } from "./lib/clock";
 import { buildSystemPrompt } from "./lib/prompt";
 import { DEFAULT_AI, DEFAULT_DISPLAY, DEFAULT_PERSONA, type AiSettings, type DisplaySettings, type Persona, type ProviderId } from "./lib/settings";
@@ -143,6 +143,12 @@ export function App() {
     setBusy(true);
     stage.current?.setMood("thinking");
     say("うーん…", Infinity);
+    // 返事の最初の文字が届くまで、待っている秒数を見せる
+    const waitStart = Date.now();
+    const waitTimer = window.setInterval(() => {
+      const sec = Math.round((Date.now() - waitStart) / 1000);
+      if (!reply) say(sec < 8 ? "うーん…" : `うーん…（${sec}秒）考え中`, Infinity);
+    }, 1000);
     const controller = new AbortController();
     abort.current = controller;
     let reply = "";
@@ -183,6 +189,7 @@ export function App() {
       stage.current?.setMood("idle");
       say(reply ? msg : `ごめんね、${e.message}`);
     } finally {
+      clearInterval(waitTimer);
       setBusy(false);
       abort.current = null;
     }
@@ -316,6 +323,7 @@ export function App() {
           onClearChat={() => setMessages([])}
           available={available}
           onLoadModels={(provider) => ensureModel(provider, keys[provider])}
+          onTest={(provider) => testConnection(provider, keys[provider], ai.models[provider])}
           onGuide={(provider) => {
             setSettingsOpen(false);
             setGuideOpen(provider);

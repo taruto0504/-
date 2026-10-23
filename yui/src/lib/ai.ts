@@ -162,13 +162,23 @@ const callers: Record<ProviderId, (r: ChatRequest) => Promise<Usage>> = {
       signal,
     );
     const usage: Usage = { input: 0, output: 0 };
+    let blocked = "";
+    let gotText = false;
     await readSse(res, (d) => {
-      for (const p of d.candidates?.[0]?.content?.parts ?? []) if (p.text && !p.thought) onText(p.text);
+      if (d.promptFeedback?.blockReason) blocked = d.promptFeedback.blockReason;
+      const finish = d.candidates?.[0]?.finishReason;
+      if (finish && !["STOP", "MAX_TOKENS"].includes(finish)) blocked = finish;
+      for (const p of d.candidates?.[0]?.content?.parts ?? [])
+        if (p.text && !p.thought) {
+          gotText = true;
+          onText(p.text);
+        }
       if (d.usageMetadata) {
         usage.input = d.usageMetadata.promptTokenCount ?? 0;
         usage.output = (d.usageMetadata.candidatesTokenCount ?? 0) + (d.usageMetadata.thoughtsTokenCount ?? 0);
       }
     });
+    if (!gotText && blocked) throw new Error(`AIが返事を止めました（理由：${blocked}）`);
     return usage;
   },
 };
@@ -242,17 +252,84 @@ export function pickModel(provider: ProviderId, models: string[]): string | null
   return models[0];
 }
 
+// 返事の最初の文字が届くまで・全体の待ち時間の上限
+export const FIRST_TEXT_TIMEOUT_MS = 60_000;
+export const TOTAL_TIMEOUT_MS = 180_000;
+
 export async function streamChat(req: ChatRequest): Promise<Usage> {
   if (!req.apiKey) throw new Error("APIキーが設定されていません。右上の ⚙ から設定してください");
+  // 呼び出し側の「停止」と、待ち時間の上限のどちらでも止められるようにする
+  const controller = new AbortController();
+  let timedOut = "";
+  const stop = (why: string) => {
+    timedOut = why;
+    controller.abort();
+  };
+  const onOuterAbort = () => controller.abort();
+  req.signal?.addEventListener("abort", onOuterAbort);
+  let firstTimer = setTimeout(() => stop(`AIからの返事が${FIRST_TEXT_TIMEOUT_MS / 1000}秒たっても届きませんでした`), FIRST_TEXT_TIMEOUT_MS);
+  const totalTimer = setTimeout(() => stop("AIの返事が長すぎるので途中で止めました"), TOTAL_TIMEOUT_MS);
   try {
-    return await callers[req.provider](req);
+    return await callers[req.provider]({
+      ...req,
+      signal: controller.signal,
+      onText: (delta) => {
+        clearTimeout(firstTimer);
+        req.onText(delta);
+      },
+    });
   } catch (e: any) {
-    if (e?.name === "AbortError") throw new Error("止めました");
+    if (e?.name === "AbortError") throw new Error(timedOut || "止めました");
     if (e instanceof TypeError) throw new Error("通信できませんでした。ネットワークを確認してください");
     if (e?.status === 401 || e?.status === 403) throw new Error("APIキーが正しくないか、使えない状態です");
     if (e?.status === 404) throw new ModelNotFoundError(req.model);
     if (e?.status === 429) throw new Error("利用回数の上限に達しました。少し待ってから試してください");
     throw e;
+  } finally {
+    clearTimeout(firstTimer);
+    clearTimeout(totalTimer);
+    req.signal?.removeEventListener("abort", onOuterAbort);
+  }
+}
+
+// 接続テスト：ストリーミングを使わずに短い返事をもらい、届いた内容をそのまま返す（原因調べ用）
+export async function testConnection(provider: ProviderId, apiKey: string, model: string): Promise<string> {
+  const started = Date.now();
+  const prompt = "接続テストです。「OK」とだけ返してください。";
+  const target: Record<ProviderId, { url: string; headers: Record<string, string>; body: unknown }> = {
+    gemini: {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      headers: { "x-goog-api-key": apiKey },
+      body: { contents: [{ role: "user", parts: [{ text: prompt }] }] },
+    },
+    anthropic: {
+      url: "https://api.anthropic.com/v1/messages",
+      headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
+      body: { model, max_tokens: 50, messages: [{ role: "user", content: prompt }] },
+    },
+    openai: {
+      url: "https://api.openai.com/v1/chat/completions",
+      headers: { authorization: `Bearer ${apiKey}` },
+      body: { model, messages: [{ role: "user", content: prompt }] },
+    },
+  };
+  const t = target[provider];
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  try {
+    const res = await fetch(t.url, {
+      method: "POST",
+      headers: { "content-type": "application/json", ...t.headers },
+      body: JSON.stringify(t.body),
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    const sec = ((Date.now() - started) / 1000).toFixed(1);
+    return `HTTP ${res.status}（${sec}秒）\n${text.slice(0, 600)}`;
+  } catch (e: any) {
+    return e?.name === "AbortError" ? "60秒たっても返事がありませんでした" : `通信エラー：${e?.message ?? e}`;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

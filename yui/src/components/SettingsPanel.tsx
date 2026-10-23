@@ -29,6 +29,7 @@ interface Props {
   onGuide: (provider: ProviderId) => void;
   available: Partial<Record<ProviderId, string[]>>;
   onLoadModels: (provider: ProviderId) => Promise<string>;
+  onTest: (provider: ProviderId) => Promise<string>;
   onClose: () => void;
   initialTab?: TabId;
 }
@@ -78,7 +79,8 @@ export function SettingsPanel(props: Props) {
   );
 }
 
-function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage, onGuide, available, onLoadModels }: Props) {
+function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage, onGuide, available, onLoadModels, onTest }: Props) {
+  const [test, setTest] = useState("");
   const p = PROVIDERS[ai.provider];
   const [loading, setLoading] = useState("");
   const fetched = available[ai.provider];
@@ -150,9 +152,21 @@ function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage, onGuide, available,
           >
             使えるモデルを確認
           </button>
-          <span className="hint">{loading === "…" ? "確認中…" : loading}</span>
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={test === "…"}
+            onClick={async () => {
+              setTest("…");
+              setTest(await onTest(ai.provider));
+            }}
+          >
+            接続テスト
+          </button>
         </div>
       )}
+      {loading && <p className="hint">{loading === "…" ? "確認中…" : loading}</p>}
+      {test && <pre className="test-result">{test === "…" ? "テスト中…（最大60秒）" : test}</pre>}
       {fetched && <p className="hint">モデル欄をタップすると、このキーで使える {fetched.length} 個のモデルから選べます。</p>}
       <button type="button" className="text-link" onClick={() => onGuide(ai.provider)}>
         📖 {p.label} の APIキーの取り方を見る
