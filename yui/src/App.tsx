@@ -172,7 +172,10 @@ export function App() {
     try {
       let u;
       try {
-        u = await request(ai.models[ai.provider]);
+        const detour = busyDetour.current;
+        const chosen = ai.models[ai.provider];
+        const useDetour = detour && detour.from === chosen && detour.until > Date.now();
+        u = await request(useDetour ? detour.to : chosen);
       } catch (e) {
         if (reply) throw e;
         // モデルが提供終了などで見つからない時は、使えるモデルを探して選び直す
@@ -198,10 +201,13 @@ export function App() {
     }
   };
 
+  // 混んでいたモデルの代わりに返事できたモデルを、30分だけ先に使う
+  const busyDetour = useRef<{ from: string; to: string; until: number } | null>(null);
+
   const retryWhenBusy = async (first: BusyError, request: (model: string) => Promise<Usage>, signal: AbortSignal): Promise<Usage> => {
     const provider = ai.provider;
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-    if (!first.rateLimited) {
+    if (!first.rateLimited && !first.timedOut) {
       say("混んでるみたい。ちょっと待ってもう一回試すね…", Infinity);
       await wait(2500);
       if (signal.aborted) throw new Error("止めました");
@@ -215,9 +221,11 @@ export function App() {
     const alternatives = BUSY_ALTERNATIVES[provider].filter((m) => m !== first.model && (!listed || listed.includes(m)));
     for (const model of alternatives) {
       if (signal.aborted) throw new Error("止めました");
-      say(`まだ混んでるから、今回は「${model}」で答えるね…`, Infinity);
+      say(`混んでるから、「${model}」で答えるね…`, Infinity);
       try {
-        return await request(model);
+        const u = await request(model);
+        busyDetour.current = { from: first.model, to: model, until: Date.now() + 30 * 60_000 };
+        return u;
       } catch (e) {
         if (!(e instanceof BusyError) && !(e instanceof ModelNotFoundError)) throw e;
       }

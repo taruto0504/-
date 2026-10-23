@@ -188,8 +188,15 @@ export class BusyError extends Error {
   constructor(
     public model: string,
     public rateLimited: boolean,
+    public timedOut = false,
   ) {
-    super(rateLimited ? "利用回数の上限に達しました。少し待ってから試してください" : "今AIが混み合っていて返事できませんでした。少し時間をおいて試してね");
+    super(
+      rateLimited
+        ? "利用回数の上限に達しました。少し待ってから試してください"
+        : timedOut
+          ? "AIから返事が届きませんでした。混み合っているみたい。少し時間をおいて試してね"
+          : "今AIが混み合っていて返事できませんでした。少し時間をおいて試してね",
+    );
   }
 }
 
@@ -270,7 +277,7 @@ export function pickModel(provider: ProviderId, models: string[]): string | null
 }
 
 // 返事の最初の文字が届くまで・全体の待ち時間の上限
-export const FIRST_TEXT_TIMEOUT_MS = 60_000;
+export const FIRST_TEXT_TIMEOUT_MS = 30_000; // これを過ぎたら混み合っているとみなして別のモデルを試す
 export const TOTAL_TIMEOUT_MS = 180_000;
 
 export async function streamChat(req: ChatRequest): Promise<Usage> {
@@ -278,13 +285,17 @@ export async function streamChat(req: ChatRequest): Promise<Usage> {
   // 呼び出し側の「停止」と、待ち時間の上限のどちらでも止められるようにする
   const controller = new AbortController();
   let timedOut = "";
+  let firstTextTimedOut = false;
   const stop = (why: string) => {
     timedOut = why;
     controller.abort();
   };
   const onOuterAbort = () => controller.abort();
   req.signal?.addEventListener("abort", onOuterAbort);
-  let firstTimer = setTimeout(() => stop(`AIからの返事が${FIRST_TEXT_TIMEOUT_MS / 1000}秒たっても届きませんでした`), FIRST_TEXT_TIMEOUT_MS);
+  const firstTimer = setTimeout(() => {
+    firstTextTimedOut = true;
+    stop("");
+  }, FIRST_TEXT_TIMEOUT_MS);
   const totalTimer = setTimeout(() => stop("AIの返事が長すぎるので途中で止めました"), TOTAL_TIMEOUT_MS);
   try {
     return await callers[req.provider]({
@@ -296,7 +307,10 @@ export async function streamChat(req: ChatRequest): Promise<Usage> {
       },
     });
   } catch (e: any) {
-    if (e?.name === "AbortError") throw new Error(timedOut || "止めました");
+    if (e?.name === "AbortError") {
+      if (firstTextTimedOut) throw new BusyError(req.model, false, true);
+      throw new Error(timedOut || "止めました");
+    }
     if (e instanceof TypeError) throw new Error("通信できませんでした。ネットワークを確認してください");
     if (e?.status === 401 || e?.status === 403) throw new Error("APIキーが正しくないか、使えない状態です");
     if (e?.status === 404) throw new ModelNotFoundError(req.model);
