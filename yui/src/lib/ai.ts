@@ -183,6 +183,23 @@ const callers: Record<ProviderId, (r: ChatRequest) => Promise<Usage>> = {
   },
 };
 
+// AIサービスが混み合っている・回数の上限に達した時。別のモデルなら返事できることが多い
+export class BusyError extends Error {
+  constructor(
+    public model: string,
+    public rateLimited: boolean,
+  ) {
+    super(rateLimited ? "利用回数の上限に達しました。少し待ってから試してください" : "今AIが混み合っていて返事できませんでした。少し時間をおいて試してね");
+  }
+}
+
+// 混んでいる時に代わりに試すモデル（軽い・空いていることが多い順）
+export const BUSY_ALTERNATIVES: Record<ProviderId, string[]> = {
+  gemini: ["gemini-flash-lite-latest", "gemini-3-flash-preview", "gemini-3.1-flash-lite-preview", "gemini-pro-latest"],
+  anthropic: ["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"],
+  openai: ["gpt-5-mini", "gpt-5"],
+};
+
 export class ModelNotFoundError extends Error {
   constructor(public model: string) {
     super(`モデル「${model}」が見つかりません。設定でモデル名を確認してください`);
@@ -283,7 +300,8 @@ export async function streamChat(req: ChatRequest): Promise<Usage> {
     if (e instanceof TypeError) throw new Error("通信できませんでした。ネットワークを確認してください");
     if (e?.status === 401 || e?.status === 403) throw new Error("APIキーが正しくないか、使えない状態です");
     if (e?.status === 404) throw new ModelNotFoundError(req.model);
-    if (e?.status === 429) throw new Error("利用回数の上限に達しました。少し待ってから試してください");
+    if (e?.status === 429) throw new BusyError(req.model, true);
+    if ([500, 502, 503, 504, 529].includes(e?.status) || /overloaded|high demand|unavailable/i.test(e?.message ?? "")) throw new BusyError(req.model, false);
     throw e;
   } finally {
     clearTimeout(firstTimer);

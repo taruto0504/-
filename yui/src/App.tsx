@@ -4,7 +4,7 @@ import { Clock } from "./components/Clock";
 import { GuidePanel } from "./components/GuidePanel";
 import { RichText } from "./components/RichText";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { FALLBACK_MODELS, ModelNotFoundError, RETIRED, listModels, testConnection, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
+import { BUSY_ALTERNATIVES, BusyError, FALLBACK_MODELS, ModelNotFoundError, RETIRED, listModels, testConnection, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
 import { breakLine, greeting, timedLine } from "./lib/clock";
 import { buildSystemPrompt } from "./lib/prompt";
 import { DEFAULT_AI, DEFAULT_DISPLAY, DEFAULT_PERSONA, type AiSettings, type DisplaySettings, type Persona, type ProviderId } from "./lib/settings";
@@ -174,9 +174,12 @@ export function App() {
       try {
         u = await request(ai.models[ai.provider]);
       } catch (e) {
+        if (reply) throw e;
         // モデルが提供終了などで見つからない時は、使えるモデルを探して選び直す
-        if (!(e instanceof ModelNotFoundError) || reply) throw e;
-        u = await retryWithOtherModel(e.model, request);
+        if (e instanceof ModelNotFoundError) u = await retryWithOtherModel(e.model, request);
+        // 混み合っている時は、少し待ってやり直し、だめなら別のモデルで今回だけ返事をもらう
+        else if (e instanceof BusyError) u = await retryWhenBusy(e, request, controller.signal);
+        else throw e;
       }
       setUsage((x) => ({ input: x.input + u.input, output: x.output + u.output }));
       if (!reply.trim()) throw new Error("返事が空っぽでした。もう一度話しかけてみてね");
@@ -193,6 +196,33 @@ export function App() {
       setBusy(false);
       abort.current = null;
     }
+  };
+
+  const retryWhenBusy = async (first: BusyError, request: (model: string) => Promise<Usage>, signal: AbortSignal): Promise<Usage> => {
+    const provider = ai.provider;
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    if (!first.rateLimited) {
+      say("混んでるみたい。ちょっと待ってもう一回試すね…", Infinity);
+      await wait(2500);
+      if (signal.aborted) throw new Error("止めました");
+      try {
+        return await request(first.model);
+      } catch (e) {
+        if (!(e instanceof BusyError)) throw e;
+      }
+    }
+    const listed = available[provider];
+    const alternatives = BUSY_ALTERNATIVES[provider].filter((m) => m !== first.model && (!listed || listed.includes(m)));
+    for (const model of alternatives) {
+      if (signal.aborted) throw new Error("止めました");
+      say(`まだ混んでるから、今回は「${model}」で答えるね…`, Infinity);
+      try {
+        return await request(model);
+      } catch (e) {
+        if (!(e instanceof BusyError) && !(e instanceof ModelNotFoundError)) throw e;
+      }
+    }
+    throw first;
   };
 
   // 見つからなかったモデルの代わりを探してやり直す。
