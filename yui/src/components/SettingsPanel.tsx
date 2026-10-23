@@ -71,6 +71,7 @@ export function SettingsPanel(props: Props) {
           {tab === "persona" && <PersonaTab {...props} />}
           {tab === "character" && <CharacterTab {...props} />}
           {tab === "display" && <DisplayTab {...props} />}
+          <p className="version">Project YUI v{__APP_VERSION__}</p>
         </div>
       </div>
     </div>

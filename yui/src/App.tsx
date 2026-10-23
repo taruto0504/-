@@ -4,7 +4,7 @@ import { Clock } from "./components/Clock";
 import { GuidePanel } from "./components/GuidePanel";
 import { RichText } from "./components/RichText";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { ModelNotFoundError, listModels, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
+import { FALLBACK_MODELS, ModelNotFoundError, listModels, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
 import { breakLine, greeting, timedLine } from "./lib/clock";
 import { buildSystemPrompt } from "./lib/prompt";
 import { DEFAULT_AI, DEFAULT_DISPLAY, DEFAULT_PERSONA, type AiSettings, type DisplaySettings, type Persona, type ProviderId } from "./lib/settings";
@@ -22,7 +22,10 @@ export function App() {
   const [persona, setPersona] = useState<Persona>(() => load("persona", DEFAULT_PERSONA));
   const [ai, setAi] = useState<AiSettings>(() => {
     const a = load("ai", DEFAULT_AI);
-    return { ...a, models: { ...DEFAULT_AI.models, ...a.models } };
+    const models = { ...DEFAULT_AI.models, ...a.models };
+    // 提供が終わった Gemini 1.x・2.x が保存されていたら、最新の Flash に置き換える
+    if (/^gemini-[12]\./.test(models.gemini)) models.gemini = DEFAULT_AI.models.gemini;
+    return { ...a, models };
   });
   const [display, setDisplay] = useState<DisplaySettings>(() => load("display", DEFAULT_DISPLAY));
   const [keys, setKeys] = useState<Record<ProviderId, string>>({ anthropic: "", openai: "", gemini: "" });
@@ -165,11 +168,9 @@ export function App() {
       try {
         u = await request(ai.models[ai.provider]);
       } catch (e) {
-        // モデルが提供終了などで見つからない時は、使えるモデルを調べて選び直し、1回だけやり直す
+        // モデルが提供終了などで見つからない時は、使えるモデルを探して選び直す
         if (!(e instanceof ModelNotFoundError) || reply) throw e;
-        const next = await ensureModel(ai.provider, keys[ai.provider]).catch(() => null);
-        if (!next || next === e.model) throw e;
-        u = await request(next);
+        u = await retryWithOtherModel(e.model, request);
       }
       setUsage((x) => ({ input: x.input + u.input, output: x.output + u.output }));
       if (!reply.trim()) throw new Error("返事が空っぽでした。もう一度話しかけてみてね");
@@ -185,6 +186,39 @@ export function App() {
       setBusy(false);
       abort.current = null;
     }
+  };
+
+  // 見つからなかったモデルの代わりを探してやり直す。
+  // まず各社のモデル一覧から選び、一覧が取れない時は候補を新しい順に試す
+  const retryWithOtherModel = async (missing: string, request: (model: string) => Promise<Usage>): Promise<Usage> => {
+    const provider = ai.provider;
+    const tried = new Set([missing]);
+    let listError = "";
+    const candidates: string[] = [];
+    try {
+      const models = await listModels(provider, keys[provider]);
+      setAvailable((a) => ({ ...a, [provider]: models }));
+      const best = pickModel(provider, models);
+      if (best) candidates.push(best);
+    } catch (e: any) {
+      listError = e?.message ?? String(e);
+    }
+    candidates.push(...FALLBACK_MODELS[provider]);
+    for (const model of candidates) {
+      if (tried.has(model)) continue;
+      tried.add(model);
+      say(`モデル「${missing}」が使えないみたい。「${model}」で試してみるね…`, Infinity);
+      try {
+        const u = await request(model);
+        setAi((a) => ({ ...a, models: { ...a.models, [provider]: model } }));
+        return u;
+      } catch (e) {
+        if (!(e instanceof ModelNotFoundError)) throw e;
+      }
+    }
+    throw new Error(
+      `使えるモデルが見つかりませんでした（試したもの：${[...tried].join("、")}${listError ? `／一覧の取得：${listError}` : ""}）。⚙ →「AI」でモデル名を入れてください`,
+    );
   };
 
   // そのキーで使えるモデルを調べ、今のモデルが使えなければ選び直す。選んだモデル名を返す

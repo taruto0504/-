@@ -209,6 +209,13 @@ export async function listModels(provider: ProviderId, apiKey: string): Promise<
   return (data.data ?? []).map((m: any) => String(m.id));
 }
 
+// 一覧が取れない時に順に試すモデル（新しい順）
+export const FALLBACK_MODELS: Record<ProviderId, string[]> = {
+  gemini: ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-pro-latest"],
+  anthropic: ["claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5"],
+  openai: ["gpt-5-mini", "gpt-5"],
+};
+
 // 一覧から、会話に向いたモデルを1つ選ぶ（速さと料金のバランスを優先し、試験版は避ける）
 export function pickModel(provider: ProviderId, models: string[]): string | null {
   if (!models.length) return null;
