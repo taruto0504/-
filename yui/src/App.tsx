@@ -4,7 +4,7 @@ import { Clock } from "./components/Clock";
 import { GuidePanel } from "./components/GuidePanel";
 import { RichText } from "./components/RichText";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { FALLBACK_MODELS, ModelNotFoundError, listModels, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
+import { FALLBACK_MODELS, ModelNotFoundError, RETIRED, listModels, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
 import { breakLine, greeting, timedLine } from "./lib/clock";
 import { buildSystemPrompt } from "./lib/prompt";
 import { DEFAULT_AI, DEFAULT_DISPLAY, DEFAULT_PERSONA, type AiSettings, type DisplaySettings, type Persona, type ProviderId } from "./lib/settings";
@@ -24,7 +24,7 @@ export function App() {
     const a = load("ai", DEFAULT_AI);
     const models = { ...DEFAULT_AI.models, ...a.models };
     // 提供が終わった Gemini 1.x・2.x が保存されていたら、最新の Flash に置き換える
-    if (/^gemini-[12]\./.test(models.gemini)) models.gemini = DEFAULT_AI.models.gemini;
+    if (RETIRED.gemini.test(models.gemini)) models.gemini = DEFAULT_AI.models.gemini;
     return { ...a, models };
   });
   const [display, setDisplay] = useState<DisplaySettings>(() => load("display", DEFAULT_DISPLAY));

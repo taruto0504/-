@@ -89,9 +89,11 @@ import { pickModel } from "../src/lib/ai";
 
 describe("モデルの自動選択", () => {
   it("Gemini は最新の Flash の別名、なければ新しい安定版の Flash を選ぶ", () => {
-    expect(pickModel("gemini", ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.8-pro"])).toBe("gemini-flash-latest");
-    expect(pickModel("gemini", ["gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.9-flash-preview"])).toBe("gemini-3.8-flash");
-    expect(pickModel("gemini", ["gemini-3.9-flash-preview"])).toBe("gemini-3.9-flash-preview");
+    // 実際の一覧（2026-10 時点）
+    const real = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-pro-latest", "gemini-3-flash-preview", "gemini-3.1-pro-preview", "gemini-3.1-flash-lite-preview"];
+    expect(pickModel("gemini", real)).toBe("gemini-flash-latest");
+    expect(pickModel("gemini", ["gemini-3-flash", "gemini-3.1-flash", "gemini-3.1-flash-lite", "gemini-3.2-flash-preview"])).toBe("gemini-3.1-flash");
+    expect(pickModel("gemini", ["gemini-3-flash-preview", "gemini-3.1-pro-preview"])).toBe("gemini-3-flash-preview");
   });
   it("Claude は Sonnet、OpenAI は mini を優先する", () => {
     expect(pickModel("anthropic", ["claude-opus-5-5", "claude-sonnet-5", "claude-sonnet-5-5", "claude-haiku-5-5"])).toBe("claude-sonnet-5-5");

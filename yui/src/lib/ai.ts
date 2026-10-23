@@ -186,6 +186,11 @@ async function getJson(url: string, headers: Record<string, string>) {
   return data;
 }
 
+// 一覧には載っていても、新しく登録した人は使えない古いモデル
+export const RETIRED: Partial<Record<ProviderId, RegExp>> & { gemini: RegExp } = {
+  gemini: /^gemini-[12]\./,
+};
+
 // そのキーで使える会話用モデルの一覧を、各社のサービスから取ってくる
 export async function listModels(provider: ProviderId, apiKey: string): Promise<string[]> {
   if (provider === "gemini") {
@@ -193,7 +198,7 @@ export async function listModels(provider: ProviderId, apiKey: string): Promise<
     return (data.models ?? [])
       .filter((m: any) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
       .map((m: any) => String(m.name).replace(/^models\//, ""))
-      .filter((id: string) => /^gemini/.test(id) && !/(image|tts|audio|live|embedding|vision|robotics|computer)/.test(id));
+      .filter((id: string) => /^gemini/.test(id) && !RETIRED.gemini.test(id) && !/(image|tts|audio|live|embedding|vision|robotics|computer)/.test(id));
   }
   if (provider === "openai") {
     const data = await getJson("https://api.openai.com/v1/models", { authorization: `Bearer ${apiKey}` });
@@ -211,7 +216,7 @@ export async function listModels(provider: ProviderId, apiKey: string): Promise<
 
 // 一覧が取れない時に順に試すモデル（新しい順）
 export const FALLBACK_MODELS: Record<ProviderId, string[]> = {
-  gemini: ["gemini-flash-latest", "gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-pro-latest"],
+  gemini: ["gemini-flash-latest", "gemini-3-flash-preview", "gemini-flash-lite-latest", "gemini-pro-latest"],
   anthropic: ["claude-sonnet-5-5", "claude-haiku-5-5", "claude-opus-5-5"],
   openai: ["gpt-5-mini", "gpt-5"],
 };
