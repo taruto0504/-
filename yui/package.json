@@ -1,0 +1,29 @@
+{
+  "name": "project-yui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "3Dキャラクターがそばにいるパーソナル AI パートナー（フェーズ1：表示と会話）",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.4.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.26",
+    "@types/react-dom": "^18.3.7",
+    "@types/three": "^0.180.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "typescript": "^5.9.3",
+    "vite": "^7.1.12",
+    "vitest": "^3.2.4"
+  }
+}
