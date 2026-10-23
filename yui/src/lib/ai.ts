@@ -13,13 +13,13 @@ export const PROVIDERS: Record<ProviderId, { label: string; keyHint: string; mod
   openai: {
     label: "ChatGPT（OpenAI）",
     keyHint: "sk-…",
-    models: ["gpt-5", "gpt-5-mini"],
+    models: ["gpt-5-mini", "gpt-5"],
     policy: "https://openai.com/policies/api-data-usage-policies",
   },
   gemini: {
     label: "Gemini（Google）",
     keyHint: "AIza…",
-    models: ["gemini-2.5-flash", "gemini-2.5-pro"],
+    models: ["gemini-flash-latest", "gemini-pro-latest"],
     policy: "https://ai.google.dev/gemini-api/terms",
   },
 };
@@ -54,7 +54,7 @@ export function trimHistory(messages: ChatMessage[], max = CONTEXT_MESSAGES): Ch
   return out;
 }
 
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(
     message: string,
     public status: number,
@@ -173,6 +173,63 @@ const callers: Record<ProviderId, (r: ChatRequest) => Promise<Usage>> = {
   },
 };
 
+export class ModelNotFoundError extends Error {
+  constructor(public model: string) {
+    super(`モデル「${model}」が見つかりません。設定でモデル名を確認してください`);
+  }
+}
+
+async function getJson(url: string, headers: Record<string, string>) {
+  const res = await fetch(url, { headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new HttpError(data?.error?.message ?? `HTTP ${res.status}`, res.status);
+  return data;
+}
+
+// そのキーで使える会話用モデルの一覧を、各社のサービスから取ってくる
+export async function listModels(provider: ProviderId, apiKey: string): Promise<string[]> {
+  if (provider === "gemini") {
+    const data = await getJson("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", { "x-goog-api-key": apiKey });
+    return (data.models ?? [])
+      .filter((m: any) => (m.supportedGenerationMethods ?? []).includes("generateContent"))
+      .map((m: any) => String(m.name).replace(/^models\//, ""))
+      .filter((id: string) => /^gemini/.test(id) && !/(image|tts|audio|live|embedding|vision|robotics|computer)/.test(id));
+  }
+  if (provider === "openai") {
+    const data = await getJson("https://api.openai.com/v1/models", { authorization: `Bearer ${apiKey}` });
+    return (data.data ?? [])
+      .map((m: any) => String(m.id))
+      .filter((id: string) => /^(gpt-|o\d|chatgpt-)/.test(id) && !/(audio|realtime|image|tts|transcribe|search|embedding|instruct|codex|moderation)/.test(id));
+  }
+  const data = await getJson("https://api.anthropic.com/v1/models?limit=100", {
+    "x-api-key": apiKey,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
+  });
+  return (data.data ?? []).map((m: any) => String(m.id));
+}
+
+// 一覧から、会話に向いたモデルを1つ選ぶ（速さと料金のバランスを優先し、試験版は避ける）
+export function pickModel(provider: ProviderId, models: string[]): string | null {
+  if (!models.length) return null;
+  const prefer: Record<ProviderId, RegExp[]> = {
+    gemini: [/^gemini-flash-latest$/, /^gemini-[\d.]+-flash$/, /flash(?!.*lite)/, /flash/, /pro/],
+    anthropic: [/sonnet/, /haiku/, /opus/],
+    openai: [/^gpt-[\d.]+-mini$/, /^gpt-[\d.]+$/, /mini/, /^gpt/],
+  };
+  const unstable = /(preview|exp|latest-preview|\d{4}-\d{2}-\d{2}|\d{8}$)/;
+  // 版の数字が大きいほど新しい
+  const version = (id: string) => (id.match(/\d+(?:[.-]\d+)?/g) ?? []).map((v) => parseFloat(v.replace("-", "."))).filter((v) => v < 100)[0] ?? 0;
+  for (const re of prefer[provider]) {
+    const hits = models.filter((m) => re.test(m));
+    if (!hits.length) continue;
+    const stable = hits.filter((m) => !unstable.test(m));
+    const pool = stable.length ? stable : hits;
+    return pool.sort((a, b) => version(b) - version(a) || a.length - b.length)[0];
+  }
+  return models[0];
+}
+
 export async function streamChat(req: ChatRequest): Promise<Usage> {
   if (!req.apiKey) throw new Error("APIキーが設定されていません。右上の ⚙ から設定してください");
   try {
@@ -181,7 +238,7 @@ export async function streamChat(req: ChatRequest): Promise<Usage> {
     if (e?.name === "AbortError") throw new Error("止めました");
     if (e instanceof TypeError) throw new Error("通信できませんでした。ネットワークを確認してください");
     if (e?.status === 401 || e?.status === 403) throw new Error("APIキーが正しくないか、使えない状態です");
-    if (e?.status === 404) throw new Error(`モデル「${req.model}」が見つかりません。設定でモデル名を確認してください`);
+    if (e?.status === 404) throw new ModelNotFoundError(req.model);
     if (e?.status === 429) throw new Error("利用回数の上限に達しました。少し待ってから試してください");
     throw e;
   }

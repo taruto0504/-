@@ -27,6 +27,8 @@ interface Props {
   onResetUsage: () => void;
   onClearChat: () => void;
   onGuide: (provider: ProviderId) => void;
+  available: Partial<Record<ProviderId, string[]>>;
+  onLoadModels: (provider: ProviderId) => Promise<string>;
   onClose: () => void;
   initialTab?: TabId;
 }
@@ -75,8 +77,10 @@ export function SettingsPanel(props: Props) {
   );
 }
 
-function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage, onGuide }: Props) {
+function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage, onGuide, available, onLoadModels }: Props) {
   const p = PROVIDERS[ai.provider];
+  const [loading, setLoading] = useState("");
+  const fetched = available[ai.provider];
   const [draft, setDraft] = useState(keys[ai.provider]);
   const [shown, setShown] = useState(false);
   const yen = estimateYen(usage, ai.priceIn, ai.priceOut);
@@ -102,17 +106,53 @@ function AiTab({ ai, keys, usage, onAi, onKey, onResetUsage, onGuide }: Props) {
       </label>
       <label className="field">
         <span>モデル</span>
-        <input
-          list="models"
-          value={ai.models[ai.provider]}
-          onChange={(e) => onAi({ ...ai, models: { ...ai.models, [ai.provider]: e.target.value.trim() } })}
-        />
-        <datalist id="models">
-          {p.models.map((m) => (
-            <option key={m} value={m} />
-          ))}
-        </datalist>
+        {fetched?.length ? (
+          // 使えるモデルを確認した後は、その一覧から選ぶ
+          <select value={ai.models[ai.provider]} onChange={(e) => onAi({ ...ai, models: { ...ai.models, [ai.provider]: e.target.value } })}>
+            {[...new Set([ai.models[ai.provider], ...fetched])].map((m) => (
+              <option key={m} value={m}>
+                {m}
+                {fetched.includes(m) ? "" : "（使えません）"}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <>
+            <input
+              list="models"
+              value={ai.models[ai.provider]}
+              onChange={(e) => onAi({ ...ai, models: { ...ai.models, [ai.provider]: e.target.value.trim() } })}
+            />
+            <datalist id="models">
+              {p.models.map((m) => (
+                <option key={m} value={m} />
+              ))}
+            </datalist>
+          </>
+        )}
       </label>
+      {keys[ai.provider] && (
+        <div className="row">
+          <button
+            type="button"
+            className="ghost-btn"
+            disabled={loading === "…"}
+            onClick={async () => {
+              setLoading("…");
+              try {
+                const m = await onLoadModels(ai.provider);
+                setLoading(`使えるモデルを確認しました（今は ${m}）`);
+              } catch (e: any) {
+                setLoading(`確認できませんでした：${e.message}`);
+              }
+            }}
+          >
+            使えるモデルを確認
+          </button>
+          <span className="hint">{loading === "…" ? "確認中…" : loading}</span>
+        </div>
+      )}
+      {fetched && <p className="hint">モデル欄をタップすると、このキーで使える {fetched.length} 個のモデルから選べます。</p>}
       <button type="button" className="text-link" onClick={() => onGuide(ai.provider)}>
         📖 {p.label} の APIキーの取り方を見る
       </button>

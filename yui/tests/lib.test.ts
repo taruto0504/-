@@ -84,3 +84,18 @@ describe("APIキーの取り方マニュアル", () => {
     }
   });
 });
+
+import { pickModel } from "../src/lib/ai";
+
+describe("モデルの自動選択", () => {
+  it("Gemini は最新の Flash の別名、なければ新しい安定版の Flash を選ぶ", () => {
+    expect(pickModel("gemini", ["gemini-3.8-flash", "gemini-flash-latest", "gemini-3.8-pro"])).toBe("gemini-flash-latest");
+    expect(pickModel("gemini", ["gemini-3.6-flash", "gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.9-flash-preview"])).toBe("gemini-3.8-flash");
+    expect(pickModel("gemini", ["gemini-3.9-flash-preview"])).toBe("gemini-3.9-flash-preview");
+  });
+  it("Claude は Sonnet、OpenAI は mini を優先する", () => {
+    expect(pickModel("anthropic", ["claude-opus-5-5", "claude-sonnet-5", "claude-sonnet-5-5", "claude-haiku-5-5"])).toBe("claude-sonnet-5-5");
+    expect(pickModel("openai", ["gpt-5", "gpt-5-mini", "gpt-6-mini", "gpt-6-mini-2026-08-01"])).toBe("gpt-6-mini");
+    expect(pickModel("openai", [])).toBeNull();
+  });
+});

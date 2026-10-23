@@ -47,7 +47,7 @@ export const DEFAULT_PERSONA: Persona = {
 
 export const DEFAULT_AI: AiSettings = {
   provider: "anthropic",
-  models: { anthropic: "claude-sonnet-5-5", openai: "gpt-5", gemini: "gemini-2.5-flash" },
+  models: { anthropic: "claude-sonnet-5-5", openai: "gpt-5-mini", gemini: "gemini-flash-latest" },
   priceIn: null,
   priceOut: null,
 };

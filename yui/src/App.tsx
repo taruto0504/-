@@ -4,7 +4,7 @@ import { Clock } from "./components/Clock";
 import { GuidePanel } from "./components/GuidePanel";
 import { RichText } from "./components/RichText";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { streamChat, trimHistory, type Usage } from "./lib/ai";
+import { ModelNotFoundError, listModels, pickModel, streamChat, trimHistory, type Usage } from "./lib/ai";
 import { breakLine, greeting, timedLine } from "./lib/clock";
 import { buildSystemPrompt } from "./lib/prompt";
 import { DEFAULT_AI, DEFAULT_DISPLAY, DEFAULT_PERSONA, type AiSettings, type DisplaySettings, type Persona, type ProviderId } from "./lib/settings";
@@ -33,6 +33,7 @@ export function App() {
   const [bubble, setBubble] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState<false | "ai" | true>(false);
+  const [available, setAvailable] = useState<Partial<Record<ProviderId, string[]>>>({});
   const [guideOpen, setGuideOpen] = useState<ProviderId | null>(null);
   const [vrm, setVrm] = useState({ has: false, name: load("vrmName", { v: "" }).v, error: "" });
   const abort = useRef<AbortController | null>(null);
@@ -144,11 +145,11 @@ export function App() {
     let reply = "";
     const update = (content: string, error = false) =>
       setMessages((ms) => [...ms.slice(0, -1), { role: "assistant", content, at: now, error }]);
-    try {
-      const u = await streamChat({
+    const request = (model: string) =>
+      streamChat({
         provider: ai.provider,
         apiKey: keys[ai.provider],
-        model: ai.models[ai.provider],
+        model,
         system: buildSystemPrompt(persona),
         messages: trimHistory(history.filter((m) => !m.error)),
         signal: controller.signal,
@@ -159,6 +160,17 @@ export function App() {
           say(reply, Infinity);
         },
       });
+    try {
+      let u;
+      try {
+        u = await request(ai.models[ai.provider]);
+      } catch (e) {
+        // モデルが提供終了などで見つからない時は、使えるモデルを調べて選び直し、1回だけやり直す
+        if (!(e instanceof ModelNotFoundError) || reply) throw e;
+        const next = await ensureModel(ai.provider, keys[ai.provider]).catch(() => null);
+        if (!next || next === e.model) throw e;
+        u = await request(next);
+      }
       setUsage((x) => ({ input: x.input + u.input, output: x.output + u.output }));
       if (!reply.trim()) throw new Error("返事が空っぽでした。もう一度話しかけてみてね");
       stage.current?.setMood("happy");
@@ -175,10 +187,31 @@ export function App() {
     }
   };
 
+  // そのキーで使えるモデルを調べ、今のモデルが使えなければ選び直す。選んだモデル名を返す
+  const ensureModel = async (provider: ProviderId, key: string): Promise<string> => {
+    const models = await listModels(provider, key);
+    setAvailable((a) => ({ ...a, [provider]: models }));
+    const current = ai.models[provider];
+    if (models.includes(current)) return current;
+    const next = pickModel(provider, models);
+    if (!next) throw new Error("このキーで使えるモデルが見つかりませんでした");
+    setAi((a) => ({ ...a, models: { ...a.models, [provider]: next } }));
+    say(`モデルを「${next}」に切り替えたよ`);
+    return next;
+  };
+
   const onKey = async (provider: ProviderId, key: string) => {
     await saveSecret(`key.${provider}`, key);
     setKeys((k) => ({ ...k, [provider]: key }));
-    if (key) say("ありがとう！これでお話しできるね");
+    if (!key) return;
+    say("ありがとう！ つながるか確かめてるね…", Infinity);
+    try {
+      const model = await ensureModel(provider, key);
+      say(`つながったよ！ モデルは「${model}」を使うね。これでお話しできるよ`);
+    } catch (e: any) {
+      const m = e?.status === 400 || e?.status === 401 || e?.status === 403 ? "APIキーが正しくないみたい。コピーし直して貼ってみて" : `確かめられなかったよ（${e.message}）。とりあえず話しかけてみてね`;
+      say(m);
+    }
   };
 
   const onVrm = async (file: File | null) => {
@@ -247,6 +280,8 @@ export function App() {
           onVrm={onVrm}
           onResetUsage={() => setUsage({ input: 0, output: 0 })}
           onClearChat={() => setMessages([])}
+          available={available}
+          onLoadModels={(provider) => ensureModel(provider, keys[provider])}
           onGuide={(provider) => {
             setSettingsOpen(false);
             setGuideOpen(provider);

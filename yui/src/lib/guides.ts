@@ -35,7 +35,7 @@ export const GUIDES: Guide[] = [
       { title: "キーをコピーする", body: "「AIza」で始まる文字列が表示されるので、コピーボタンでコピーします。" },
       { title: "このアプリに貼る", body: "⚙ →「AI」→ 使うAIを「Gemini（Google）」にして、APIキーの欄に貼り付けて「保存」。" },
     ],
-    models: "おすすめ：gemini-2.5-flash（速くて安い）。よく考えてほしい時：gemini-2.5-pro。AI Studio のモデル一覧に出ている名前ならそのまま使えます。",
+    models: "おすすめ：gemini-flash-latest（いつも最新の Flash。速くて安い）。よく考えてほしい時：gemini-pro-latest。キーを保存すると、使えるモデルを確かめて自動で選び直します。",
     cautions: [
       "無料枠で送った内容は、Googleのサービス改善に使われることがあります。個人情報や仕事の情報は入れないでください。",
     ],
@@ -69,7 +69,7 @@ export const GUIDES: Guide[] = [
         link: { label: "Limits を開く", url: "https://console.anthropic.com/settings/limits" },
       },
     ],
-    models: "おすすめ：claude-sonnet-5-5（バランス型）。安く速く：claude-haiku-5-5。いちばん賢い：claude-opus-5-5（高め）。",
+    models: "おすすめ：claude-sonnet-5-5（バランス型）。安く速く：claude-haiku-5-5。いちばん賢い：claude-opus-5-5（高め）。キーを保存すると、使えるモデルを確かめて自動で選び直します。",
     cautions: [],
   },
   {
@@ -101,7 +101,7 @@ export const GUIDES: Guide[] = [
         link: { label: "Limits を開く", url: "https://platform.openai.com/settings/organization/limits" },
       },
     ],
-    models: "おすすめ：gpt-5-mini（安くて速い）。よく考えてほしい時：gpt-5。Platform のモデル一覧に出ている名前ならそのまま使えます。",
+    models: "おすすめ：gpt-5-mini（安くて速い）。よく考えてほしい時：gpt-5。キーを保存すると、使えるモデルを確かめて自動で選び直します。",
     cautions: [],
   },
 ];
