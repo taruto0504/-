@@ -1,0 +1,37 @@
+name: PMDA 検索ページの調査
+
+# 薬価基準に載っていない薬(ワクチンなど)を KEGG MEDICUS から一覧にする方法を調べる(調査用、あとで消す)
+
+on:
+  push:
+    paths:
+      - '.github/workflows/pmda-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 取得
+        run: |
+          mkdir out && cd out
+          UA="medical-support-tool/1.0 (+https://github.com/taruto0504/-)"
+          K="https://www.kegg.jp/medicus-bin"
+          for q in ワクチン トキソイド; do
+            curl -sSL -A "$UA" -G "$K/search_drug" --data-urlencode "display=med" --data-urlencode "search_keyword=$q" -o "search-$q.html"; sleep 1
+          done
+          curl -sSL -A "$UA" "https://rest.kegg.jp/get/br:jp08301" -o br-jp08301.txt; sleep 1
+          curl -sSL -A "$UA" "https://www.kegg.jp/brite/htext=jp08301.keg&query=631&option=-anb" -o brite-631.html; sleep 1
+          curl -sSL -A "$UA" "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/6313400" -o general-6313400.html
+          ls -la
+      - name: pmda-probe ブランチに保存
+        working-directory: out
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git init -q && git checkout -q -b pmda-probe && git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "KEGG 一覧の調査"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pmda-probe
