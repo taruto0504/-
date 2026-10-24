@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<title>KEGG MEDICUS 医薬品情報</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="/css/ligand.css?498012">
+<link rel="stylesheet" type="text/css" href="/css/japic.css?498012">
+<script type="text/javascript" src="/kegg/js/page.js"></script>
+<script type="text/javascript" src="/js/autocomplete.js?498012"></script>
+<script type="text/javascript">
+<!--
+
+const initAutoComplete = () => {
+	const activeMenu = document.querySelector('.menu .on')
+	if (!activeMenu) { return }
+	const c = activeMenu.classList
+	let ds = null
+	if (c.contains('med')) {
+		ds = 'med'
+	}
+	else if (c.contains('otc')) {
+		ds = 'otc'
+	}
+	else if (c.contains('dm_rx')) {
+		ds = 'ddi_en'
+	}
+	else {
+		return
+	}
+	InitAutoComplete('search_keyword', `/medicus-bin/autocomplete.cgi?term=<keyword>&ds=${ds}`)
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+	initAutoComplete()
+})
+
+// -->
+</script>
+</head>
+<body>
+
+<table style="width:700px;">
+<tr>
+ <td><h1>KEGG MEDICUS 医薬品情報</h1></td>
+ <td>
+  <a target="_blank" href="/kegg/medicus/medicus1_ja.html">利用法</a>&nbsp;&nbsp;
+  <a href="/kegg/medicus/">Top</a>
+ </td>
+</tr>
+</table>
+
+<div style="margin-top:5px; margin-bottom:15px;">
+<form action="search_drug" style="margin:0px;">
+<input type="hidden" name="display" value="med">
+<input type="hidden" name="thumbnail" value="">
+<input type="hidden" name="method" value="">
+<input type="hidden" name="current_submit" value="">
+<input type="search" size="50" id="search_keyword" name="search_keyword" value="トキソイド" style="padding:3px;">
+
+<label>
+<input type="checkbox" name="search_component" value="1" >成分も検索
+</label>
+
+<input type="submit" name="submit" value="検索">
+<input type="submit" name="submit" value="全文検索">
+</form>
+</div>
+
+<div class="box1">
+<ul class="menu">
+<li class="disease off"><a href="?display=disease&amp;search_keyword=%e3%83%88%e3%82%ad%e3%82%bd%e3%82%a4%e3%83%89">KEGG DISEASE (0)</a></li>
+<li class="kegg_drug off"><a href="?display=kegg_drug&amp;search_keyword=%e3%83%88%e3%82%ad%e3%82%bd%e3%82%a4%e3%83%89">KEGG DRUG (10)</a></li>
+<li class="med on"><a href="?display=med&amp;search_keyword=%e3%83%88%e3%82%ad%e3%82%bd%e3%82%a4%e3%83%89">医療用医薬品 (7)</a></li>
+<li class="otc off"><a href="?display=otc&amp;search_keyword=%e3%83%88%e3%82%ad%e3%82%bd%e3%82%a4%e3%83%89">一般用医薬品 (0)</a></li>
+
+</ul>
+</div>
+<div class="box2">
+
+
+
+7 件中 1 〜 7 を表示
+<span style="margin-left:10px;"></span>
+
+
+  
+<table class="list1">
+ <tr>
+
+  
+
+  
+
+  
+  
+  <th class="title1">商品名</th>
+  <th class="title1">一般名</th>
+  <th class="title1">薬効</th>
+  
+  <th class="title1">KEGG DRUG</th>
+  
+
+  
+
+  
+</tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00052421">
+   
+   DTビック
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ワクチン・<span style='color:#cc1111;'>トキソイド</span>混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D05257+-ja">D05257</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071077">
+   
+   クイントバック水性懸濁注射用
+   
+   </a>
+   
+   <br>(KMバイオロジクス)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ワクチン・<span style='color:#cc1111;'>トキソイド</span>混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D12585+-ja">D12585</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00070807">
+   
+   ゴービック水性懸濁注シリンジ
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ワクチン・<span style='color:#cc1111;'>トキソイド</span>混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D12585+-ja">D12585</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00067231">
+   
+   トリビック
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ワクチン・<span style='color:#cc1111;'>トキソイド</span>混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D05356+-ja">D05356</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071890">
+   
+   ヒブトロバック水性懸濁注射用
+   
+   </a>
+   
+   <br>(KMバイオロジクス)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ワクチン・<span style='color:#cc1111;'>トキソイド</span>混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D12585+-ja">D12585</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00006072">
+   
+   沈降破傷風<span style='color:#cc1111;'>トキソイド</span>「生研」
+   
+   </a>
+   
+   <br>(デンカ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1"><span style='color:#cc1111;'>トキソイド</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05316+-ja">D05316</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00052278">
+   
+   破トキ「ビケンF」
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1"><span style='color:#cc1111;'>トキソイド</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05316+-ja">D05316</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+</table>
+
+7 件中 1 〜 7 を表示
+<span style="margin-left:10px;"></span>
+
+
+
+
+</div> <!-- end of box2 -->
+
+
+<hr>
+<table style="width:100%; margin:0px; padding:0px;">
+ <tr>
+  <td>
+   <b>
+    [
+    <a href="/kegg/kegg_ja.html">KEGG</a> |
+    <a href="/kegg/drug/drug_ja.html">KEGG DRUG</a> |
+    <a href="/kegg/medicus/">KEGG MEDICUS</a>
+    ]
+   </b>
+  </td>
+  <td style="text-align:right;">
+
+  
+  2026/10/21 版
+  
+
+  
+
+  
+
+  
+
+  </td>
+ </tr>
+</table>
+</body>
+</html>
+
+

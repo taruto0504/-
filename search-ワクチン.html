@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<title>KEGG MEDICUS 医薬品情報</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<link rel="stylesheet" type="text/css" href="/css/ligand.css?498012">
+<link rel="stylesheet" type="text/css" href="/css/japic.css?498012">
+<script type="text/javascript" src="/kegg/js/page.js"></script>
+<script type="text/javascript" src="/js/autocomplete.js?498012"></script>
+<script type="text/javascript">
+<!--
+
+const initAutoComplete = () => {
+	const activeMenu = document.querySelector('.menu .on')
+	if (!activeMenu) { return }
+	const c = activeMenu.classList
+	let ds = null
+	if (c.contains('med')) {
+		ds = 'med'
+	}
+	else if (c.contains('otc')) {
+		ds = 'otc'
+	}
+	else if (c.contains('dm_rx')) {
+		ds = 'ddi_en'
+	}
+	else {
+		return
+	}
+	InitAutoComplete('search_keyword', `/medicus-bin/autocomplete.cgi?term=<keyword>&ds=${ds}`)
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+	initAutoComplete()
+})
+
+// -->
+</script>
+</head>
+<body>
+
+<table style="width:700px;">
+<tr>
+ <td><h1>KEGG MEDICUS 医薬品情報</h1></td>
+ <td>
+  <a target="_blank" href="/kegg/medicus/medicus1_ja.html">利用法</a>&nbsp;&nbsp;
+  <a href="/kegg/medicus/">Top</a>
+ </td>
+</tr>
+</table>
+
+<div style="margin-top:5px; margin-bottom:15px;">
+<form action="search_drug" style="margin:0px;">
+<input type="hidden" name="display" value="med">
+<input type="hidden" name="thumbnail" value="">
+<input type="hidden" name="method" value="">
+<input type="hidden" name="current_submit" value="">
+<input type="search" size="50" id="search_keyword" name="search_keyword" value="ワクチン" style="padding:3px;">
+
+<label>
+<input type="checkbox" name="search_component" value="1" >成分も検索
+</label>
+
+<input type="submit" name="submit" value="検索">
+<input type="submit" name="submit" value="全文検索">
+</form>
+</div>
+
+<div class="box1">
+<ul class="menu">
+<li class="disease off"><a href="?display=disease&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3">KEGG DISEASE (0)</a></li>
+<li class="kegg_drug off"><a href="?display=kegg_drug&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3">KEGG DRUG (65)</a></li>
+<li class="med on"><a href="?display=med&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3">医療用医薬品 (73)</a></li>
+<li class="otc off"><a href="?display=otc&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3">一般用医薬品 (0)</a></li>
+
+</ul>
+</div>
+<div class="box2">
+
+
+
+73 件中 1 〜 40 を表示
+<span style="margin-left:10px;"><span style="font-weight:bold;">1</span> <a href="search_drug?display=med&amp;page=2&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3" data-page="2">2</a> <a href="search_drug?display=med&amp;page=2&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3" data-page="2">次へ</a></span>
+
+
+  
+<table class="list1">
+ <tr>
+
+  
+
+  
+
+  
+  
+  <th class="title1">商品名</th>
+  <th class="title1">一般名</th>
+  <th class="title1">薬効</th>
+  
+  <th class="title1">KEGG DRUG</th>
+  
+
+  
+
+  
+</tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00052421">
+   
+   DTビック
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1"><span style='color:#cc1111;'>ワクチン</span>・トキソイド混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D05257+-ja">D05257</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00068030">
+   
+   おたふくかぜ生<span style='color:#cc1111;'>ワクチン</span>「第一三共」
+   
+   </a>
+   
+   <br>(第一三共)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05089+-ja">D05089</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00068043">
+   
+   はしか風しん混合生<span style='color:#cc1111;'>ワクチン</span>「第一三共」
+   
+   </a>
+   
+   <br>(第一三共)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D08804+-ja">D08804</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00056042">
+   
+   アクトヒブ
+   
+   </a>
+   
+   <br>(サノフィ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">細菌<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D09189+-ja">D09189</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071224">
+   
+   アブリスボ筋注用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12607+-ja">D12607</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071043">
+   
+   アレックスビー筋注用
+   
+   </a>
+   
+   <br>(グラクソ・スミスクライン)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12607+-ja">D12607</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00060666">
+   
+   イモバックスポリオ皮下注
+   
+   </a>
+   
+   <br>(サノフィ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05543+-ja">D05543</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00068036">
+   
+   インフルエンザHA<span style='color:#cc1111;'>ワクチン</span>「第一三共」シリンジ0.25mL
+   
+   </a>
+   
+   <br>(第一三共)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05182+-ja">D05182</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00068034">
+   
+   インフルエンザHA<span style='color:#cc1111;'>ワクチン</span>「第一三共」シリンジ0.5mL
+   
+   </a>
+   
+   <br>(第一三共)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05182+-ja">D05182</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00067619">
+   
+   インフルエンザHA<span style='color:#cc1111;'>ワクチン</span>「KMB」
+   
+   </a>
+   
+   <br>(KMバイオロジクス)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05182+-ja">D05182</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00051009">
+   
+   インフルエンザHA<span style='color:#cc1111;'>ワクチン</span>「生研」
+   
+   </a>
+   
+   <br>(デンカ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05182+-ja">D05182</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00051008">
+   
+   インフルエンザHA<span style='color:#cc1111;'>ワクチン</span>「生研」
+   
+   </a>
+   
+   <br>(デンカ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05182+-ja">D05182</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00025043">
+   
+   インフルエンザHA<span style='color:#cc1111;'>ワクチン</span>「生研」
+   
+   </a>
+   
+   <br>(デンカ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05182+-ja">D05182</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00025507">
+   
+   エイムゲン
+   
+   </a>
+   
+   <br>(KMバイオロジクス)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D08778+-ja">D08778</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071601">
+   
+   エフルエルダ筋注
+   
+   </a>
+   
+   <br>(サノフィ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05182+-ja">D05182</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00072092">
+   
+   エムネクスパイク筋注シリンジ12歳以上用
+   
+   </a>
+   
+   <br>(モデルナ・ジャパン)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00059367">
+   
+   エンセバック皮下注用
+   
+   </a>
+   
+   <br>(KMバイオロジクス)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05313+-ja">D05313</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00059715">
+   
+   ガーダシル水性懸濁筋注シリンジ
+   
+   </a>
+   
+   <br>(MSD)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D10192+-ja">D10192</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071756">
+   
+   キャップバックス筋注シリンジ
+   
+   </a>
+   
+   <br>(MSD)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">細菌<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D13153+-ja">D13153</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071077">
+   
+   クイントバック水性懸濁注射用
+   
+   </a>
+   
+   <br>(KMバイオロジクス)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1"><span style='color:#cc1111;'>ワクチン</span>・トキソイド混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D12585+-ja">D12585</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071819">
+   
+   コスタイベ筋注用（2人用）
+   
+   </a>
+   
+   <br>(Meiji Seikaファルマ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12738+-ja">D12738</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071459">
+   
+   コスタイベ筋注用
+   
+   </a>
+   
+   <br>(Meiji Seikaファルマ)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12738+-ja">D12738</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00072203">
+   
+   コミナティ筋注6ヵ月〜4歳用3人用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11971+-ja">D11971</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00072202">
+   
+   コミナティ筋注シリンジ12歳以上用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11971+-ja">D11971</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00072201">
+   
+   コミナティRTU筋注5〜11歳用1人用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11971+-ja">D11971</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071817">
+   
+   コミナティ筋注6ヵ月〜4歳用3人用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11971+-ja">D11971</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071816">
+   
+   コミナティ筋注シリンジ12歳以上用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11971+-ja">D11971</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071815">
+   
+   コミナティRTU筋注5〜11歳用1人用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11971+-ja">D11971</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071450">
+   
+   コミナティRTU筋注5〜11歳用1人用
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11971+-ja">D11971</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00070807">
+   
+   ゴービック水性懸濁注シリンジ
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1"><span style='color:#cc1111;'>ワクチン</span>・トキソイド混合製剤</td>
+  
+  <td class="data1"><a href="/entry/D12585+-ja">D12585</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071882">
+   
+   サーバリックス
+   
+   </a>
+   
+   <br>(グラクソ・スミスクライン)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D10212+-ja">D10212</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00058209">
+   
+   サーバリックス
+   
+   </a>
+   
+   <br>(グラクソ・スミスクライン)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D10212+-ja">D10212</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00068902">
+   
+   シルガード9水性懸濁筋注シリンジ
+   
+   </a>
+   
+   <br>(MSD)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11863+-ja">D11863</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00068049">
+   
+   シングリックス筋注用
+   
+   </a>
+   
+   <br>(グラクソ・スミスクライン)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D11562+-ja">D11562</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00056709">
+   
+   ジェービックV
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05313+-ja">D05313</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00056708">
+   
+   ジェービックV
+   
+   </a>
+   
+   <br>(阪大微生物病研究会)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D05313+-ja">D05313</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00072207">
+   
+   スパイクバックス筋注シリンジ6ヵ月〜11歳用
+   
+   </a>
+   
+   <br>(モデルナ・ジャパン)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12114+-ja">D12114</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071754">
+   
+   スパイクバックス筋注シリンジ12歳以上用<br />
+スパイクバックス筋注シリンジ6ヵ月〜11歳用
+   
+   </a>
+   
+   <br>(モデルナ・ジャパン)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12114+-ja">D12114</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071374">
+   
+   タイコバック小児用水性懸濁筋注0.25mL
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12206+-ja">D12206</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+ <tr>
+
+  
+
+  
+
+  
+
+  <td class="data1">
+   <a href="japic_med?japic_code=00071372">
+   
+   タイコバック水性懸濁筋注0.5mL
+   
+   </a>
+   
+   <br>(ファイザー)
+   
+  </td>
+  <td class="data1 mw50pc"></td>
+  <td class="data1">ウイルス<span style='color:#cc1111;'>ワクチン</span>類</td>
+  
+  <td class="data1"><a href="/entry/D12206+-ja">D12206</a></td>
+  
+
+  
+
+  
+
+ </tr>
+
+
+
+</table>
+
+73 件中 1 〜 40 を表示
+<span style="margin-left:10px;"><span style="font-weight:bold;">1</span> <a href="search_drug?display=med&amp;page=2&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3" data-page="2">2</a> <a href="search_drug?display=med&amp;page=2&amp;search_keyword=%e3%83%af%e3%82%af%e3%83%81%e3%83%b3" data-page="2">次へ</a></span>
+
+
+
+
+</div> <!-- end of box2 -->
+
+
+<hr>
+<table style="width:100%; margin:0px; padding:0px;">
+ <tr>
+  <td>
+   <b>
+    [
+    <a href="/kegg/kegg_ja.html">KEGG</a> |
+    <a href="/kegg/drug/drug_ja.html">KEGG DRUG</a> |
+    <a href="/kegg/medicus/">KEGG MEDICUS</a>
+    ]
+   </b>
+  </td>
+  <td style="text-align:right;">
+
+  
+  2026/10/21 版
+  
+
+  
+
+  
+
+  
+
+  </td>
+ </tr>
+</table>
+</body>
+</html>
+
+
