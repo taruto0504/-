@@ -11,6 +11,8 @@ js/drug-list.js の各製剤(YJコード上7桁)について
 - 出力ファイルに同じ VERSION で取得済みの製剤は飛ばすので、途中で止まっても続きから再開できる。
   取り込む項目を変えたときは VERSION を上げると、全製剤を順に取り直す(後の行が優先される)。
 - --budget 秒を過ぎたら途中で終了し、status.txt に partial と書く(全件終われば complete)。
+- PMDA の成分ページに製品が載っていない製剤(発売直後の新薬など)は、KEGG MEDICUS(JAPIC の添付文書情報)を
+  製品名で検索し、YJコードが一致する添付文書があればそこから取り込む(kegg に JAPIC コードを保存)。
 
 .github/workflows/fetch-pmda.yml から実行する。必要なライブラリ: beautifulsoup4, lxml
 """
@@ -22,11 +24,13 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.parse
 import urllib.request
 
 from bs4 import BeautifulSoup, NavigableString
 
 BASE = "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/"
+KEGG = "https://www.kegg.jp/medicus-bin/"
 UA = "medical-support-tool/1.0 (+https://github.com/taruto0504/-)"
 
 VERSION = 2
@@ -154,6 +158,67 @@ def parse_insert(html):
     return out
 
 
+def kegg_codes(html):
+    """JAPIC codes of the products on a KEGG MEDICUS search result page."""
+    return list(dict.fromkeys(re.findall(r"japic_med\?japic_code=(\d+)", html)))
+
+
+def parse_kegg(html, yj):
+    """KEGG MEDICUS insert page -> same keys as parse_insert, or None when no product on it has this YJ code."""
+    soup = BeautifulSoup(html, "lxml")
+    th = soup.find("th", string="YJコード")
+    if not th:
+        return None
+    table = th.find_parent("table")
+    col = [c.get_text(strip=True) for c in th.find_parent("tr").find_all(["th", "td"])].index("YJコード")
+    names = []
+    for tr in table.find_all("tr")[1:]:
+        cells = [c.get_text(" ", strip=True) for c in tr.find_all(["th", "td"])]
+        if len(cells) > col and nfkc(cells[col]).startswith(yj):
+            names.append(nfkc(cells[0]))
+    if not names:
+        return None
+    out = {"names": names}
+    rev = soup.select_one("h3 .revision")
+    if rev:
+        out["rev"] = nfkc(rev.get_text(strip=True))
+    for h4 in soup.select("h4.contents-title"):
+        hid = h4.get("id") or ""
+        num = "3" if hid == "products" else hid[4:] if hid.startswith("par-") else ""
+        key = SECTIONS.get(num)
+        if not key:
+            continue
+        box = BeautifulSoup("<div></div>", "lxml").div
+        for sib in list(h4.find_next_siblings()):
+            if sib.name == "h4" and "contents-title" in (sib.get("class") or []):
+                break
+            if sib.name in ("h3", "hr"):
+                break
+            box.append(sib)
+        lines = to_lines(box)
+        if lines:
+            out[key] = lines
+    return out
+
+
+def from_kegg(yj, products, delay):
+    """Search KEGG MEDICUS by product name for an insert with this YJ code."""
+    tried = set()
+    for name in list(dict.fromkeys(products))[:3]:
+        q = re.sub(r"\s+", "", name)
+        html = get(KEGG + "search_drug?display=med&search_keyword=" + urllib.parse.quote(q), delay)
+        for code in kegg_codes(html or "")[:5]:
+            if code in tried:
+                continue
+            tried.add(code)
+            page = get(KEGG + "japic_med?japic_code=" + code, delay)
+            info = page and parse_kegg(page, yj)
+            if info:
+                info["kegg"] = code
+                return info
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", default="js/drug-list.js")
@@ -167,6 +232,7 @@ def main():
     src = open(args.list, encoding="utf-8").read()
     data = json.loads(src[src.index("{"): src.rindex("}") + 1])
     groups = [yj for _, gs in data["items"] for yj, _, _ in gs]
+    products = {yj: [p[0] for p in ps] for _, gs in data["items"] for yj, _, ps in gs}
 
     done = set()
     if os.path.exists(args.out):
@@ -174,7 +240,8 @@ def main():
             for line in f:
                 try:
                     rec = json.loads(line)
-                    if rec.get("v") == VERSION:
+                    # an empty product list from PMDA counts as done once KEGG has been tried too
+                    if rec.get("v") == VERSION and (rec.get("rows") or "kegg_tried" in rec):
                         done.add(rec["yj"])
                 except (ValueError, KeyError):
                     pass
@@ -210,6 +277,11 @@ def main():
                     continue
                 rec["rep"] = rep
                 rec.update(parse_insert(ins))
+            else:
+                rec["kegg_tried"] = True
+                info = from_kegg(yj, products[yj], args.delay)
+                if info:
+                    rec.update(info)
             out.write(json.dumps(rec, ensure_ascii=False) + "\n")
             out.flush()
             if n % 50 == 0:

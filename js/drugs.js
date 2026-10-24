@@ -264,6 +264,7 @@
     ["caution", "使用上の注意", ""],
   ];
   const insertPdfUrl = (id) => "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/ResultDataSetPDF/" + encodeURIComponent(id);
+  const keggInsertUrl = (code) => "https://www.kegg.jp/medicus-bin/japic_med?japic_code=" + encodeURIComponent(code);
 
   function insLines(lines) {
     return lines.map((l) => `<p${/^〈.*〉$/.test(l) ? ' class="ins-sub"' : ""}>${escapeHtml(l)}</p>`).join("");
@@ -282,7 +283,7 @@
       .join("");
     return `<p class="ins-src">${escapeHtml(name || "代表製品")} の添付文書${info.rev ? `(${escapeHtml(info.rev)})` : ""}より</p>
       ${sections}
-      <p class="ins-note">PMDAの電子添文から自動で取り込み、項目を抜き出して表示しています。薬物動態・臨床成績・薬効薬理などは添付文書(PDF)で確認してください。同じ成分でも製品により記載が異なることがあります。使用前に必ず最新の添付文書を確認してください。${info.rep ? ` <a href="${escapeHtml(insertPdfUrl(info.rep))}" target="_blank" rel="noopener">この添付文書(PDF)</a>` : ""}</p>`;
+      <p class="ins-note">${info.kegg ? "PMDAに掲載がないため、KEGG MEDICUS(JAPICの添付文書情報)から" : "PMDAの電子添文から"}自動で取り込み、項目を抜き出して表示しています。薬物動態・臨床成績・薬効薬理などは添付文書の全文で確認してください。同じ成分でも製品により記載が異なることがあります。使用前に必ず最新の添付文書を確認してください。${info.rep ? ` <a href="${escapeHtml(insertPdfUrl(info.rep))}" target="_blank" rel="noopener">この添付文書(PDF)</a>` : ""}${info.kegg ? ` <a href="${escapeHtml(keggInsertUrl(info.kegg))}" target="_blank" rel="noopener">この添付文書(KEGG)</a>` : ""}</p>`;
   }
 
   // Each product gets a link to its own insert when PMDA lists it under the same name.

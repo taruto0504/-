@@ -24,8 +24,8 @@ KEYS = [
 
 
 def clean_rev(rev):
-    m = re.search(r"\d{4}年\d{1,2}月(?:改訂|作成)(?:\([^)]*\))?", rev or "")
-    return m.group(0) if m else ""
+    m = re.search(r"\d{4}年\d{1,2}月\s*(?:改訂|作成)(?:\([^)]*\))?", rev or "")
+    return re.sub(r"\s+", "", m.group(0)) if m else ""
 
 
 def main(src):
@@ -47,6 +47,11 @@ def main(src):
         if rec.get("rep"):
             info["rep"] = rec["rep"]
             info["repNames"] = next((r[1] for r in rows if r[0] == rec["rep"]), [])
+            info["rev"] = clean_rev(rec.get("rev"))
+        elif rec.get("kegg"):
+            # not listed on PMDA: taken from KEGG MEDICUS (JAPIC)
+            info["kegg"] = rec["kegg"]
+            info["repNames"] = rec.get("names", [])
             info["rev"] = clean_rev(rec.get("rev"))
         for k in KEYS:
             # drop leftovers of empty table cells from older fetches
