@@ -2148,12 +2148,6 @@ button {
   color: var(--color-danger);
 }
 
-.compat-result.is-warn {
-  border-color: var(--color-warning);
-  background: #fdf1e3;
-  color: var(--color-warning);
-}
-
 .compat-result.is-none {
   border-color: #b8c6d4;
   background: var(--color-bg);

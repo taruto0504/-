@@ -445,31 +445,11 @@
     const rec = DB.compat.find((c) => (c.pair[0] === a.id && c.pair[1] === b.id) || (c.pair[0] === b.id && c.pair[1] === a.id));
     if (rec) return rec;
     const ruled = [a, b].find((d, i) => d.mixRule && !d.mixRule.except.includes((i === 0 ? b : a).id));
-    if (ruled) {
-      return {
-        result: "x",
-        reason: `${ruled.name}:${ruled.mixRule.reason}`,
-        source: ruled.mixRule.source || ruled.source,
-      };
-    }
-    return fluidCompat(a, b) || fluidCompat(b, a);
-  }
-
-  // A drug whose insert lists the fluids it was tested with: those fluids are 〇, any other fluid is △ (may precipitate).
-  function fluidCompat(drug, fluid) {
-    const rule = drug.fluidRule;
-    if (!rule || !isFluid(fluid)) return null;
-    const tested = rule.tested.map(normalize);
-    const products = [...new Set((fluid.groups || []).flatMap((g) => g.products.map(([product]) => product)))];
-    const hits = products.filter((p) => tested.some((t) => normalize(p).startsWith(t)));
-    if (products.length && hits.length === products.length) {
-      return { result: "o", reason: `${drug.name}の添付文書で、配合試験の結果配合可能だった輸液として挙げられています。`, source: rule.source };
-    }
-    const partial = hits.length ? `このうち${hits.map((h) => `「${h}」`).join("")}は配合可能だった輸液として挙げられています。` : "";
+    if (!ruled) return null;
     return {
-      result: "warn",
-      reason: `${drug.name}:${rule.reason}選んだ輸液はこの一覧に含まれないため、析出に注意してください。${partial}`,
-      source: rule.source,
+      result: "x",
+      reason: `${ruled.name}:${ruled.mixRule.reason}`,
+      source: ruled.mixRule.source || ruled.source,
     };
   }
 
@@ -492,12 +472,7 @@
     }
     const rec = findCompat(a, b);
     const notes = [a, b].filter((d) => d.compatNote).map((d) => `<p class="compat-note">${window.icon("alert")} ${escapeHtml(d.name)}:${escapeHtml(d.compatNote)}</p>`).join("");
-    if (rec && rec.result === "warn") {
-      mark.textContent = "△";
-      label.textContent = "注意の記載あり — タップで理由";
-      resultBtn.classList.add("is-warn");
-      reasonHtml = `<h3 class="tone-warning">△ 注意(析出のおそれ)</h3><p>${escapeHtml(rec.reason)}</p>${notes}${sourceBlock(rec.source)}`;
-    } else if (rec) {
+    if (rec) {
       const ok = rec.result === "o";
       mark.textContent = ok ? "〇" : "×";
       label.textContent = (ok ? "配合可の記載あり" : "配合不可の記載あり") + " — タップで理由";
