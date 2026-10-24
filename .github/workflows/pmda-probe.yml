@@ -1,0 +1,39 @@
+name: PMDA 検索ページの調査
+
+# 添付文書を取り込めなかった製剤を製品名で探す方法を調べるため、PMDA の検索ページを保存する(調査用、あとで消す)
+
+on:
+  push:
+    paths:
+      - '.github/workflows/pmda-probe.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: 取得
+        run: |
+          mkdir out && cd out
+          UA="medical-support-tool/1.0 (+https://github.com/taruto0504/-)"
+          J=cookies.txt
+          curl -sSL -A "$UA" -c $J -b $J "https://www.pmda.go.jp/PmdaSearch/iyakuSearch/" -o search.html
+          for yj in 4900405 4291102 2290405 2645702 1145001; do
+            curl -sSL -A "$UA" -c $J -b $J "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/$yj" -o "general-$yj.html"
+          done
+          curl -sSL -A "$UA" "https://www.pmda.go.jp/PmdaSearch/saiseiSearch/" -o saisei.html || true
+          curl -sSL -A "$UA" "https://www.kegg.jp/medicus-bin/search_drug?display=med&search_keyword=%E3%82%A4%E3%83%A0%E3%83%AB%E3%83%AA%E3%82%AA" -o kegg-imlurio.html || true
+          curl -sSL -A "$UA" "https://www.kegg.jp/medicus-bin/search_drug?display=med&search_keyword=d-%E3%82%AB%E3%83%B3%E3%83%95%E3%83%AB" -o kegg-camphor.html || true
+          ls -la
+      - name: pmda-probe ブランチに保存
+        working-directory: out
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -f cookies.txt
+          git init -q && git checkout -q -b pmda-probe && git add -A
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" commit -qm "PMDA 検索ページの調査"
+          git push -qf "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" pmda-probe
