@@ -19,6 +19,7 @@ import re
 import sys
 import time
 import unicodedata
+import urllib.parse
 import urllib.request
 
 from bs4 import BeautifulSoup
@@ -29,6 +30,8 @@ BRITE = "https://rest.kegg.jp/get/br:jp08301"
 UA = "medical-support-tool/1.0 (+https://github.com/taruto0504/-)"
 # ワクチン類・毒素及びトキソイド類・抗毒素類・その他の生物学的製剤
 TARGET = ("631", "632", "633", "639")
+# 分類表に成分が載っていない混合ワクチンなどは、キーワード検索でも拾う
+KEYWORDS = ("ワクチン", "トキソイド", "抗毒素", "ツベルクリン")
 
 
 def nfkc(s):
@@ -90,6 +93,30 @@ def product_rows(html):
     return rows
 
 
+def generic_name(html):
+    """一般名 (or 総称名 when there is none) on a KEGG MEDICUS insert page."""
+    soup = BeautifulSoup(html, "lxml")
+    for key in ("一般名", "総称名"):
+        th = soup.find("th", string=key)
+        td = th and th.find_next_sibling("td")
+        if td and td.get_text(strip=True):
+            return nfkc(td.get_text(" ", strip=True))
+    return None
+
+
+def search_codes(keyword, delay):
+    """JAPIC codes of every result page of a KEGG MEDICUS keyword search."""
+    codes, page = [], 1
+    while page <= 20:
+        html = get(KEGG + "search_drug?" + urllib.parse.urlencode({"display": "med", "page": page, "search_keyword": keyword}), delay) or ""
+        found = re.findall(r"japic_med\?japic_code=(\d+)", html)
+        codes += found
+        if not found or f'data-page="{page + 1}"' not in html:
+            break
+        page += 1
+    return list(dict.fromkeys(codes))
+
+
 def load_list(path):
     src = open(path, encoding="utf-8").read()
     return json.loads(src[src.index("{"): src.rindex("}") + 1])
@@ -99,28 +126,36 @@ def build(delay, debug_dir=None):
     listed = {yj for _, groups in load_list(os.path.join(ROOT, "js", "drug-list.js"))["items"] for yj, _, _ in groups}
     drugs = brite_drugs(get(BRITE, delay) or "")
     print(f"{len(drugs)} 成分", flush=True)
-    items = {}
-    seen = set()
+    # (JAPIC code, ingredient name or None to read it from the page)
+    sources = []
     for d, name in drugs:
         html = get(KEGG + "similar_product?kegg_drug=" + d, delay) or ""
         codes = list(dict.fromkeys(re.findall(r"japic_med\?japic_code=(\d+)", html)))
-        for code in codes:
-            if code in seen:
-                continue
-            seen.add(code)
-            page = get(KEGG + "japic_med?japic_code=" + code, delay)
-            rows = product_rows(page or "")
-            if not rows and debug_dir and len(os.listdir(debug_dir)) < 5:
-                open(os.path.join(debug_dir, code + ".html"), "w", encoding="utf-8").write(page or "")
-            for product, yj in rows:
-                yj7 = yj[:7]
-                if yj7 in listed:
-                    continue
-                groups = items.setdefault(name, {})
-                groups.setdefault(yj7, [])
-                if product not in groups[yj7]:
-                    groups[yj7].append(product)
+        sources += [(code, name) for code in codes]
         print(f"{d} {name}: {len(codes)} 商品", flush=True)
+    for keyword in KEYWORDS:
+        codes = search_codes(keyword, delay)
+        sources += [(code, None) for code in codes]
+        print(f"「{keyword}」: {len(codes)} 商品", flush=True)
+    items = {}
+    owner = {}  # YJ7 -> ingredient name it is listed under
+    seen = set()
+    for code, name in sources:
+        if code in seen:
+            continue
+        seen.add(code)
+        page = get(KEGG + "japic_med?japic_code=" + code, delay) or ""
+        rows = [(p, yj[:7]) for p, yj in product_rows(page) if yj[:7] not in listed]
+        if not product_rows(page) and debug_dir and len(os.listdir(debug_dir)) < 5:
+            open(os.path.join(debug_dir, code + ".html"), "w", encoding="utf-8").write(page)
+        if not rows:
+            continue
+        name = name or generic_name(page) or rows[0][0]
+        for product, yj7 in rows:
+            groups = items.setdefault(owner.setdefault(yj7, name), {})
+            groups.setdefault(yj7, [])
+            if product not in groups[yj7]:
+                groups[yj7].append(product)
     out = []
     for name, groups in sorted(items.items()):
         out.append([name, [[yj7, kubun(products), [[p, ""] for p in products]] for yj7, products in sorted(groups.items())]])
