@@ -36,10 +36,14 @@ def main(src):
             records[rec["yj"]] = rec  # a later line (re-fetch) wins
 
     # Every class in the drug list gets a file (possibly empty) so the app never hits a 404.
-    src_list = open(os.path.join(ROOT, "js", "drug-list.js"), encoding="utf-8").read()
-    drug_list = json.loads(src_list[src_list.index("{"): src_list.rindex("}") + 1])
-    # Every product in the drug list gets a file (possibly null) so the app never hits a 404.
-    files = {yj: None for _, groups in drug_list["items"] for yj, _, _ in groups}
+    # Every product in the drug lists (price list + js/drug-list-extra.js) gets a file (possibly null) so the app never hits a 404.
+    files = {}
+    for name in ("drug-list.js", "drug-list-extra.js"):
+        path = os.path.join(ROOT, "js", name)
+        if os.path.exists(path):
+            src_list = open(path, encoding="utf-8").read()
+            drug_list = json.loads(src_list[src_list.index("{"): src_list.rindex("}") + 1])
+            files.update({yj: None for _, groups in drug_list["items"] for yj, _, _ in groups})
     empty = 0
     for yj, rec in sorted(records.items()):
         rows = [[r[0], list(dict.fromkeys(r[1]))] for r in rec.get("rows", [])]

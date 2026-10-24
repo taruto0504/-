@@ -3,6 +3,8 @@
 
   const DB = window.DRUG_DB;
   const LIST = window.DRUG_LIST || { source: null, classes: {}, items: [] };
+  // Drugs that are not on the price list (vaccines etc.), from KEGG MEDICUS; same item format.
+  const EXTRA = window.DRUG_LIST_EXTRA || { source: null, items: [] };
   const PMDA_SEARCH_URL = "https://www.pmda.go.jp/PmdaSearch/iyakuSearch/";
   const pmdaGeneralUrl = (yj7) => "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/GeneralList/" + encodeURIComponent(yj7);
   const keggSearchUrl = (q) => "https://www.kegg.jp/medicus-bin/search_drug?display=med&search_keyword=" + encodeURIComponent(q);
@@ -11,8 +13,20 @@
 
   // Products from the national drug price list, keyed by the first 7 digits of the YJ code (one dosage form of one ingredient).
   const groupByYj = new Map();
-  LIST.items.forEach(([ingredient, groups]) =>
-    groups.forEach(([yj, kubun, products]) => groupByYj.set(yj, { yj, kubun, products, ingredient }))
+  // ingredient name -> its YJ codes, with the extra list merged under the same name
+  const ingredients = new Map();
+  [
+    [LIST, false],
+    [EXTRA, true],
+  ].forEach(([list, extra]) =>
+    list.items.forEach(([ingredient, groups]) =>
+      groups.forEach(([yj, kubun, products]) => {
+        if (groupByYj.has(yj)) return;
+        groupByYj.set(yj, { yj, kubun, products, ingredient, extra });
+        if (!ingredients.has(ingredient)) ingredients.set(ingredient, []);
+        ingredients.get(ingredient).push(yj);
+      })
+    )
   );
   // A curated drug shows the products of its own dosage forms; the rest of the list becomes "list only" entries,
   // so every product appears in exactly one place.
@@ -22,8 +36,8 @@
     d.groups.forEach((g) => claimed.add(g.yj));
   });
   const listDrugs = [];
-  LIST.items.forEach(([name, groups]) => {
-    const rest = groups.filter(([yj]) => !claimed.has(yj)).map(([yj]) => groupByYj.get(yj));
+  ingredients.forEach((yjs, name) => {
+    const rest = yjs.filter((yj) => !claimed.has(yj)).map((yj) => groupByYj.get(yj));
     if (rest.length) listDrugs.push({ id: "L:" + name, name, listOnly: true, groups: rest });
   });
   const allDrugs = [...DB.drugs, ...listDrugs];
@@ -116,6 +130,7 @@
   }
 
   const className = (yj) => LIST.classes[yj.slice(0, 3)] || "";
+  const sourceLink = (src) => `<a href="${escapeHtml(src.url)}" target="_blank" rel="noopener">${escapeHtml(src.label)}</a>`;
 
   // ---- Suggest (autocomplete) ----
   function attachSuggest(input, list, idx, onPick, onNoMatch) {
@@ -331,7 +346,7 @@
       )
       .join("");
     return `<section class="drug-sec sec-prod"><h3>添付文書の記載・製品</h3>${groups}
-      <p class="prod-note">製品・規格の出典: <a href="${escapeHtml(LIST.source.url)}" target="_blank" rel="noopener">${escapeHtml(LIST.source.label)}</a>。添付文書の記載の出典: PMDA 医療用医薬品の添付文書情報。</p>
+      <p class="prod-note">製品・規格の出典: ${drug.groups.some((g) => !g.extra) ? sourceLink(LIST.source) : ""}${drug.groups.every((g) => !g.extra) ? "" : `${drug.groups.some((g) => !g.extra) ? "、" : ""}${sourceLink(EXTRA.source)}`}。添付文書の記載の出典: PMDA 医療用医薬品の添付文書情報(掲載のないものは KEGG MEDICUS)。</p>
     </section>`;
   }
 
@@ -402,7 +417,7 @@
   });
 
   document.querySelector(".drug-hint").textContent =
-    `成分名・販売名を1文字から入力してください。医療用医薬品${LIST.items.length.toLocaleString("ja-JP")}成分(厚生労働省の薬価基準収載品目リスト)から探せます。`;
+    `成分名・販売名を1文字から入力してください。医療用医薬品${ingredients.size.toLocaleString("ja-JP")}成分(厚生労働省の薬価基準収載品目リスト${EXTRA.items.length ? "、ワクチン等の薬価基準にない薬は KEGG MEDICUS" : ""})から探せます。`;
 
   // The detail scrolls inside its box so the page itself stays one screen.
   function fitBox(box, min) {

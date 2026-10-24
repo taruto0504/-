@@ -222,6 +222,7 @@ def from_kegg(yj, products, delay):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--list", default="js/drug-list.js")
+    ap.add_argument("--extra", default="js/drug-list-extra.js", help="薬価基準にない薬の一覧(あれば一緒に取得する)")
     ap.add_argument("--out", required=True)
     ap.add_argument("--delay", type=float, default=1.0)
     ap.add_argument("--budget", type=float, default=5 * 3600)
@@ -229,10 +230,16 @@ def main():
     ap.add_argument("--only", help="file with YJ7 codes to fetch again (one per line), even if already fetched")
     args = ap.parse_args()
 
-    src = open(args.list, encoding="utf-8").read()
-    data = json.loads(src[src.index("{"): src.rindex("}") + 1])
-    groups = [yj for _, gs in data["items"] for yj, _, _ in gs]
-    products = {yj: [p[0] for p in ps] for _, gs in data["items"] for yj, _, ps in gs}
+    items = []
+    for path in (args.list, args.extra):
+        if os.path.exists(path):
+            src = open(path, encoding="utf-8").read()
+            items += json.loads(src[src.index("{"): src.rindex("}") + 1])["items"]
+    groups = list(dict.fromkeys(yj for _, gs in items for yj, _, _ in gs))
+    products = {}
+    for _, gs in items:
+        for yj, _, ps in gs:
+            products.setdefault(yj, []).extend(p[0] for p in ps)
 
     done = set()
     if os.path.exists(args.out):
