@@ -225,35 +225,43 @@
     return `<section class="drug-sec ${cls || ""}"><h3>${title}</h3><ul>${items.map((t) => `<li>${escapeHtml(t)}</li>`).join("")}</ul></section>`;
   }
 
-  // ---- 添付文書の記載(PMDA から自動取得。data/drug-info/{YJ上3桁}.json を必要な分だけ読む) ----
-  const chunkCache = new Map();
-  function loadChunk(prefix) {
-    if (!chunkCache.has(prefix)) {
-      const p = fetch(`data/drug-info/${prefix}.json`)
-        // 404: this build has no insert data at all (false), as opposed to a failed download (null)
-        .then((r) => (r.ok ? r.json() : r.status === 404 ? false : Promise.reject(new Error(String(r.status)))))
-        .catch(() => {
-          chunkCache.delete(prefix); // offline: try again next time
-          return null;
-        });
-      chunkCache.set(prefix, p);
-    }
-    return chunkCache.get(prefix);
-  }
+  // ---- 添付文書の記載(PMDA から自動取得。data/drug-info/{YJ上7桁}.json を開いた製剤の分だけ読む) ----
+  const infoCache = new Map();
   // resolves to the record, null when PMDA has nothing for it, undefined when it could not be loaded,
   // or false when the app has no insert data
-  async function loadInfo(yj) {
-    const chunk = await loadChunk(yj.slice(0, 3));
-    if (chunk === false) return false;
-    return chunk ? chunk[yj] || null : undefined;
+  function loadInfo(yj) {
+    if (!infoCache.has(yj)) {
+      const p = fetch(`data/drug-info/${encodeURIComponent(yj)}.json`)
+        // 404: this build has no insert data at all (false), as opposed to a failed download (undefined)
+        .then((r) => (r.ok ? r.json() : r.status === 404 ? false : Promise.reject(new Error(String(r.status)))))
+        .catch(() => {
+          infoCache.delete(yj); // offline: try again next time
+          return undefined;
+        });
+      infoCache.set(yj, p);
+    }
+    return infoCache.get(yj);
   }
 
   const INS_SECTIONS = [
     ["warn", "警告", "ins-warn"],
     ["contra", "禁忌", "ins-contra"],
+    ["contra2", "原則禁忌", "ins-contra"],
+    ["comp", "組成・性状", ""],
     ["ind", "効能又は効果", ""],
+    ["indNote", "効能又は効果に関連する注意", ""],
     ["dose", "用法及び用量", ""],
+    ["doseNote", "用法及び用量に関連する注意", ""],
+    ["basic", "重要な基本的注意", ""],
+    ["bg", "特定の背景を有する患者に関する注意(合併症・腎/肝機能・妊婦・授乳婦・小児・高齢者)", ""],
+    ["inter", "相互作用", ""],
+    ["adv", "副作用", ""],
+    ["lab", "臨床検査結果に及ぼす影響", ""],
+    ["od", "過量投与", ""],
     ["app", "適用上の注意", ""],
+    ["other", "その他の注意", ""],
+    ["handle", "取扱い上の注意", ""],
+    ["caution", "使用上の注意", ""],
   ];
   const insertPdfUrl = (id) => "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/ResultDataSetPDF/" + encodeURIComponent(id);
 
@@ -274,7 +282,7 @@
       .join("");
     return `<p class="ins-src">${escapeHtml(name || "代表製品")} の添付文書${info.rev ? `(${escapeHtml(info.rev)})` : ""}より</p>
       ${sections}
-      <p class="ins-note">PMDAの電子添文から自動で取り込み、項目を抜き出して表示しています。同じ成分でも製品により記載が異なることがあります。使用前に必ず最新の添付文書を確認してください。${info.rep ? ` <a href="${escapeHtml(insertPdfUrl(info.rep))}" target="_blank" rel="noopener">この添付文書(PDF)</a>` : ""}</p>`;
+      <p class="ins-note">PMDAの電子添文から自動で取り込み、項目を抜き出して表示しています。薬物動態・臨床成績・薬効薬理などは添付文書(PDF)で確認してください。同じ成分でも製品により記載が異なることがあります。使用前に必ず最新の添付文書を確認してください。${info.rep ? ` <a href="${escapeHtml(insertPdfUrl(info.rep))}" target="_blank" rel="noopener">この添付文書(PDF)</a>` : ""}</p>`;
   }
 
   // Each product gets a link to its own insert when PMDA lists it under the same name.

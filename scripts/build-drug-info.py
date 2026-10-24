@@ -7,7 +7,7 @@
   python3 scripts/build-drug-info.py /tmp/pmda.jsonl
 
 pmda.jsonl は .github/workflows/fetch-pmda.yml(scripts/fetch-pmda.py)が作る。
-ファイルは YJコードの上3桁(薬効分類)ごとに分け、薬を開いたときに必要な分だけ読み込む。
+ファイルは製剤(YJコード上7桁)ごとに分け、薬を開いたときにその製剤の分だけ読み込む。
 """
 import json
 import os
@@ -17,7 +17,10 @@ import sys
 
 ROOT = os.path.join(os.path.dirname(__file__), "..")
 OUT_DIR = os.path.join(ROOT, "data", "drug-info")
-KEYS = ["warn", "contra", "ind", "dose", "app"]
+KEYS = [
+    "warn", "contra", "contra2", "comp", "ind", "indNote", "dose", "doseNote", "basic", "bg", "inter",
+    "adv", "lab", "od", "app", "other", "handle", "caution",
+]
 
 
 def clean_rev(rev):
@@ -35,7 +38,8 @@ def main(src):
     # Every class in the drug list gets a file (possibly empty) so the app never hits a 404.
     src_list = open(os.path.join(ROOT, "js", "drug-list.js"), encoding="utf-8").read()
     drug_list = json.loads(src_list[src_list.index("{"): src_list.rindex("}") + 1])
-    chunks = {yj[:3]: {} for _, groups in drug_list["items"] for yj, _, _ in groups}
+    # Every product in the drug list gets a file (possibly null) so the app never hits a 404.
+    files = {yj: None for _, groups in drug_list["items"] for yj, _, _ in groups}
     empty = 0
     for yj, rec in sorted(records.items()):
         rows = [[r[0], list(dict.fromkeys(r[1]))] for r in rec.get("rows", [])]
@@ -47,23 +51,25 @@ def main(src):
         for k in KEYS:
             # drop leftovers of empty table cells from older fetches
             lines = [re.sub(r"(\s*/)+$", "", l).strip() for l in rec.get(k) or []]
+            # revision marks (* / **) at the start of a line or after a section number
+            lines = [re.sub(r"^((?:\d+\.)*\d*\s*)\*+\s*", r"\1", l) for l in lines]
             lines = [l for l in lines if l and not re.fullmatch(r"[\s/|・、。.,-]+", l)]
             if lines:
                 info[k] = lines
         if not any(k in info for k in KEYS):
             empty += 1
-        chunks.setdefault(yj[:3], {})[yj] = info
+        files[yj] = info
 
     if os.path.isdir(OUT_DIR):
         shutil.rmtree(OUT_DIR)
     os.makedirs(OUT_DIR)
     total = 0
-    for prefix, data in chunks.items():
-        path = os.path.join(OUT_DIR, prefix + ".json")
+    for yj, data in files.items():
+        path = os.path.join(OUT_DIR, yj + ".json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, separators=(",", ":"))
         total += os.path.getsize(path)
-    print(f"{len(records)} 製剤(本文なし {empty}) -> {len(chunks)} ファイル, 合計 {total:,} bytes")
+    print(f"{len(records)} 製剤(本文なし {empty}) -> {len(files)} ファイル, 合計 {total:,} bytes")
 
 
 if __name__ == "__main__":
