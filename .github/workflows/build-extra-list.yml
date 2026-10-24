@@ -26,7 +26,7 @@ jobs:
       - name: 一覧を作る
         run: |
           mkdir out
-          python3 scripts/build-extra-list.py --out out/drug-list-extra.json --delay 1.0
+          python3 scripts/build-extra-list.py --out out/drug-list-extra.json --delay 1.0 --debug-dir out/debug
 
       - name: extra-list ブランチに保存
         working-directory: out

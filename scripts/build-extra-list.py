@@ -94,7 +94,7 @@ def load_list(path):
     return json.loads(src[src.index("{"): src.rindex("}") + 1])
 
 
-def build(delay):
+def build(delay, debug_dir=None):
     listed = {yj for _, groups in load_list(os.path.join(ROOT, "js", "drug-list.js"))["items"] for yj, _, _ in groups}
     drugs = brite_drugs(get(BRITE, delay) or "")
     print(f"{len(drugs)} 成分", flush=True)
@@ -108,7 +108,10 @@ def build(delay):
                 continue
             seen.add(code)
             page = get(KEGG + "japic_med?japic_code=" + code, delay)
-            for product, yj in product_rows(page or ""):
+            rows = product_rows(page or "")
+            if not rows and debug_dir and len(os.listdir(debug_dir)) < 5:
+                open(os.path.join(debug_dir, code + ".html"), "w", encoding="utf-8").write(page or "")
+            for product, yj in rows:
                 yj7 = yj[:7]
                 if yj7 in listed:
                     continue
@@ -139,11 +142,14 @@ def main():
     ap.add_argument("--out", help="KEGG から作った一覧(JSON)の保存先")
     ap.add_argument("--js", help="保存済みの一覧(JSON)を js/drug-list-extra.js に変換する")
     ap.add_argument("--delay", type=float, default=1.0)
+    ap.add_argument("--debug-dir", help="YJコードを読み取れなかったページを保存する(5件まで)")
     args = ap.parse_args()
     if args.js:
         write_js(json.load(open(args.js, encoding="utf-8")), os.path.join(ROOT, "js", "drug-list-extra.js"))
         return
-    items = build(args.delay)
+    if args.debug_dir:
+        os.makedirs(args.debug_dir, exist_ok=True)
+    items = build(args.delay, args.debug_dir)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(items, f, ensure_ascii=False, indent=1)
     print(f"{len(items)} 成分 / {sum(len(g) for _, g in items)} 製剤")
