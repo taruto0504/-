@@ -84,7 +84,8 @@ def product_rows(html):
     rows = []
     for tr in th.find_parent("table").find_all("tr")[1:]:
         cells = [nfkc(c.get_text(" ", strip=True)) for c in tr.find_all(["th", "td"])]
-        if len(cells) > col and re.match(r"^\d{7}", cells[col]):
+        # products without a price have letters in the ingredient part too (e.g. 631140BD3027)
+        if len(cells) > col and re.match(r"^\d{4}[0-9A-Z]{3}", cells[col]):
             rows.append((cells[0], cells[col]))
     return rows
 
