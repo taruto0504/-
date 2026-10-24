@@ -295,6 +295,11 @@ export function App() {
 
   const onVrm = async (file: File | null) => {
     setVrm((v) => ({ ...v, error: "" }));
+    // VRM（glTF バイナリ）は先頭が "glTF" で始まる
+    if (file && new TextDecoder().decode(await file.slice(0, 4).arrayBuffer()) !== "glTF") {
+      setVrm((v) => ({ ...v, error: `「${file.name}」はVRMファイルではないようです。拡張子が .vrm のファイルを選んでください` }));
+      return;
+    }
     try {
       await stage.current?.setVrmData(file ? await file.arrayBuffer() : null);
       await saveFile("vrm", file ?? undefined);

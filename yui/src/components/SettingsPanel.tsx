@@ -291,7 +291,7 @@ function CharacterTab({ hasVrm, vrmName, vrmError, onVrm }: Props) {
         VRMファイルを読み込む
         <input
           type="file"
-          accept=".vrm"
+          // iPhone は .vrm を知らないため、種類で絞ると選べなくなる。読み込んだ後に中身で確かめる
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) onVrm(f);
@@ -306,7 +306,7 @@ function CharacterTab({ hasVrm, vrmName, vrmError, onVrm }: Props) {
       )}
       {vrmError && <p className="error-text">{vrmError}</p>}
       <p className="hint">
-        VRoid Studio で作ったモデルや、VRoid Hub で配布されているモデル（利用条件を確認してください）が使えます。読み込んだファイルはこの端末の中だけに保存します。自分で作ったものか、使う権利のあるモデルだけを読み込んでください。
+        VRoid Studio で作ったモデルや、VRoid Hub でダウンロードできるモデル（利用条件を確認してください）が使えます。iPhone では「ファイル」アプリの「ダウンロード」フォルダから選べます。読み込んだファイルはこの端末の中だけに保存します。自分で作ったものか、使う権利のあるモデルだけを読み込んでください。
       </p>
       <p className="hint">キャラクターをタップすると反応します。何もないところをタップすると、そこへ移動します。</p>
     </>
