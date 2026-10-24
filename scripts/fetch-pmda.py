@@ -4,10 +4,12 @@
 js/drug-list.js の各製剤(YJコード上7桁)について
   1. 成分ページ  /PmdaSearch/iyakuDetail/GeneralList/{YJ7}   … 製品と添付文書の一覧
   2. 先頭の製品の添付文書HTML  /PmdaSearch/iyakuDetail/{添付文書ID}
-を順番に取得し、警告・禁忌・効能又は効果・用法及び用量・適用上の注意を JSON Lines で保存する。
+を順番に取得し、添付文書の主な項目(SECTIONS)を JSON Lines で保存する。
+薬物動態・臨床成績・薬効薬理・理化学的知見・文献などは量が多いため取り込まず、PDF へのリンクで見てもらう。
 
 - サーバーに負担をかけないよう、1件ずつ間隔(--delay 秒)をあけて取得する。
-- 出力ファイルに既にある製剤は飛ばすので、途中で止まっても続きから再開できる。
+- 出力ファイルに同じ VERSION で取得済みの製剤は飛ばすので、途中で止まっても続きから再開できる。
+  取り込む項目を変えたときは VERSION を上げると、全製剤を順に取り直す(後の行が優先される)。
 - --budget 秒を過ぎたら途中で終了し、status.txt に partial と書く(全件終われば complete)。
 
 .github/workflows/fetch-pmda.yml から実行する。必要なライブラリ: beautifulsoup4, lxml
@@ -27,10 +29,19 @@ from bs4 import BeautifulSoup, NavigableString
 BASE = "https://www.pmda.go.jp/PmdaSearch/iyakuDetail/"
 UA = "medical-support-tool/1.0 (+https://github.com/taruto0504/-)"
 
+VERSION = 2
 # 見出しの番号 -> 保存するキー(新記載要領)
-SECTIONS = {"1": "warn", "2": "contra", "4": "ind", "6": "dose", "14": "app"}
+SECTIONS = {
+    "1": "warn", "2": "contra", "3": "comp", "4": "ind", "5": "indNote", "6": "dose", "7": "doseNote",
+    "8": "basic", "9": "bg", "10": "inter", "11": "adv", "12": "lab", "13": "od", "14": "app", "15": "other",
+    "20": "handle",
+}
 # 旧記載要領の見出し
-OLD_SECTIONS = {"警告": "warn", "禁忌": "contra", "効能・効果": "ind", "効能又は効果": "ind", "用法・用量": "dose", "用法及び用量": "dose", "適用上の注意": "app"}
+OLD_SECTIONS = {
+    "警告": "warn", "禁忌": "contra", "原則禁忌": "contra2", "組成・性状": "comp",
+    "効能・効果": "ind", "効能又は効果": "ind", "用法・用量": "dose", "用法及び用量": "dose",
+    "使用上の注意": "caution", "適用上の注意": "app", "取扱い上の注意": "handle",
+}
 BLOCK = {"div", "p", "li", "ul", "ol", "h1", "h2", "h3", "h4", "table", "tr", "caption", "dl", "dt", "dd"}
 
 opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
@@ -102,7 +113,7 @@ def to_lines(el):
     return lines
 
 
-def parse_insert(html, injection):
+def parse_insert(html):
     soup = BeautifulSoup(html, "lxml")
     out = {}
     rev = soup.find(id="HDR_DateOfPreparationOrRevision")
@@ -116,7 +127,7 @@ def parse_insert(html, injection):
             continue
         m = re.match(r"\s*(\d+)\s*\.", nfkc(h3.get_text()))
         key = m and SECTIONS.get(m.group(1))
-        if not key or (key == "app" and not injection):
+        if not key:
             continue
         h3.decompose()
         out[key] = to_lines(sec)
@@ -130,8 +141,6 @@ def parse_insert(html, injection):
             if m:
                 title = re.sub(r"[(（].*$", "", m.group(1))
                 current = OLD_SECTIONS.get(title)
-                if current == "app" and not injection:
-                    current = None
                 if current:
                     out.setdefault(current, [])
                     if m.group(2):
@@ -157,21 +166,23 @@ def main():
 
     src = open(args.list, encoding="utf-8").read()
     data = json.loads(src[src.index("{"): src.rindex("}") + 1])
-    groups = [(yj, kubun) for _, gs in data["items"] for yj, kubun, _ in gs]
+    groups = [yj for _, gs in data["items"] for yj, _, _ in gs]
 
     done = set()
     if os.path.exists(args.out):
         with open(args.out, encoding="utf-8") as f:
             for line in f:
                 try:
-                    done.add(json.loads(line)["yj"])
+                    rec = json.loads(line)
+                    if rec.get("v") == VERSION:
+                        done.add(rec["yj"])
                 except (ValueError, KeyError):
                     pass
     if args.only:
         only = {line.strip() for line in open(args.only) if line.strip()}
-        todo = [g for g in dict.fromkeys(groups) if g[0] in only]
+        todo = [g for g in dict.fromkeys(groups) if g in only]
     else:
-        todo = [g for g in groups if g[0] not in done]
+        todo = [g for g in groups if g not in done]
     if args.limit:
         todo = todo[: args.limit]
     print(f"{len(groups)} 製剤 / 取得済み {len(done)} / 今回 {len(todo)}", flush=True)
@@ -179,11 +190,11 @@ def main():
     start = time.time()
     status = "complete"
     with open(args.out, "a", encoding="utf-8") as out:
-        for n, (yj, kubun) in enumerate(todo, 1):
+        for n, yj in enumerate(todo, 1):
             if time.time() - start > args.budget:
                 status = "partial"
                 break
-            rec = {"yj": yj}
+            rec = {"yj": yj, "v": VERSION}
             html = get(BASE + "GeneralList/" + yj, args.delay)
             if html is None:
                 print(f"skip {yj}: GeneralList failed", flush=True)
@@ -198,7 +209,7 @@ def main():
                     print(f"skip {yj}: insert {rep} failed", flush=True)
                     continue
                 rec["rep"] = rep
-                rec.update(parse_insert(ins, kubun == "注"))
+                rec.update(parse_insert(ins))
             out.write(json.dumps(rec, ensure_ascii=False) + "\n")
             out.flush()
             if n % 50 == 0:

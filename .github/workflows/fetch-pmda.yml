@@ -9,6 +9,7 @@ on:
     paths:
       - '.github/workflows/fetch-pmda.yml'
       - 'scripts/pmda-refetch.txt'
+      - 'scripts/fetch-pmda.py'
 
 permissions:
   contents: write
